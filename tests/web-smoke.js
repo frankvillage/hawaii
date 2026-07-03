@@ -85,15 +85,28 @@ async function main() {
       progressedVideoTime > initialVideoTime,
       "Homepage journey video should advance when the page scrolls",
     );
-    assert.ok(
-      (await page.locator('[data-testid="scene-menu"]').count()) >= 1,
-      "Journey scenes should surface menu highlights at the matching moments",
+    const popupTrigger = page.locator('[data-testid="menu-popup-trigger"]');
+    assert.equal(
+      await popupTrigger.count(),
+      1,
+      "The journey should expose a single compact menu/booking trigger",
     );
-    assert.match(
-      (await page.locator('[data-testid="scene-menu"]').first().textContent()) || "",
-      /€/,
-      "Scene menu highlights should show real dishes with prices",
-    );
+    await page.evaluate(() => {
+      const consent = [...document.querySelectorAll("button")].find((node) =>
+        /accetta/i.test(node.textContent || ""),
+      );
+      if (consent) {
+        consent.click();
+      }
+    });
+    await popupTrigger.click();
+    const menuPopup = page.locator('[data-testid="menu-popup"]');
+    await menuPopup.waitFor({ state: "visible", timeout: 2500 });
+    const popupText = (await menuPopup.textContent()) || "";
+    assert.match(popupText, /€/, "The popup should show real scene dishes with prices");
+    assert.match(popupText, /Spiaggia/, "The popup should expose the beach booking entry");
+    await page.keyboard.press("Escape");
+    await menuPopup.waitFor({ state: "detached", timeout: 2500 });
 
     await mobilePage.goto(baseUrl, { waitUntil: "domcontentloaded" });
     const mobileMenuButton = mobilePage.getByRole("button", { name: /menu/i });

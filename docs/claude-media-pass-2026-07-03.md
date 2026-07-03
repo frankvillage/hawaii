@@ -103,10 +103,15 @@ Removed provisional media:
   answered (pizza is real, served at dinner); yoga, "Aperol point" and
   "stellato" language remain open.
 - Menu highlights surface inside the scroll journey (owner's direction):
-  scenes beach/pranzo/cucina/tramonto/MUULab carry 3 real dishes each,
-  rendered in the stage side panel (desktop) and as a compact line under
-  the scene copy (mobile), linking to /menu#ristorante-mare or
-  /menu#muulab.
+  scenes beach/pranzo/cucina/tramonto/MUULab carry 3 real dishes each.
+  After an overlap problem on mobile, inline rendering was replaced by a
+  single compact trigger in the stage CTA row ("Menu & prenota") that
+  opens a modal popup (bottom sheet on mobile) with the scene dishes, a
+  link to /menu#ristorante-mare / /menu#muulab, and the real booking
+  entries from the old site: beach via widget.spiagge.it (palma o
+  ombrellone), table/terrace via /prenotazioni, sport, private events,
+  plus restaurant and beach phone numbers. Popup closes on Escape and
+  backdrop click and locks body scroll while open.
 - `assets/` source folder and brand logos/social graphics are still pending
   delivery (Dropbox link announced by the owner).
 - The 326 MB master source is not in git; consider Git LFS if it must be

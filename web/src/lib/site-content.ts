@@ -129,6 +129,8 @@ export const siteMeta = {
   address: "Viale della Riviera 154, 65123 Pescara PE",
   restaurantPhone: "085 9396664",
   beachPhone: "375 5175508",
+  beachBookingUrl:
+    "https://widget.spiagge.it/stabilimenti-balneari/prenotazione/it-pe-65123-lido-hawaii/?ybnl=1",
   email: "info@hawaiipescara.it",
   mapUrl: "https://g.page/r/CV_HAWAII_PESCARA",
   instagramUrl: "https://www.instagram.com/hawaii_pescara/",
@@ -771,6 +773,42 @@ export const pages: Record<string, EntityPage> = {
     ],
     schemaType: "LocalBusiness",
   },
+};
+
+export const quickBooking = {
+  eyebrow: "Prenotazioni",
+  options: [
+    {
+      label: "Spiaggia",
+      detail: "Palma o ombrellone",
+      href: siteMeta.beachBookingUrl,
+      external: true,
+    },
+    {
+      label: "Tavolo al ristorante",
+      detail: "Pranzo e cena di mare",
+      href: "/prenotazioni",
+    },
+    {
+      label: "Terrazza MUULab",
+      detail: "Sunset e cena alla brace",
+      href: "/prenotazioni",
+    },
+    {
+      label: "Sport e padel",
+      detail: "Campi e outdoor training",
+      href: "/sport",
+    },
+    {
+      label: "Eventi e feste private",
+      detail: "Richiedi una data",
+      href: "/feste-private",
+    },
+  ],
+  phones: [
+    { label: "Ristorante", number: siteMeta.restaurantPhone, tel: "+390859396664" },
+    { label: "Spiaggia", number: siteMeta.beachPhone, tel: "+393755175508" },
+  ],
 };
 
 export const bookingOptions = [

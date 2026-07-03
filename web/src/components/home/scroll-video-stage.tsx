@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { homeHero, homeJourney } from "@/lib/site-content";
+import { homeHero, homeJourney, quickBooking } from "@/lib/site-content";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -18,6 +18,28 @@ export function ScrollVideoStage() {
   const [isReducedMotion, setIsReducedMotion] = useState(false);
   const [videoDuration, setVideoDuration] = useState(homeJourney.media.duration);
   const [progress, setProgress] = useState(0);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isPanelOpen) {
+      return;
+    }
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsPanelOpen(false);
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isPanelOpen]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -210,7 +232,7 @@ export function ScrollVideoStage() {
         />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,227,173,0.22),transparent_36%)]" />
 
-        <div className="relative z-10 flex h-full flex-col justify-between px-4 pb-6 pt-6 sm:px-6 lg:px-8 lg:pb-8">
+        <div className="relative z-10 flex h-full flex-col justify-between px-4 pb-24 pt-6 sm:px-6 md:pb-6 lg:px-8 lg:pb-8">
           <div className="flex items-start justify-between gap-4">
             <div
               className="max-w-[16rem] sm:max-w-xl"
@@ -281,23 +303,6 @@ export function ScrollVideoStage() {
                 {activeScene.summary}
               </p>
 
-              {activeScene.menu ? (
-                <Link
-                  href={`/menu#${activeScene.menu.anchor}`}
-                  data-testid="scene-menu"
-                  className="mt-5 block max-w-xl text-sm leading-7 text-[#e8d9c2] transition hover:text-[#f6ecd9] lg:hidden"
-                >
-                  <span className="block text-[0.62rem] uppercase tracking-[0.24em] text-[#e8c89e]">
-                    Dal menu
-                  </span>
-                  <span className="mt-1 block">
-                    {activeScene.menu.items
-                      .map((item) => (item.price ? `${item.name} · ${item.price}` : item.name))
-                      .join("  —  ")}
-                  </span>
-                </Link>
-              ) : null}
-
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href={activeScene.hotspots[0]?.href ?? homeHero.secondaryAction.href}
@@ -305,12 +310,14 @@ export function ScrollVideoStage() {
                 >
                   {activeScene.hotspots[0]?.label ?? "Prenota"}
                 </Link>
-                <Link
-                  href={homeHero.secondaryAction.href}
-                  className="inline-flex rounded-full border border-white/18 px-5 py-3 text-sm font-semibold text-[#f5efe6] transition hover:border-white/32"
+                <button
+                  type="button"
+                  data-testid="menu-popup-trigger"
+                  onClick={() => setIsPanelOpen(true)}
+                  className="inline-flex cursor-pointer rounded-full border border-white/18 px-5 py-3 text-sm font-semibold text-[#f5efe6] transition hover:border-white/32"
                 >
-                  {homeHero.secondaryAction.label}
-                </Link>
+                  {activeScene.menu ? "Menu & prenota" : "Prenota"}
+                </button>
               </div>
             </div>
 
@@ -320,38 +327,12 @@ export function ScrollVideoStage() {
                 transform: "translate3d(calc(var(--pointer-x) * 0.14), calc(var(--pointer-y) * 0.14), 0)",
               }}
             >
-              {activeScene.menu ? (
-                <div data-testid="scene-menu">
-                  <p className="text-[0.66rem] uppercase tracking-[0.24em] text-[#e8c89e]">
-                    Dal menu
-                  </p>
-                  <ul className="mt-3 grid gap-2 leading-6">
-                    {activeScene.menu.items.map((item) => (
-                      <li key={item.name} className="flex items-baseline justify-between gap-3">
-                        <span>{item.name}</span>
-                        {item.price ? (
-                          <span className="whitespace-nowrap text-[#e8c89e]">{item.price}</span>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link
-                    href={`/menu#${activeScene.menu.anchor}`}
-                    className="mt-3 inline-block text-[0.72rem] uppercase tracking-[0.18em] text-[#e8c89e] transition hover:text-[#f6ecd9]"
-                  >
-                    Menu completo
-                  </Link>
-                </div>
-              ) : (
-                <>
-                  <p className="text-[0.66rem] uppercase tracking-[0.24em] text-[#e8c89e]">
-                    Urban Village
-                  </p>
-                  <p className="mt-3 leading-7">
-                    Alba, spiaggia, pranzo, terrazza e notte scorrono nello stesso fronte mare.
-                  </p>
-                </>
-              )}
+              <p className="text-[0.66rem] uppercase tracking-[0.24em] text-[#e8c89e]">
+                Urban Village
+              </p>
+              <p className="mt-3 leading-7">
+                Alba, spiaggia, pranzo, terrazza e notte scorrono nello stesso fronte mare.
+              </p>
             </div>
           </div>
         </div>
@@ -359,7 +340,7 @@ export function ScrollVideoStage() {
 
       {/* Scene anchors are laid out on the same scale as the scroll progress so
           the soul rail and #anchor navigation stay in sync with the footage. */}
-      <div aria-hidden="true" className="relative z-0 h-[800svh]">
+      <div aria-hidden="true" className="pointer-events-none relative z-0 h-[800svh]">
         {homeJourney.scenes.map((scene) => (
           <section
             key={scene.id}
@@ -379,6 +360,113 @@ export function ScrollVideoStage() {
           </section>
         ))}
       </div>
+
+      {isPanelOpen ? (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6">
+          <button
+            type="button"
+            aria-label="Chiudi menu e prenotazioni"
+            onClick={() => setIsPanelOpen(false)}
+            className="absolute inset-0 cursor-pointer bg-[rgba(3,8,12,0.64)] backdrop-blur-sm"
+          />
+
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu e prenotazioni"
+            data-testid="menu-popup"
+            className="relative max-h-[85svh] w-full overflow-y-auto rounded-t-[1.8rem] border border-white/12 bg-[rgba(9,19,28,0.96)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:max-w-md sm:rounded-[1.8rem]"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[0.64rem] uppercase tracking-[0.26em] text-[#e8c89e]">
+                  Hawaii • {activeScene.eyebrow}
+                </p>
+                <p className="mt-2 font-serif text-2xl leading-tight text-[#f5efe6]">
+                  {activeScene.menu ? "Dal menu" : "Prenota il tuo momento"}
+                </p>
+              </div>
+              <button
+                type="button"
+                data-testid="menu-popup-close"
+                aria-label="Chiudi"
+                autoFocus
+                onClick={() => setIsPanelOpen(false)}
+                className="cursor-pointer rounded-full border border-white/15 px-3 py-1.5 text-sm text-[#dfe7ea] transition hover:border-white/35"
+              >
+                ✕
+              </button>
+            </div>
+
+            {activeScene.menu ? (
+              <div className="mt-5">
+                <ul className="grid gap-2.5 text-sm leading-6 text-[#e9eef1]">
+                  {activeScene.menu.items.map((item) => (
+                    <li key={item.name} className="flex items-baseline justify-between gap-4">
+                      <span>{item.name}</span>
+                      {item.price ? (
+                        <span className="whitespace-nowrap text-[#e8c89e]">{item.price}</span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href={`/menu#${activeScene.menu.anchor}`}
+                  onClick={() => setIsPanelOpen(false)}
+                  className="mt-4 inline-block text-[0.72rem] uppercase tracking-[0.18em] text-[#e8c89e] transition hover:text-[#f6ecd9]"
+                >
+                  Menu completo
+                </Link>
+              </div>
+            ) : null}
+
+            <div className={activeScene.menu ? "mt-6 border-t border-white/10 pt-5" : "mt-6"}>
+              <p className="text-[0.64rem] uppercase tracking-[0.26em] text-[#e8c89e]">
+                {quickBooking.eyebrow}
+              </p>
+              <ul className="mt-3 grid gap-2">
+                {quickBooking.options.map((option) =>
+                  option.external ? (
+                    <li key={option.label}>
+                      <a
+                        href={option.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-baseline justify-between gap-4 rounded-[1.1rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-4 py-3 text-sm text-[#f0f4f6] transition hover:border-white/30"
+                      >
+                        <span className="font-semibold">{option.label}</span>
+                        <span className="text-right text-xs text-[#b9c6cd]">{option.detail}</span>
+                      </a>
+                    </li>
+                  ) : (
+                    <li key={option.label}>
+                      <Link
+                        href={option.href}
+                        onClick={() => setIsPanelOpen(false)}
+                        className="flex items-baseline justify-between gap-4 rounded-[1.1rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-4 py-3 text-sm text-[#f0f4f6] transition hover:border-white/30"
+                      >
+                        <span className="font-semibold">{option.label}</span>
+                        <span className="text-right text-xs text-[#b9c6cd]">{option.detail}</span>
+                      </Link>
+                    </li>
+                  ),
+                )}
+              </ul>
+              <p className="mt-4 text-xs leading-6 text-[#b9c6cd]">
+                {quickBooking.phones.map((phone, index) => (
+                  <span key={phone.label}>
+                    {index > 0 ? " · " : ""}
+                    {phone.label}{" "}
+                    <a href={`tel:${phone.tel}`} className="text-[#e8c89e] hover:text-[#f6ecd9]">
+                      {phone.number}
+                    </a>
+                  </span>
+                ))}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
