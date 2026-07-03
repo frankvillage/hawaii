@@ -17,8 +17,8 @@ const soulGallery: GalleryItem[] = [
     label: "Beach",
     title: "Mattine lunghe tra sabbia, ombra e mare aperto.",
     href: "/beach",
-    image: "/media/hawaii/terrace-sea-aerial.png",
-    alt: "Veduta di Hawaii tra spiaggia e terrazza sul mare",
+    image: "/media/hawaii/village-aerial.jpg",
+    alt: "Veduta aerea di Hawaii tra spiaggia e terrazza sul mare",
   },
   {
     label: "Restaurant",
@@ -31,15 +31,15 @@ const soulGallery: GalleryItem[] = [
     label: "Sport",
     title: "Padel e outdoor training dentro il villaggio.",
     href: "/sport",
-    image: "/media/hawaii/aerial-village.png",
-    alt: "Veduta aerea di Hawaii e della spiaggia",
+    image: "/media/hawaii/padel-court.jpg",
+    alt: "Partita di padel sui campi di Hawaii",
   },
   {
     label: "Nightlife",
     title: "Terrazza, tramonto, dj set e dopocena.",
     href: "/eventi",
-    image: "/media/hawaii/palm-terrace-detail.png",
-    alt: "Dettaglio della terrazza tra le palme",
+    image: "/media/hawaii/night-event.jpg",
+    alt: "Serata evento di Hawaii con luci sul villaggio",
   },
 ];
 
@@ -95,8 +95,8 @@ export function NarrativeHomepage() {
 
       <section className="relative isolate overflow-hidden">
         <Image
-          src="/media/hawaii/skyline-palms-sunset.png"
-          alt="Skyline di palme e terrazza sul mare"
+          src="/media/hawaii/seafront-aerial.jpg"
+          alt="Il fronte mare di Hawaii visto dall'alto"
           fill
           sizes="100vw"
           className="object-cover"

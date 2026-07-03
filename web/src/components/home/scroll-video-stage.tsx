@@ -194,7 +194,12 @@ export function ScrollVideoStage() {
             poster={homeJourney.media.poster}
             aria-label={homeJourney.media.alt}
           >
-            <source src={homeJourney.media.src} type="video/mp4" />
+            <source
+              src={homeJourney.media.src}
+              type="video/mp4"
+              media="(min-aspect-ratio: 3/4)"
+            />
+            <source src={homeJourney.media.mobileSrc} type="video/mp4" />
           </video>
         )}
 
@@ -309,14 +314,20 @@ export function ScrollVideoStage() {
         </div>
       </div>
 
-      <div aria-hidden="true" className="relative z-0">
+      {/* Scene anchors are laid out on the same scale as the scroll progress so
+          the soul rail and #anchor navigation stay in sync with the footage. */}
+      <div aria-hidden="true" className="relative z-0 h-[800svh]">
         {homeJourney.scenes.map((scene) => (
           <section
             key={scene.id}
             id={scene.anchor}
             data-chapter
             data-soul={scene.soul}
-            className="min-h-[80svh] sm:min-h-[86svh]"
+            className="absolute inset-x-0"
+            style={{
+              top: `${Math.max(scene.start * 800 - 60, 0).toFixed(1)}svh`,
+              height: `${((scene.end - scene.start) * 800).toFixed(1)}svh`,
+            }}
           >
             <div className="sr-only">
               <h2>{scene.title}</h2>

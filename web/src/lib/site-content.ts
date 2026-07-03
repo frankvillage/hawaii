@@ -135,81 +135,82 @@ export const homeHero = {
   primaryAction: { label: "Esplora la giornata", href: "#beach" },
   secondaryAction: { label: "Prenota", href: "/prenotazioni" },
   media: {
-    src: "/media/hawaii/hero-facade-sunset.png",
-    alt: "Hawaii Pescara vista frontale sul mare",
+    src: "/media/hawaii/journey-poster.jpg",
+    alt: "Hawaii Pescara vista dall'alto tra spiaggia e mare",
   },
 };
 
 export const homeJourney = {
   media: {
-    src: "/media/hawaii/urban-village-journey.mp4",
-    poster: "/media/hawaii/hero-facade-sunset.png",
-    alt: "Percorso visivo di Hawaii dall'alba alla notte",
-    duration: 15.04,
+    src: "/media/hawaii/journey-desktop.mp4",
+    mobileSrc: "/media/hawaii/journey-mobile.mp4",
+    poster: "/media/hawaii/journey-poster.jpg",
+    alt: "La giornata di Hawaii Pescara dal mattino alla notte",
+    duration: 57.2,
   },
   scenes: [
     {
-      id: "alba",
+      id: "arrivo",
       anchor: "journey",
-      daypart: "Alba",
+      daypart: "Prima luce",
       soul: "Transition",
       eyebrow: "Fronte mare",
-      title: "Il villaggio si apre con il primo sole.",
-      summary: "La facciata guarda il mare e la giornata comincia in punta di luce.",
+      title: "Il villaggio si apre sul mare.",
+      summary: "Palme, insegna e fronte mare: Hawaii comincia dal lungomare di Pescara.",
       start: 0,
-      end: 0.12,
+      end: 0.125,
       hotspots: [
-        { label: "Beach", href: "/beach", x: 73, y: 60 },
-        { label: "Ristorante", href: "/ristorante-mare", x: 24, y: 63 },
-        { label: "Sport", href: "/sport", x: 77, y: 24 },
-      ],
-    },
-    {
-      id: "beach",
-      anchor: "beach",
-      daypart: "Mattina",
-      soul: "Beach",
-      eyebrow: "Beach",
-      title: "La mattina si distende tra sabbia e mare.",
-      summary: "Ombrelloni, palme e tutta la calma del fronte mare.",
-      start: 0.12,
-      end: 0.27,
-      hotspots: [
-        { label: "Prenota spiaggia", href: "/prenotazioni", x: 70, y: 66 },
-        { label: "Beach club", href: "/beach", x: 24, y: 56 },
-        { label: "Aperitivi", href: "/eventi", x: 83, y: 36 },
+        { label: "Beach", href: "/beach", x: 72, y: 30 },
+        { label: "Ristorante", href: "/ristorante-mare", x: 34, y: 54 },
+        { label: "Sport", href: "/sport", x: 62, y: 72 },
       ],
     },
     {
       id: "restaurant",
       anchor: "restaurant",
-      daypart: "Mattino",
+      daypart: "Mattina",
       soul: "Restaurant",
       eyebrow: "Bar & sala",
-      title: "Il mattino passa dal bancone e prepara il pranzo.",
-      summary: "Colazione, servizio e sala che prendono ritmo verso il mezzogiorno.",
-      start: 0.27,
-      end: 0.43,
+      title: "La mattina comincia al bancone.",
+      summary: "Caffè, bancone e sala che prende ritmo verso il mezzogiorno.",
+      start: 0.125,
+      end: 0.2,
       hotspots: [
-        { label: "Prenota tavolo", href: "/prenotazioni", x: 28, y: 64 },
-        { label: "Scopri menu", href: "/menu", x: 74, y: 46 },
-        { label: "Cocktail bar", href: "/ristorante-mare", x: 56, y: 26 },
+        { label: "Prenota tavolo", href: "/prenotazioni", x: 30, y: 62 },
+        { label: "Scopri menu", href: "/menu", x: 74, y: 40 },
+        { label: "Cocktail bar", href: "/ristorante-mare", x: 55, y: 26 },
       ],
     },
     {
       id: "sport",
       anchor: "sport",
-      daypart: "Pieno giorno",
+      daypart: "Tarda mattina",
       soul: "Sport",
       eyebrow: "Sport",
-      title: "Padel e outdoor training entrano nel paesaggio.",
-      summary: "Campi da gioco e palestra outdoor completano il villaggio sul mare.",
-      start: 0.43,
-      end: 0.58,
+      title: "Il padel entra nel paesaggio.",
+      summary: "Campi da gioco e outdoor training a pochi passi dalla sabbia.",
+      start: 0.2,
+      end: 0.26,
       hotspots: [
-        { label: "Campi da gioco", href: "/sport", x: 66, y: 48 },
-        { label: "Outdoor gym", href: "/sport", x: 26, y: 68 },
-        { label: "Sport", href: "/sport", x: 80, y: 24 },
+        { label: "Campi da padel", href: "/sport", x: 50, y: 42 },
+        { label: "Outdoor gym", href: "/sport", x: 24, y: 66 },
+        { label: "Prenota attività", href: "/prenotazioni", x: 76, y: 64 },
+      ],
+    },
+    {
+      id: "beach",
+      anchor: "beach",
+      daypart: "Pieno giorno",
+      soul: "Beach",
+      eyebrow: "Beach",
+      title: "La giornata si distende tra sabbia e mare.",
+      summary: "Ombrelloni, camminamenti chiari e tutta la calma del fronte mare.",
+      start: 0.26,
+      end: 0.335,
+      hotspots: [
+        { label: "Prenota spiaggia", href: "/prenotazioni", x: 50, y: 66 },
+        { label: "Beach club", href: "/beach", x: 24, y: 42 },
+        { label: "Aperitivi", href: "/eventi", x: 79, y: 36 },
       ],
     },
     {
@@ -219,13 +220,29 @@ export const homeJourney = {
       soul: "Restaurant",
       eyebrow: "Ristorante mare",
       title: "A pranzo il pesce arriva in tavola.",
-      summary: "Crudi, primi, vino e servizio aprono il lato più conviviale della giornata.",
-      start: 0.58,
-      end: 0.7,
+      summary: "Sala luminosa, servizio e piatti di mare nel pieno della giornata.",
+      start: 0.335,
+      end: 0.45,
       hotspots: [
-        { label: "Menu pesce", href: "/menu", x: 74, y: 54 },
-        { label: "Carta vini", href: "/menu", x: 34, y: 66 },
-        { label: "Ristorante", href: "/ristorante-mare", x: 18, y: 34 },
+        { label: "Menu pesce", href: "/menu", x: 70, y: 46 },
+        { label: "Prenota tavolo", href: "/prenotazioni", x: 32, y: 62 },
+        { label: "Ristorante", href: "/ristorante-mare", x: 18, y: 32 },
+      ],
+    },
+    {
+      id: "cucina",
+      anchor: "cucina",
+      daypart: "Verso sera",
+      soul: "Restaurant",
+      eyebrow: "Cucina a vista",
+      title: "La cucina lavora a vista.",
+      summary: "Piatti espressi, fuoco e mani veloci dietro il bancone.",
+      start: 0.45,
+      end: 0.55,
+      hotspots: [
+        { label: "Cucina a vista", href: "/ristorante-mare", x: 50, y: 38 },
+        { label: "Scopri menu", href: "/menu", x: 74, y: 60 },
+        { label: "Prenota", href: "/prenotazioni", x: 26, y: 64 },
       ],
     },
     {
@@ -235,13 +252,29 @@ export const homeJourney = {
       soul: "Nightlife",
       eyebrow: "Terrazza",
       title: "Il giorno sale in terrazza e cambia luce.",
-      summary: "Cocktail, panorama e tavoli vista mare aprono la parte più sospesa della sera.",
-      start: 0.7,
-      end: 0.84,
+      summary: "Daybed, bollicine e tavoli vista mare aprono la parte più sospesa della sera.",
+      start: 0.55,
+      end: 0.74,
       hotspots: [
-        { label: "Terrazza", href: "/terrazza", x: 72, y: 40 },
-        { label: "Aperitivo", href: "/eventi", x: 38, y: 62 },
-        { label: "Prenota in terrazza", href: "/prenotazioni", x: 21, y: 28 },
+        { label: "Terrazza", href: "/terrazza", x: 62, y: 40 },
+        { label: "Aperitivo", href: "/eventi", x: 36, y: 62 },
+        { label: "Prenota in terrazza", href: "/prenotazioni", x: 76, y: 68 },
+      ],
+    },
+    {
+      id: "muulab",
+      anchor: "muulab",
+      daypart: "Sera",
+      soul: "Restaurant",
+      eyebrow: "MUULab Riviera",
+      title: "La sera prende il profumo della brace.",
+      summary: "In terrazza la cena vive tra brace, cucina a vista e panorama.",
+      start: 0.74,
+      end: 0.9,
+      hotspots: [
+        { label: "MUULab Riviera", href: "/terrazza", x: 50, y: 34 },
+        { label: "Menu della sera", href: "/menu", x: 28, y: 62 },
+        { label: "Prenota", href: "/prenotazioni", x: 74, y: 64 },
       ],
     },
     {
@@ -252,12 +285,12 @@ export const homeJourney = {
       eyebrow: "Eventi",
       title: "Dopo cena il ritmo si accende.",
       summary: "Dj set, tavoli evento e notti che riportano lentamente verso una nuova alba.",
-      start: 0.84,
+      start: 0.9,
       end: 1,
       hotspots: [
-        { label: "Eventi", href: "/eventi", x: 72, y: 32 },
-        { label: "Feste private", href: "/feste-private", x: 31, y: 58 },
-        { label: "Prenota", href: "/prenotazioni", x: 56, y: 74 },
+        { label: "Eventi", href: "/eventi", x: 55, y: 44 },
+        { label: "Feste private", href: "/feste-private", x: 30, y: 64 },
+        { label: "Prenota", href: "/prenotazioni", x: 72, y: 30 },
       ],
     },
   ] satisfies JourneyScene[],
@@ -278,8 +311,8 @@ export const chapters: Chapter[] = [
     gradient:
       "from-[#122a3c] via-[#17384d] to-[#d6b887]",
     media: {
-      src: "/media/hawaii/facade.png",
-      alt: "Facciata del locale Hawaii Pescara",
+      src: "/media/hawaii/facade-sign.jpg",
+      alt: "Insegna Hawaii sulla facciata in legno del locale",
     },
   },
   {
@@ -314,8 +347,8 @@ export const chapters: Chapter[] = [
     gradient:
       "from-[#223949] via-[#3c5f6a] to-[#d7c7ae]",
     media: {
-      src: "/media/hawaii/dinner-table.jpg",
-      alt: "Piatto e tavolo apparecchiato nella sala ristorante",
+      src: "/media/hawaii/morning-bar.jpg",
+      alt: "Colazione al bancone del bar di Hawaii",
     },
   },
   {
@@ -332,8 +365,8 @@ export const chapters: Chapter[] = [
     gradient:
       "from-[#142d2c] via-[#315347] to-[#c0c985]",
     media: {
-      src: "/media/hawaii/facade.png",
-      alt: "Ingresso Hawaii sul lungomare di Pescara",
+      src: "/media/hawaii/padel-court.jpg",
+      alt: "Campo da padel di Hawaii durante una partita",
     },
   },
   {
@@ -350,8 +383,8 @@ export const chapters: Chapter[] = [
     gradient:
       "from-[#17384d] via-[#39566d] to-[#dbc3a0]",
     media: {
-      src: "/media/hawaii/pasta-closeup.jpg",
-      alt: "Piatto del ristorante di mare",
+      src: "/media/hawaii/lunch-service.jpg",
+      alt: "Servizio del pranzo nella sala del ristorante mare",
     },
   },
   {
@@ -367,7 +400,7 @@ export const chapters: Chapter[] = [
     gradient:
       "from-[#233241] via-[#574b46] to-[#dbb277]",
     media: {
-      src: "/media/hawaii/terrace-evening.png",
+      src: "/media/hawaii/terrace-evening.jpg",
       alt: "Zona terrazza al cambio luce",
     },
   },
@@ -385,8 +418,8 @@ export const chapters: Chapter[] = [
     gradient:
       "from-[#5c3d3a] via-[#9d673d] to-[#f0c889]",
     media: {
-      src: "/media/hawaii/aperitivo-crowd.png",
-      alt: "Persone all'aperitivo in terrazza",
+      src: "/media/hawaii/terrace-daybed.jpg",
+      alt: "Daybed con bollicine al tramonto in terrazza",
     },
   },
   {
@@ -403,8 +436,8 @@ export const chapters: Chapter[] = [
     gradient:
       "from-[#281d22] via-[#5d3e34] to-[#f0b16f]",
     media: {
-      src: "/media/hawaii/dinner-table.jpg",
-      alt: "Tavolo apparecchiato per la cena",
+      src: "/media/hawaii/kitchen-brace.jpg",
+      alt: "Cucina a vista con piatti in uscita la sera",
     },
   },
   {
@@ -421,8 +454,8 @@ export const chapters: Chapter[] = [
     gradient:
       "from-[#0f1117] via-[#1b2531] to-[#6a4a46]",
     media: {
-      src: "/media/hawaii/dj-set.png",
-      alt: "Dj set e nightlife",
+      src: "/media/hawaii/night-event.jpg",
+      alt: "Serata evento vista dall'alto con luci sul villaggio",
     },
   },
 ];
@@ -526,8 +559,8 @@ export const pages: Record<string, EntityPage> = {
     secondaryAction: { label: "Scopri gli eventi", href: "/eventi" },
     gradient: "from-[#241b21] via-[#66453a] to-[#f0b16f]",
     media: {
-      src: "/media/hawaii/terrace-evening.png",
-      alt: "Terrazza Hawaii al tramonto",
+      src: "/media/hawaii/terrace-evening.jpg",
+      alt: "Terrazza MUULab Riviera al cambio di luce",
     },
     sections: [
       {
@@ -569,8 +602,8 @@ export const pages: Record<string, EntityPage> = {
     secondaryAction: { label: "Prenota attività", href: "/prenotazioni" },
     gradient: "from-[#152c2f] via-[#355247] to-[#bfc57d]",
     media: {
-      src: "/media/hawaii/facade.png",
-      alt: "Dettaglio architettura Hawaii sul lungomare",
+      src: "/media/hawaii/padel-court.jpg",
+      alt: "Partita di padel sul campo di Hawaii",
     },
     sections: [
       {
@@ -611,8 +644,8 @@ export const pages: Record<string, EntityPage> = {
     secondaryAction: { label: "Feste private", href: "/feste-private" },
     gradient: "from-[#12161f] via-[#283140] to-[#7b5149]",
     media: {
-      src: "/media/hawaii/dj-set.png",
-      alt: "Dj set e nightlife in terrazza",
+      src: "/media/hawaii/night-event.jpg",
+      alt: "Evento serale di Hawaii visto dall'alto",
     },
     sections: [
       {
@@ -648,7 +681,7 @@ export const pages: Record<string, EntityPage> = {
     secondaryAction: { label: "Contatti", href: "/contatti" },
     gradient: "from-[#1d2029] via-[#463b40] to-[#c79f72]",
     media: {
-      src: "/media/hawaii/terrace-evening.png",
+      src: "/media/hawaii/terrace-daybed.jpg",
       alt: "Setup serale della terrazza per eventi privati",
     },
     sections: [
@@ -712,7 +745,7 @@ export const menuHighlights = [
   },
   {
     title: "MUULab Riviera",
-    detail: "Cucina creativa, carni alla brace, tramonto e vista mare.",
+    detail: "La braceria della terrazza: brace, cucina a vista e tramonto sul mare.",
   },
   {
     title: "Cocktail",
@@ -740,16 +773,29 @@ export const menuSections: MenuSectionContent[] = [
   },
   {
     eyebrow: "Terrazza MUULab Riviera",
-    title: "Sunset dinner, brace e cucina creativa",
+    title: "La braceria della terrazza",
     description:
-      "Aperitivo al tramonto, carni alla brace e piatti pensati per una cena vista mare.",
+      "MUULab Riviera è la braceria serale di Hawaii: carni alla brace, cucina a vista e piatti pensati per una cena vista mare.",
     items: [
-      "Sunset bites e aperitivo",
       "Carni alla brace",
+      "Cucina a vista",
       "Piatti signature della terrazza",
       "Dessert e pairing serali",
     ],
     action: { label: "Prenota terrazza", href: "/prenotazioni" },
+  },
+  {
+    eyebrow: "Aperitivo in Terrazza",
+    title: "Il tramonto si prenota",
+    description:
+      "Daybed, bollicine e sunset bites: l'aperitivo vista mare apre la sera della terrazza.",
+    items: [
+      "Bollicine e sunset bites",
+      "Gin tonic e signature del tramonto",
+      "Daybed e tavoli vista mare",
+      "Passaggio naturale verso la cena",
+    ],
+    action: { label: "Prenota il tramonto", href: "/prenotazioni" },
   },
   {
     eyebrow: "Cocktail Bar",
