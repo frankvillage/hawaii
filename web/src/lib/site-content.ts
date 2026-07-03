@@ -608,9 +608,9 @@ export const pages: Record<string, EntityPage> = {
     sections: [
       {
         title: "Padel",
-        body: "Due campi regolamentari e un ritmo attivo che affianca la vita in spiaggia.",
+        body: "Due campi regolamentari GIMPADEL e un ritmo attivo che affianca la vita in spiaggia.",
         bullets: [
-          "due campi da gioco regolamentari",
+          "due campi GIMPADEL regolamentari",
           "lezioni e attività",
           "prenotazione via app o canale dedicato",
         ],

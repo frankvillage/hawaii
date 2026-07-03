@@ -90,8 +90,9 @@ Removed provisional media:
 - On-screen brands in the footage (GIN MARE on the terrace daybeds, GIMPADEL
   on the padel courts) stay visible in the video per the owner's explicit
   decision (2026-07-03): brand clearance is the agency's responsibility and
-  the footage will be swapped only if a brand objects. Site copy stays
-  brand-neutral and does not name them.
+  the footage will be swapped only if a brand objects. In written copy,
+  GIMPADEL is citable (named on the /sport page, owner confirmed); GIN MARE
+  is not named anywhere.
 - Open content validations from the design handoff §7 remain open (yoga,
   pizza, "Aperol point", "stellato" language).
 - `assets/` source folder and brand logos/social graphics are still pending
