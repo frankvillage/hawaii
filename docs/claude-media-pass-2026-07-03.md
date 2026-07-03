@@ -87,8 +87,11 @@ Removed provisional media:
 - `<source media>` selection should be sanity-checked on a real phone
   (iOS Safari, Chrome Android). Worst case is the desktop file on mobile
   (17.4 MB), same behavior as a single-source setup.
-- The terrace daybed footage shows GIN MARE branded pillows; confirm the
-  partnership/visibility rights before launch.
+- On-screen brands in the footage (GIN MARE on the terrace daybeds, GIMPADEL
+  on the padel courts) stay visible in the video per the owner's explicit
+  decision (2026-07-03): brand clearance is the agency's responsibility and
+  the footage will be swapped only if a brand objects. Site copy stays
+  brand-neutral and does not name them.
 - Open content validations from the design handoff §7 remain open (yoga,
   pizza, "Aperol point", "stellato" language).
 - `assets/` source folder and brand logos/social graphics are still pending
