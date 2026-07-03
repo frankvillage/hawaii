@@ -1,0 +1,26 @@
+{
+  "name": "hawaii-experience",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start:prototype": "python3 -m http.server 4173 --bind 127.0.0.1 -d prototype",
+    "test:prototype": "node tests/prototype-smoke.js",
+    "test:prototype:mobile": "node tests/prototype-mobile-playwright.js",
+    "test:web:smoke": "node tests/web-smoke.js",
+    "build:presentation": "node presentation/src/hawaii_pescara_2026_presentation.js",
+    "render:presentation": "python3 presentation/render_slides.py presentation/output/hawaii-pescara-2026-proposta.pptx --output_dir presentation/rendered",
+    "test:presentation": "python3 presentation/slides_test.py presentation/output/hawaii-pescara-2026-proposta.pptx",
+    "fonts:presentation": "python3 presentation/detect_font.py presentation/output/hawaii-pescara-2026-proposta.pptx --json"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.52.0"
+  },
+  "dependencies": {
+    "pptxgenjs": "^4.0.1"
+  }
+}

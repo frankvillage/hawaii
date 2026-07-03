@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+:root {
+  --background: #07111a;
+  --foreground: #f4ede4;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-ui-sans);
+  --font-serif: var(--font-editorial-serif);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-ui-sans), Arial, Helvetica, sans-serif;
+}
+
+.journey-stage {
+  --pointer-x: 0px;
+  --pointer-y: 0px;
+  --journey-progress: 0;
+}
+
+.journey-stage video,
+.journey-stage img {
+  transform: translate3d(
+      calc(var(--pointer-x) * 0.1),
+      calc(var(--pointer-y) * 0.1),
+      0
+    )
+    scale(calc(1 + (var(--journey-progress) * 0.02)));
+  transition: transform 180ms ease-out;
+  will-change: transform;
+}
+
+.journey-stage-light {
+  background:
+    linear-gradient(180deg, rgba(255, 210, 148, 0.04), transparent 42%),
+    radial-gradient(circle at 78% 18%, rgba(255, 173, 84, 0.18), transparent 28%),
+    radial-gradient(circle at 20% 74%, rgba(120, 188, 255, 0.12), transparent 24%);
+  mix-blend-mode: screen;
+}
+
+a,
+button {
+  transition:
+    color 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+::selection {
+  background: rgba(214, 184, 135, 0.28);
+}
+
+.font-serif {
+  font-family: var(--font-editorial-serif), Georgia, serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .journey-stage video,
+  .journey-stage img {
+    transform: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

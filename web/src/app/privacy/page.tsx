@@ -1,0 +1,49 @@
+import { buildMetadata } from "@/lib/seo";
+import { legalSections } from "@/lib/site-content";
+
+export const metadata = buildMetadata({
+  title: "Privacy | Hawaii Pescara",
+  description: "Informativa privacy e trattamento dei dati del sito Hawaii Pescara.",
+  path: "/privacy",
+});
+
+export default function PrivacyPage() {
+  return (
+    <main className="bg-[#07111a]">
+      <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
+        <p className="text-[0.72rem] uppercase tracking-[0.24em] text-[#d6b887]">Privacy</p>
+        <h1 className="mt-5 font-serif text-5xl leading-[0.9] text-[#f4ede4] sm:text-6xl">
+          Informativa privacy.
+        </h1>
+        <p className="mt-6 text-base leading-8 text-[#c5d1d8]">
+          Informazioni sul trattamento dei dati personali legati a contatti,
+          prenotazioni e utilizzo del sito.
+        </p>
+
+        <div className="mt-10 space-y-5">
+          {legalSections.privacy.map((section) => (
+            <article
+              key={section.title}
+              className="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.04)] p-5"
+            >
+              <h2 className="font-serif text-2xl text-[#f4ede4]">{section.title}</h2>
+              <p className="mt-3 text-sm leading-7 text-[#c5d1d8]">{section.body}</p>
+              {section.bullets?.length ? (
+                <ul className="mt-4 space-y-2 text-sm leading-7 text-[#d9e2e7]">
+                  {section.bullets.map((bullet) => (
+                    <li
+                      key={bullet}
+                      className="pl-4 before:mr-2 before:ml-[-1rem] before:text-[#d6b887] before:content-['-']"
+                    >
+                      {bullet}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      </section>
+    </main>
+  );
+}
