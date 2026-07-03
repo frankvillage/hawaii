@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { bookingOptions, navigation, siteMeta } from "@/lib/site-content";
@@ -7,9 +8,13 @@ export function SiteFooter() {
     <footer className="border-t border-white/10 bg-[#09111a]">
       <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.2fr_0.9fr_0.9fr] lg:px-8">
         <div className="space-y-4">
-          <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[#d6b887]">
-            {siteMeta.name}
-          </p>
+          <Image
+            src="/media/hawaii/brand/logo-hawaii-white.png"
+            alt={`${siteMeta.name} — ${siteMeta.payoff}`}
+            width={800}
+            height={377}
+            className="h-12 w-auto"
+          />
           <h2 className="max-w-md font-serif text-3xl text-[#f4ede4]">
             Urban Village sul mare, dalla mattina alla notte.
           </h2>

@@ -25,6 +25,12 @@ export type SceneMenu = {
   items: SceneMenuItem[];
 };
 
+export type SceneAction = {
+  label: string;
+  href: string;
+  external?: boolean;
+};
+
 export type JourneyScene = {
   id: string;
   anchor: string;
@@ -37,6 +43,7 @@ export type JourneyScene = {
   end: number;
   hotspots: JourneyHotspot[];
   menu?: SceneMenu;
+  action?: SceneAction;
 };
 
 export type Chapter = {
@@ -83,6 +90,7 @@ export type VenueMenu = {
   description: string;
   categories: MenuCategory[];
   action?: Action;
+  photos?: MediaAsset[];
 };
 
 export type EventFormat = {
@@ -138,6 +146,7 @@ export const siteMeta = {
 };
 
 export const navigation = [
+  { label: "Villaggio", href: "/villaggio" },
   { label: "Beach", href: "/beach" },
   { label: "Ristorante Mare", href: "/ristorante-mare" },
   { label: "Terrazza", href: "/terrazza" },
@@ -189,6 +198,7 @@ export const homeJourney = {
         { label: "Ristorante", href: "/ristorante-mare", x: 34, y: 54 },
         { label: "Sport", href: "/sport", x: 62, y: 72 },
       ],
+      action: { label: "Scopri il villaggio", href: "/villaggio" },
     },
     {
       id: "restaurant",
@@ -205,6 +215,7 @@ export const homeJourney = {
         { label: "Scopri menu", href: "/menu", x: 74, y: 40 },
         { label: "Cocktail bar", href: "/ristorante-mare", x: 55, y: 26 },
       ],
+      action: { label: "Il ristorante", href: "/ristorante-mare" },
     },
     {
       id: "sport",
@@ -221,6 +232,7 @@ export const homeJourney = {
         { label: "Outdoor gym", href: "/sport", x: 24, y: 66 },
         { label: "Prenota attività", href: "/prenotazioni", x: 76, y: 64 },
       ],
+      action: { label: "Prenota padel", href: "/sport" },
     },
     {
       id: "beach",
@@ -245,6 +257,7 @@ export const homeJourney = {
           { name: "Club sandwich al salmone", price: "€ 13" },
         ],
       },
+      action: { label: "Prenota ombrellone", href: siteMeta.beachBookingUrl, external: true },
     },
     {
       id: "lunch",
@@ -269,6 +282,7 @@ export const homeJourney = {
           { name: "Riso vialone nano, scampi ed erbette", price: "€ 18" },
         ],
       },
+      action: { label: "Menu food", href: "/menu#ristorante-mare" },
     },
     {
       id: "cucina",
@@ -293,6 +307,7 @@ export const homeJourney = {
           { name: "La pizza, a cena", price: "da € 8" },
         ],
       },
+      action: { label: "Menu food", href: "/menu#ristorante-mare" },
     },
     {
       id: "sunset",
@@ -317,6 +332,7 @@ export const homeJourney = {
           { name: "Americano classic taste", price: "€ 10" },
         ],
       },
+      action: { label: "Prenota il tramonto", href: "/prenotazioni" },
     },
     {
       id: "muulab",
@@ -341,6 +357,7 @@ export const homeJourney = {
           { name: "Carpaccio di Wagyu A5 agli agrumi", price: "€ 25" },
         ],
       },
+      action: { label: "La braceria", href: "/menu#muulab" },
     },
     {
       id: "nightlife",
@@ -357,6 +374,7 @@ export const homeJourney = {
         { label: "Feste private", href: "/feste-private", x: 30, y: 64 },
         { label: "Prenota", href: "/prenotazioni", x: 72, y: 30 },
       ],
+      action: { label: "Gli eventi", href: "/eventi" },
     },
   ] satisfies JourneyScene[],
 };
@@ -866,6 +884,11 @@ export const venueMenus: VenueMenu[] = [
     description:
       "Crudi, primi e griglia di pesce a pranzo e a cena, con i fritti al cono per la spiaggia e la pizza la sera.",
     action: { label: "Prenota tavolo mare", href: "/prenotazioni" },
+    photos: [
+      { src: "/media/hawaii/photos/food-gnocchi-mare.jpg", alt: "Gnocchi di mare al pomodoro del ristorante Hawaii" },
+      { src: "/media/hawaii/photos/food-tonno-griglia.jpg", alt: "Tonno alla griglia servito al vassoio" },
+      { src: "/media/hawaii/photos/food-stecco.jpg", alt: "Stecco cocco e cioccolato, il dessert di Hawaii" },
+    ],
     categories: [
       {
         title: "Antipasti",
@@ -977,6 +1000,11 @@ export const venueMenus: VenueMenu[] = [
     description:
       "Crudi di carne, tagli alla brace e cocktail: MUULab Riviera vive la sera della terrazza, dal tramonto alla cena.",
     action: { label: "Prenota in terrazza", href: "/prenotazioni" },
+    photos: [
+      { src: "/media/hawaii/photos/brace-fuoco.jpg", alt: "La brace viva di MUULab Riviera" },
+      { src: "/media/hawaii/photos/muulab-tartare.jpg", alt: "Tartare di manzo di MUULab Riviera" },
+      { src: "/media/hawaii/photos/muulab-carpaccio-nero.jpg", alt: "Carpaccio di manzo servito in terrazza" },
+    ],
     categories: [
       {
         title: "Per cominciare",

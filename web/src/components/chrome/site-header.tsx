@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -11,13 +12,18 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[rgba(7,17,26,0.72)] backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-6 px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" className="min-w-0">
-          <span className="block text-[0.68rem] uppercase tracking-[0.24em] text-[#d6b887]">
-            {siteMeta.name}
-          </span>
-          <strong className="block truncate font-serif text-lg text-[#f4ede4]">
+        <Link href="/" className="flex min-w-0 items-center gap-3">
+          <Image
+            src="/media/hawaii/brand/logo-hawaii-white.png"
+            alt={`${siteMeta.name} — ${siteMeta.payoff}`}
+            width={800}
+            height={377}
+            priority
+            className="h-9 w-auto sm:h-10"
+          />
+          <span className="hidden text-[0.62rem] uppercase tracking-[0.28em] text-[#d6b887] sm:block">
             {siteMeta.payoff}
-          </strong>
+          </span>
         </Link>
 
         <nav className="hidden items-center gap-6 text-sm text-[#d9e2e7] lg:flex">

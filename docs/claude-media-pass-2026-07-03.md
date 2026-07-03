@@ -77,6 +77,35 @@ Removed provisional media:
   (arrivo/beach/terrazza/muulab/notte): scene copy, hotspots, scene marker
   and soul rail follow the footage.
 
+## Brand & classic-view pass (2026-07-03, afternoon)
+
+Owner delivered the brand/photo kit via Dropbox (folder "muulab
+stradaparco" intentionally ignored — different winter venue).
+
+- `web/public/media/hawaii/brand/`: white/color Hawaii logos and the
+  fish-glass mark, trimmed from the delivered PNGs. Header and footer
+  now use the white logo; `src/app/icon.png` + `apple-icon.png` provide
+  the favicon (mark on dark teal); `src/app/opengraph-image.jpg` sets
+  the default social image (aerial poster frame).
+- `web/public/media/hawaii/photos/`: 16 curated photos (Hawaii food by
+  the venue's photographer, MUULab Riviera dishes by Andrea Straccini,
+  estate/beach dishes, brace fire and pizza graphics), resized to
+  1920px JPEG. Used on /menu (photo strips per carte) and /villaggio.
+- Scene-matched primary CTAs (owner's direction): every journey scene
+  now carries its own action — beach → "Prenota ombrellone" straight
+  into the widget.spiagge.it flow (external, new tab), pranzo/cucina →
+  "Menu food" (/menu#ristorante-mare), MUULab → "La braceria"
+  (/menu#muulab), tramonto → prenotazioni, sport → padel, notte →
+  eventi, arrivo → /villaggio.
+- `/villaggio`: new classic-view static homepage ("sito parallelo"),
+  fully indexable and in the sitemap: hero with logo over the aerial,
+  four-souls grid, three kitchen sections (mare / braceria / pizza)
+  with the new photography, quick booking list and contacts. Linked
+  from the main nav ("Villaggio") and from the journey's first scene;
+  it links back to the immersive homepage ("Vivi il viaggio").
+- Smoke test now also asserts the beach scene exposes the spiagge.it
+  CTA and that /villaggio renders its editorial sections.
+
 ## Known limitations / notes for the audit
 
 - Playwright's bundled Chromium cannot decode H.264, so the smoke test's

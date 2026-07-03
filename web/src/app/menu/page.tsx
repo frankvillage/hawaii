@@ -1,5 +1,6 @@
 import { buildMetadata } from "@/lib/seo";
 import { menuHighlights, venueMenus } from "@/lib/site-content";
+import Image from "next/image";
 import Link from "next/link";
 
 export const metadata = buildMetadata({
@@ -52,6 +53,25 @@ export default function MenuPage() {
                   </Link>
                 ) : null}
               </div>
+
+              {menu.photos?.length ? (
+                <div className="mt-8 grid grid-cols-3 gap-3">
+                  {menu.photos.map((photo) => (
+                    <div
+                      key={photo.src}
+                      className="relative aspect-[4/3] overflow-hidden rounded-[1.4rem] border border-white/10"
+                    >
+                      <Image
+                        src={photo.src}
+                        alt={photo.alt}
+                        fill
+                        sizes="(max-width: 1024px) 33vw, 400px"
+                        className="object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
 
               <div className="mt-8 grid gap-5 lg:grid-cols-2">
                 {menu.categories.map((category) => (

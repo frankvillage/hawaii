@@ -5,6 +5,7 @@ const baseUrl = "https://www.hawaiipescara.it";
 export default function sitemap(): MetadataRoute.Sitemap {
   const routes = [
     "",
+    "/villaggio",
     "/beach",
     "/ristorante-mare",
     "/terrazza",

@@ -304,12 +304,25 @@ export function ScrollVideoStage() {
               </p>
 
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href={activeScene.hotspots[0]?.href ?? homeHero.secondaryAction.href}
-                  className="inline-flex rounded-full bg-[#bf7148] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#cc7d54]"
-                >
-                  {activeScene.hotspots[0]?.label ?? "Prenota"}
-                </Link>
+                {activeScene.action?.external ? (
+                  <a
+                    href={activeScene.action.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    data-testid="scene-primary-action"
+                    className="inline-flex rounded-full bg-[#bf7148] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#cc7d54]"
+                  >
+                    {activeScene.action.label}
+                  </a>
+                ) : (
+                  <Link
+                    href={activeScene.action?.href ?? activeScene.hotspots[0]?.href ?? homeHero.secondaryAction.href}
+                    data-testid="scene-primary-action"
+                    className="inline-flex rounded-full bg-[#bf7148] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#cc7d54]"
+                  >
+                    {activeScene.action?.label ?? activeScene.hotspots[0]?.label ?? "Prenota"}
+                  </Link>
+                )}
                 <button
                   type="button"
                   data-testid="menu-popup-trigger"

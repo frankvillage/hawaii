@@ -85,6 +85,15 @@ async function main() {
       progressedVideoTime > initialVideoTime,
       "Homepage journey video should advance when the page scrolls",
     );
+    const beachCta = await page
+      .locator('[data-testid="scene-primary-action"]')
+      .getAttribute("href");
+    assert.match(
+      beachCta || "",
+      /widget\.spiagge\.it/,
+      "The beach scene should surface the real umbrella booking CTA",
+    );
+
     const popupTrigger = page.locator('[data-testid="menu-popup-trigger"]');
     assert.equal(
       await popupTrigger.count(),
@@ -178,6 +187,12 @@ async function main() {
       (await page.locator("#ristorante-mare").textContent()) || "",
       /Tonnarello alle vongole/,
       "Menu page should publish the real Hawaii dishes",
+    );
+
+    await page.goto(`${baseUrl}/villaggio`, { waitUntil: "networkidle" });
+    assert.ok(
+      (await page.locator('[data-testid="classic-section"]').count()) >= 4,
+      "The classic view should expose the full village as editorial sections",
     );
 
     await page.goto(`${baseUrl}/eventi`, { waitUntil: "networkidle" });
