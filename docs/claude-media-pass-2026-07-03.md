@@ -105,6 +105,16 @@ stradaparco" intentionally ignored — different winter venue).
   it links back to the immersive homepage ("Vivi il viaggio").
 - Smoke test now also asserts the beach scene exposes the spiagge.it
   CTA and that /villaggio renders its editorial sections.
+- Photo/label audit (owner request): every image was reviewed against
+  its caption. Fixes: the flame shot ("brace-fuoco") is FISH on the
+  grill from the Hawaii ristorante social series — moved from the
+  MUULab strip to the Ristorante Mare strip; the MUULab braceria now
+  uses only its own photography plus the video still of its cucina a
+  vista; the pizza section shows only the pizza image (single
+  full-width photo) instead of unrelated seafood dishes; the ambiguous
+  "gnocchi" caption was made generic ("piatto di pesce con pomodoro").
+  Spare curated photos not currently placed: estate-crudo,
+  estate-spaghetti-mare, food-tonno-griglia, muulab-dolce.
 
 ## Known limitations / notes for the audit
 

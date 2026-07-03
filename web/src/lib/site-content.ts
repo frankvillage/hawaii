@@ -885,8 +885,8 @@ export const venueMenus: VenueMenu[] = [
       "Crudi, primi e griglia di pesce a pranzo e a cena, con i fritti al cono per la spiaggia e la pizza la sera.",
     action: { label: "Prenota tavolo mare", href: "/prenotazioni" },
     photos: [
-      { src: "/media/hawaii/photos/food-gnocchi-mare.jpg", alt: "Gnocchi di mare al pomodoro del ristorante Hawaii" },
-      { src: "/media/hawaii/photos/food-tonno-griglia.jpg", alt: "Tonno alla griglia servito al vassoio" },
+      { src: "/media/hawaii/photos/food-gnocchi-mare.jpg", alt: "Piatto di pesce con pomodoro e basilico del ristorante Hawaii" },
+      { src: "/media/hawaii/photos/brace-fuoco.jpg", alt: "Il pesce sulla griglia viva del ristorante Hawaii" },
       { src: "/media/hawaii/photos/food-stecco.jpg", alt: "Stecco cocco e cioccolato, il dessert di Hawaii" },
     ],
     categories: [
@@ -1001,7 +1001,7 @@ export const venueMenus: VenueMenu[] = [
       "Crudi di carne, tagli alla brace e cocktail: MUULab Riviera vive la sera della terrazza, dal tramonto alla cena.",
     action: { label: "Prenota in terrazza", href: "/prenotazioni" },
     photos: [
-      { src: "/media/hawaii/photos/brace-fuoco.jpg", alt: "La brace viva di MUULab Riviera" },
+      { src: "/media/hawaii/photos/muulab-vino.jpg", alt: "Vino al calice servito in terrazza da MUULab Riviera" },
       { src: "/media/hawaii/photos/muulab-tartare.jpg", alt: "Tartare di manzo di MUULab Riviera" },
       { src: "/media/hawaii/photos/muulab-carpaccio-nero.jpg", alt: "Carpaccio di manzo servito in terrazza" },
     ],

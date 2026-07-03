@@ -52,9 +52,9 @@ const cucine = [
     title: "Ristorante Mare",
     body: "Il pesce raccontato con cura: crudi, tonnarelli alle vongole, riso agli scampi, griglia e fritti al cono da passeggio.",
     photos: [
-      { src: "/media/hawaii/photos/food-gnocchi-mare.jpg", alt: "Gnocchi di mare al pomodoro" },
+      { src: "/media/hawaii/photos/food-insalata-gambero.jpg", alt: "Insalata di mare con gambero del ristorante Hawaii" },
+      { src: "/media/hawaii/photos/estate-gamberoni.jpg", alt: "Gamberoni alla griglia serviti al vassoio" },
       { src: "/media/hawaii/photos/food-ravioli.jpg", alt: "Ravioli con datterini del ristorante mare" },
-      { src: "/media/hawaii/photos/food-insalata-gambero.jpg", alt: "Insalata di mare con gambero" },
     ],
     actions: [
       { label: "Menu del mare", href: "/menu#ristorante-mare" },
@@ -66,7 +66,7 @@ const cucine = [
     title: "MUULab Riviera, la braceria",
     body: "Crudi di carne, tagli alla brace e cucina a vista: la sera della terrazza vive tra fuoco, tramonto e vista mare.",
     photos: [
-      { src: "/media/hawaii/photos/brace-fuoco.jpg", alt: "La brace viva di MUULab Riviera" },
+      { src: "/media/hawaii/kitchen-brace.jpg", alt: "La cucina a vista di MUULab Riviera la sera" },
       { src: "/media/hawaii/photos/muulab-tartare.jpg", alt: "Tartare di manzo in terrazza" },
       { src: "/media/hawaii/photos/muulab-carpaccio.jpg", alt: "Carpaccio di manzo di MUULab Riviera" },
     ],
@@ -81,8 +81,6 @@ const cucine = [
     body: "Dal forno a cena: gli sfizi, le classiche e le firme della casa, da Margherita a Ombre Nere.",
     photos: [
       { src: "/media/hawaii/photos/pizza-forno.jpg", alt: "L'impasto della pizza lavorato a vista" },
-      { src: "/media/hawaii/photos/estate-spaghetti-mare.jpg", alt: "Spaghetti al pesto sul pontile" },
-      { src: "/media/hawaii/photos/estate-gamberoni.jpg", alt: "Gamberoni alla griglia al vassoio" },
     ],
     actions: [{ label: "La pizza, a cena", href: "/menu#ristorante-mare" }],
   },
@@ -232,17 +230,27 @@ export default function VillaggioPage() {
                     ))}
                   </div>
                 </div>
-                <div className="mt-6 grid grid-cols-3 gap-3">
+                <div
+                  className={`mt-6 grid gap-3 ${
+                    cucina.photos.length === 1 ? "grid-cols-1" : "grid-cols-3"
+                  }`}
+                >
                   {cucina.photos.map((photo) => (
                     <div
                       key={photo.src}
-                      className="relative aspect-[4/3] overflow-hidden rounded-[1.4rem] border border-white/10"
+                      className={`relative overflow-hidden rounded-[1.4rem] border border-white/10 ${
+                        cucina.photos.length === 1 ? "aspect-[21/9]" : "aspect-[4/3]"
+                      }`}
                     >
                       <Image
                         src={photo.src}
                         alt={photo.alt}
                         fill
-                        sizes="(max-width: 1024px) 33vw, 420px"
+                        sizes={
+                          cucina.photos.length === 1
+                            ? "(max-width: 1024px) 100vw, 1200px"
+                            : "(max-width: 1024px) 33vw, 420px"
+                        }
                         className="object-cover"
                       />
                     </div>
