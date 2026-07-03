@@ -15,6 +15,16 @@ export type JourneyHotspot = {
   y: number;
 };
 
+export type SceneMenuItem = {
+  name: string;
+  price?: string;
+};
+
+export type SceneMenu = {
+  anchor: string;
+  items: SceneMenuItem[];
+};
+
 export type JourneyScene = {
   id: string;
   anchor: string;
@@ -26,6 +36,7 @@ export type JourneyScene = {
   start: number;
   end: number;
   hotspots: JourneyHotspot[];
+  menu?: SceneMenu;
 };
 
 export type Chapter = {
@@ -54,11 +65,23 @@ export type FaqItem = {
   answer: string;
 };
 
-export type MenuSectionContent = {
+export type MenuDish = {
+  name: string;
+  price?: string;
+};
+
+export type MenuCategory = {
+  title: string;
+  note?: string;
+  dishes: MenuDish[];
+};
+
+export type VenueMenu = {
+  id: string;
   eyebrow: string;
   title: string;
   description: string;
-  items: string[];
+  categories: MenuCategory[];
   action?: Action;
 };
 
@@ -212,6 +235,14 @@ export const homeJourney = {
         { label: "Beach club", href: "/beach", x: 24, y: 42 },
         { label: "Aperitivi", href: "/eventi", x: 79, y: 36 },
       ],
+      menu: {
+        anchor: "ristorante-mare",
+        items: [
+          { name: "Fritto di calamari e gamberi al cono", price: "€ 10" },
+          { name: "Fritto di alici", price: "€ 8" },
+          { name: "Club sandwich al salmone", price: "€ 13" },
+        ],
+      },
     },
     {
       id: "lunch",
@@ -228,6 +259,14 @@ export const homeJourney = {
         { label: "Prenota tavolo", href: "/prenotazioni", x: 32, y: 62 },
         { label: "Ristorante", href: "/ristorante-mare", x: 18, y: 32 },
       ],
+      menu: {
+        anchor: "ristorante-mare",
+        items: [
+          { name: "Carpaccio di gambero rosa, maracuja e sale nero", price: "€ 16" },
+          { name: "Tonnarello alle vongole e pane al prezzemolo", price: "€ 16" },
+          { name: "Riso vialone nano, scampi ed erbette", price: "€ 18" },
+        ],
+      },
     },
     {
       id: "cucina",
@@ -244,6 +283,14 @@ export const homeJourney = {
         { label: "Scopri menu", href: "/menu", x: 74, y: 60 },
         { label: "Prenota", href: "/prenotazioni", x: 26, y: 64 },
       ],
+      menu: {
+        anchor: "ristorante-mare",
+        items: [
+          { name: "Polpo alla griglia", price: "€ 18" },
+          { name: "Tonno alla griglia", price: "€ 20" },
+          { name: "La pizza, a cena", price: "da € 8" },
+        ],
+      },
     },
     {
       id: "sunset",
@@ -260,6 +307,14 @@ export const homeJourney = {
         { label: "Aperitivo", href: "/eventi", x: 36, y: 62 },
         { label: "Prenota in terrazza", href: "/prenotazioni", x: 76, y: 68 },
       ],
+      menu: {
+        anchor: "muulab",
+        items: [
+          { name: "Tonic Riviera", price: "€ 10" },
+          { name: "Moscow Mule", price: "€ 10" },
+          { name: "Americano classic taste", price: "€ 10" },
+        ],
+      },
     },
     {
       id: "muulab",
@@ -276,6 +331,14 @@ export const homeJourney = {
         { label: "Menu della sera", href: "/menu", x: 28, y: 62 },
         { label: "Prenota", href: "/prenotazioni", x: 74, y: 64 },
       ],
+      menu: {
+        anchor: "muulab",
+        items: [
+          { name: "Picanha di Black Angus USA alla brace", price: "€ 24" },
+          { name: "Fiorentina di Gutrei Galicia", price: "€ 12 l'etto" },
+          { name: "Carpaccio di Wagyu A5 agli agrumi", price: "€ 25" },
+        ],
+      },
     },
     {
       id: "nightlife",
@@ -757,69 +820,210 @@ export const menuHighlights = [
   },
 ];
 
-export const menuSections: MenuSectionContent[] = [
+export const venueMenus: VenueMenu[] = [
   {
-    eyebrow: "Ristorante Mare",
-    title: "Pranzo di mare e cena al piano terra",
+    id: "ristorante-mare",
+    eyebrow: "Hawaii — piano terra",
+    title: "Ristorante Mare",
     description:
-      "Crudi, antipasti, primi, secondi e dessert accompagnano il lato piu luminoso e conviviale della giornata.",
-    items: [
-      "Crudi, antipasti e signature di mare",
-      "Primi piatti e specialita del giorno",
-      "Secondi di pesce e griglia",
-      "Dessert e fine pasto",
-    ],
+      "Crudi, primi e griglia di pesce a pranzo e a cena, con i fritti al cono per la spiaggia e la pizza la sera.",
     action: { label: "Prenota tavolo mare", href: "/prenotazioni" },
+    categories: [
+      {
+        title: "Antipasti",
+        dishes: [
+          { name: "Carpaccio di gambero rosa, maracuja e sale nero", price: "€ 16" },
+          { name: "Ostriche alla brace, aglio, olio e peperoncino (al pezzo)", price: "€ 4" },
+          { name: "Tagliatella di seppia, pimento e scalogno", price: "€ 16" },
+          { name: "Spigola laccata alla soia di mele e zenzero, zucchine e basilico", price: "€ 14" },
+          { name: "Baccalà in olio cottura alla pizzaiola", price: "€ 15" },
+          { name: "Insalata di mare e giardiniera di verdure", price: "€ 15" },
+          { name: "Guazzetto di cozze e crostini", price: "€ 12" },
+          { name: "Salmone marinato, lampone e cipolla rossa in agrodolce", price: "€ 13" },
+        ],
+      },
+      {
+        title: "I primi",
+        dishes: [
+          { name: "Tonnarello alle vongole e pane aromatico al prezzemolo", price: "€ 16" },
+          { name: "Riso vialone nano, scampi ed erbette", price: "€ 18" },
+          { name: "Ravioli di melanzane, provola, datterini e bottarga", price: "€ 18" },
+          { name: "Gnocchi di patate, seppia e panocchia", price: "€ 16" },
+        ],
+      },
+      {
+        title: "Secondi e griglia",
+        dishes: [
+          { name: "Frittura di calamari e gamberi", price: "€ 16" },
+          { name: "Polpo alla griglia", price: "€ 18" },
+          { name: "Ombrina alla griglia", price: "€ 18" },
+          { name: "Tonno alla griglia", price: "€ 20" },
+          { name: "Pescatrice alla griglia", price: "€ 20" },
+        ],
+      },
+      {
+        title: "Fritti al cono",
+        dishes: [
+          { name: "Fritto di calamari e gamberi", price: "€ 10" },
+          { name: "Fritto di alici", price: "€ 8" },
+          { name: "Fritto di baccalà in pastella", price: "€ 8" },
+        ],
+      },
+      {
+        title: "Special panini",
+        dishes: [
+          { name: "Club sandwich al salmone, uova e lattuga", price: "€ 13" },
+          { name: "Hot dog di tonno, porro stufato e salsa ponzu", price: "€ 16" },
+          { name: "Bao alla ceviche di gamberi e chimichurri", price: "€ 14" },
+        ],
+      },
+      {
+        title: "Contorni",
+        dishes: [
+          { name: "Verdura ripassata", price: "€ 6" },
+          { name: "Insalata mista", price: "€ 6" },
+          { name: "Chips fritte", price: "€ 4" },
+        ],
+      },
+      {
+        title: "Gli sfizi, prima della pizza",
+        note: "La pizza si accende la sera.",
+        dishes: [
+          { name: "Arancino al ragù di ventricina di manzo", price: "€ 6" },
+          { name: "Arancino al ragù di polpo e provola", price: "€ 6" },
+          { name: "Primo sale croccante", price: "€ 5" },
+          { name: "Baccalà in pastella", price: "€ 8" },
+          { name: "Montanarina alla cosacca", price: "€ 3,50" },
+          { name: "Tagliere di salumi e formaggi", price: "€ 12" },
+          { name: "Pallottine cacio e uova", price: "€ 8" },
+          { name: "Crocchetta speck e tartufo", price: "€ 6" },
+        ],
+      },
+      {
+        title: "La pizza, a cena",
+        dishes: [
+          { name: "Margherita", price: "€ 9" },
+          { name: "Bufala", price: "€ 11" },
+          { name: "Diversamente diavola", price: "€ 14" },
+          { name: "Marinara", price: "€ 8" },
+          { name: "Capricciosa", price: "€ 14" },
+          { name: "Nell'orto", price: "€ 13" },
+          { name: "Patate e salsiccia", price: "€ 14" },
+          { name: "5 formaggi", price: "€ 14" },
+          { name: "Saluti da Parma", price: "€ 15" },
+          { name: "Caprese", price: "€ 13" },
+          { name: "Ombre nere", price: "€ 16" },
+          { name: "Highlands", price: "€ 15" },
+          { name: "Nerano", price: "€ 13" },
+          { name: "Americana (per bambini)", price: "€ 8" },
+        ],
+      },
+      {
+        title: "I dessert",
+        dishes: [
+          { name: "Stecco cocco e cioccolato", price: "€ 6" },
+          { name: "Tiramisù marmorizzato", price: "€ 6" },
+        ],
+      },
+      {
+        title: "Bevande, birre e cantina",
+        note: "Acque, bibite, birre alla spina e in bottiglia, cantina regionale e bollicine: la carta completa è al tavolo.",
+        dishes: [],
+      },
+    ],
   },
   {
-    eyebrow: "Terrazza MUULab Riviera",
+    id: "muulab",
+    eyebrow: "Terrazza — MUULab Riviera",
     title: "La braceria della terrazza",
     description:
-      "MUULab Riviera è la braceria serale di Hawaii: carni alla brace, cucina a vista e piatti pensati per una cena vista mare.",
-    items: [
-      "Carni alla brace",
-      "Cucina a vista",
-      "Piatti signature della terrazza",
-      "Dessert e pairing serali",
-    ],
-    action: { label: "Prenota terrazza", href: "/prenotazioni" },
-  },
-  {
-    eyebrow: "Aperitivo in Terrazza",
-    title: "Il tramonto si prenota",
-    description:
-      "Daybed, bollicine e sunset bites: l'aperitivo vista mare apre la sera della terrazza.",
-    items: [
-      "Bollicine e sunset bites",
-      "Gin tonic e signature del tramonto",
-      "Daybed e tavoli vista mare",
-      "Passaggio naturale verso la cena",
-    ],
-    action: { label: "Prenota il tramonto", href: "/prenotazioni" },
-  },
-  {
-    eyebrow: "Cocktail Bar",
-    title: "Dal morning bar all'aperitivo",
-    description:
-      "Caffetteria, aperitivo e signature cocktail seguono il ritmo di Hawaii dal giorno alla sera.",
-    items: [
-      "Colazione e caffetteria",
-      "Signature cocktail",
-      "Classici e twist",
-      "Analcolici e low ABV",
-    ],
-    action: { label: "Scopri il bar", href: "/ristorante-mare" },
-  },
-  {
-    eyebrow: "Carta Vini",
-    title: "Vini e abbinamenti",
-    description:
-      "Uno spazio ordinato per etichette al calice, bottiglie e suggerimenti di pairing tra mare e brace.",
-    items: [
-      "Bollicine e aperitivo",
-      "Bianchi per il menu mare",
-      "Rossi per la terrazza",
-      "Selezioni speciali e pairing",
+      "Crudi di carne, tagli alla brace e cocktail: MUULab Riviera vive la sera della terrazza, dal tramonto alla cena.",
+    action: { label: "Prenota in terrazza", href: "/prenotazioni" },
+    categories: [
+      {
+        title: "Per cominciare",
+        dishes: [
+          { name: "Pata Negra Cinco Jotas 50 g", price: "€ 18" },
+          { name: "Mini bun foie gras al tartufo", price: "€ 15" },
+          { name: "Angus affumicato e giardiniera di zucchine", price: "€ 18" },
+          { name: "Salame di maialino nero brado e castelmagno", price: "€ 12" },
+        ],
+      },
+      {
+        title: "Crudi di carne",
+        dishes: [
+          { name: "Battuta di Black Angus al naturale con sale Maldon", price: "€ 15" },
+          { name: "Tartare di manzo, mirtillo, ostrica grattugiata, nocciole e pino mugo", price: "€ 18" },
+          { name: "Battuta di manzo, cipolla di Tropea, coriandolo, friggitelli e lime", price: "€ 16" },
+          { name: "Tartare di manzo, anguria e tahina", price: "€ 15" },
+          { name: "Carpaccio di picanha cbt, pomodoro arrostito, arancia e ricotta salata", price: "€ 17" },
+          { name: "Controfiletto, pesca grigliata, pinoli e basilico", price: "€ 19" },
+          { name: "Carpaccio di controfiletto, beurre blanc e soia", price: "€ 19" },
+          { name: "Carpaccio di Wagyu A5 BMS 12 marinato agli agrumi", price: "€ 25" },
+          { name: "Magatello al punto rosa, spuma di capperi e limone, caffè e tonno", price: "€ 18" },
+          { name: "Tataki di manzo, cacao e caffè, salsa ponzu e tartufo", price: "€ 20" },
+          { name: "Melanzana infornata, colatura di alici, pomodoro a pera e bufala", price: "€ 15" },
+          { name: "Bresaola di peperone, rucola e grana", price: "€ 14" },
+        ],
+      },
+      {
+        title: "I secondi alla brace",
+        dishes: [
+          { name: "Picanha di Black Angus USA alla brace", price: "€ 24" },
+          { name: "Cuberoll di Oceanic Beef Nuova Zelanda (min. 300 g)", price: "€ 11 l'etto" },
+          { name: "Controfiletto Black Angus americano premium (min. 300 g)", price: "€ 11 l'etto" },
+          { name: "Filetto di Angus irlandese alla brace (220 g ca.)", price: "€ 25" },
+          { name: "Wagyu A5 BMS 12", price: "€ 38 l'etto" },
+        ],
+      },
+      {
+        title: "Tagli alla brace",
+        note: "Taglio minimo 1 kg.",
+        dishes: [
+          { name: "Picanha di Black Angus USA intera (1 kg, scaloppata)", price: "€ 80" },
+          { name: "Costata di Gutrei Galicia", price: "€ 11 l'etto" },
+          { name: "Fiorentina di Gutrei Galicia", price: "€ 12 l'etto" },
+          { name: "Costata di Mazura premium", price: "€ 11 l'etto" },
+          { name: "Fiorentina di Mazura premium", price: "€ 12 l'etto" },
+          { name: "Costata di Hereford pura", price: "€ 11 l'etto" },
+          { name: "Fiorentina di Hereford pura", price: "€ 12 l'etto" },
+          { name: "Costata danese selezione premium", price: "€ 10 l'etto" },
+        ],
+      },
+      {
+        title: "Contorni",
+        dishes: [
+          { name: "Insalata russa", price: "€ 8" },
+          { name: "Peperoni arrostiti", price: "€ 8" },
+          { name: "Giardiniera di zucchine in agrodolce", price: "€ 8" },
+          { name: "Caponata di melanzane", price: "€ 8" },
+        ],
+      },
+      {
+        title: "Dolci",
+        dishes: [
+          { name: "Crostata di visciole, yogurt, dulce de leche e mais", price: "€ 9" },
+          { name: "Il limone", price: "€ 8" },
+          { name: "Il cocco", price: "€ 8" },
+          { name: "Tiramicoux", price: "€ 8" },
+        ],
+      },
+      {
+        title: "Cocktail e aperitivo",
+        dishes: [
+          { name: "Americano classic taste", price: "€ 10" },
+          { name: "Negroni classic taste", price: "€ 10" },
+          { name: "Tonic Riviera", price: "€ 10" },
+          { name: "Moscow Mule", price: "€ 10" },
+          { name: "Whiskey Sour", price: "€ 10" },
+          { name: "Vodka Red Bull", price: "€ 10" },
+        ],
+      },
+      {
+        title: "Cantina e Coravin",
+        note: "Vini al calice con sistema Coravin, birre artigianali, bollicine e una cantina che attraversa Abruzzo, Piemonte, Borgogna e Champagne: la carta completa è al tavolo.",
+        dishes: [],
+      },
     ],
   },
 ];

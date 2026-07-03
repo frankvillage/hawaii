@@ -93,8 +93,20 @@ Removed provisional media:
   the footage will be swapped only if a brand objects. In written copy,
   GIMPADEL is citable (named on the /sport page, owner confirmed); GIN MARE
   is not named anywhere.
-- Open content validations from the design handoff §7 remain open (yoga,
-  pizza, "Aperol point", "stellato" language).
+- Real menus imported on 2026-07-03 from the live sites at the owner's
+  request: hawaiipescara.it/menu (Ristorante Mare carte, fritti al cono,
+  special panini, pizza a cena, dessert) and muulab.it/menu + the venue's
+  PDF carte (crudi di carne, brace, tagli min. 1kg, contorni, dolci,
+  cocktail). Prices are a snapshot of that date; keep in sync with the
+  venue or move to Sanity. Long wine/beer lists are summarized as
+  note-only categories, not transcribed. The §7 pizza question is now
+  answered (pizza is real, served at dinner); yoga, "Aperol point" and
+  "stellato" language remain open.
+- Menu highlights surface inside the scroll journey (owner's direction):
+  scenes beach/pranzo/cucina/tramonto/MUULab carry 3 real dishes each,
+  rendered in the stage side panel (desktop) and as a compact line under
+  the scene copy (mobile), linking to /menu#ristorante-mare or
+  /menu#muulab.
 - `assets/` source folder and brand logos/social graphics are still pending
   delivery (Dropbox link announced by the owner).
 - The 326 MB master source is not in git; consider Git LFS if it must be

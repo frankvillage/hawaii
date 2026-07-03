@@ -281,6 +281,23 @@ export function ScrollVideoStage() {
                 {activeScene.summary}
               </p>
 
+              {activeScene.menu ? (
+                <Link
+                  href={`/menu#${activeScene.menu.anchor}`}
+                  data-testid="scene-menu"
+                  className="mt-5 block max-w-xl text-sm leading-7 text-[#e8d9c2] transition hover:text-[#f6ecd9] lg:hidden"
+                >
+                  <span className="block text-[0.62rem] uppercase tracking-[0.24em] text-[#e8c89e]">
+                    Dal menu
+                  </span>
+                  <span className="mt-1 block">
+                    {activeScene.menu.items
+                      .map((item) => (item.price ? `${item.name} · ${item.price}` : item.name))
+                      .join("  —  ")}
+                  </span>
+                </Link>
+              ) : null}
+
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href={activeScene.hotspots[0]?.href ?? homeHero.secondaryAction.href}
@@ -303,12 +320,38 @@ export function ScrollVideoStage() {
                 transform: "translate3d(calc(var(--pointer-x) * 0.14), calc(var(--pointer-y) * 0.14), 0)",
               }}
             >
-              <p className="text-[0.66rem] uppercase tracking-[0.24em] text-[#e8c89e]">
-                Urban Village
-              </p>
-              <p className="mt-3 leading-7">
-                Alba, spiaggia, pranzo, terrazza e notte scorrono nello stesso fronte mare.
-              </p>
+              {activeScene.menu ? (
+                <div data-testid="scene-menu">
+                  <p className="text-[0.66rem] uppercase tracking-[0.24em] text-[#e8c89e]">
+                    Dal menu
+                  </p>
+                  <ul className="mt-3 grid gap-2 leading-6">
+                    {activeScene.menu.items.map((item) => (
+                      <li key={item.name} className="flex items-baseline justify-between gap-3">
+                        <span>{item.name}</span>
+                        {item.price ? (
+                          <span className="whitespace-nowrap text-[#e8c89e]">{item.price}</span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link
+                    href={`/menu#${activeScene.menu.anchor}`}
+                    className="mt-3 inline-block text-[0.72rem] uppercase tracking-[0.18em] text-[#e8c89e] transition hover:text-[#f6ecd9]"
+                  >
+                    Menu completo
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  <p className="text-[0.66rem] uppercase tracking-[0.24em] text-[#e8c89e]">
+                    Urban Village
+                  </p>
+                  <p className="mt-3 leading-7">
+                    Alba, spiaggia, pranzo, terrazza e notte scorrono nello stesso fronte mare.
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>

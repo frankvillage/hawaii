@@ -33,6 +33,7 @@ The main creative task is to replace provisional media with the definitive video
 - Do not turn the site back into a classic block-based WordPress-like homepage.
 - Do not add heavy WebGL or Three.js unless explicitly requested and justified by a measurable visual gain.
 - Keep the text about Hawaii, not about the interface.
+- The menu lives inside the scroll journey first: scene-matched menu highlights must appear at the right moments of the homepage video. `/menu` stays as the full indexable carte the highlights link into.
 - Keep landing pages HTML-first and indexable.
 - Preserve `prefers-reduced-motion` behavior.
 - Preserve or improve the existing Playwright smoke coverage.

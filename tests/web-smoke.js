@@ -66,7 +66,17 @@ async function main() {
       const video = node;
       return Math.round(video.currentTime * 100) / 100;
     });
-    await page.evaluate(() => window.scrollTo({ top: window.innerHeight * 2.4, behavior: "auto" }));
+    const scrollToJourneyBeach = () =>
+      page.evaluate(() => {
+        const stage = document.querySelector('[data-testid="hero-stage"]');
+        const scrollable = stage.offsetHeight - window.innerHeight;
+        window.scrollTo({ top: scrollable * 0.3, behavior: "auto" });
+      });
+    await scrollToJourneyBeach();
+    await page.waitForTimeout(350);
+    // Late layout settling (fonts, hydration) can nudge the scroll position:
+    // re-issue the same scroll so the journey lands on the intended scene.
+    await scrollToJourneyBeach();
     await page.waitForTimeout(250);
     const progressedVideoTime = await page
       .locator('[data-testid="journey-video"]')
@@ -74,6 +84,15 @@ async function main() {
     assert.ok(
       progressedVideoTime > initialVideoTime,
       "Homepage journey video should advance when the page scrolls",
+    );
+    assert.ok(
+      (await page.locator('[data-testid="scene-menu"]').count()) >= 1,
+      "Journey scenes should surface menu highlights at the matching moments",
+    );
+    assert.match(
+      (await page.locator('[data-testid="scene-menu"]').first().textContent()) || "",
+      /€/,
+      "Scene menu highlights should show real dishes with prices",
     );
 
     await mobilePage.goto(baseUrl, { waitUntil: "domcontentloaded" });
@@ -131,6 +150,21 @@ async function main() {
     assert.ok(
       (await page.locator('[data-testid="menu-section"]').count()) >= 3,
       "Menu page should expose multiple structured menu sections ready for real content",
+    );
+    assert.equal(
+      await page.locator("#ristorante-mare").count(),
+      1,
+      "Menu page should expose the Ristorante Mare carte at a stable anchor",
+    );
+    assert.equal(
+      await page.locator("#muulab").count(),
+      1,
+      "Menu page should expose the MUULab Riviera carte at a stable anchor",
+    );
+    assert.match(
+      (await page.locator("#ristorante-mare").textContent()) || "",
+      /Tonnarello alle vongole/,
+      "Menu page should publish the real Hawaii dishes",
     );
 
     await page.goto(`${baseUrl}/eventi`, { waitUntil: "networkidle" });
