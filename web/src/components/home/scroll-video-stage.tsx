@@ -246,7 +246,7 @@ export function ScrollVideoStage() {
       <div
         ref={stageRef}
         data-testid="scroll-video-stage"
-        className="journey-stage sticky top-[4.6rem] h-[calc(100svh-4.6rem)] overflow-hidden"
+        className="journey-stage sticky top-[3.25rem] h-[calc(100svh-3.25rem)] overflow-hidden"
         onMouseMove={handlePointerMove}
         onMouseLeave={resetPointer}
       >
@@ -418,13 +418,13 @@ export function ScrollVideoStage() {
                 {activeScene.eyebrow}
               </p>
               <h2
-                className="mt-4 max-w-[12ch] font-serif text-4xl leading-[0.95] text-[#f5efe6] sm:text-5xl lg:text-6xl"
+                className="font-cond mt-4 max-w-[16ch] text-4xl font-medium uppercase leading-[0.98] tracking-[0.01em] text-[#f5efe6] sm:text-5xl lg:text-6xl"
                 style={{ textShadow: "0 2px 30px rgba(3,8,12,0.6)" }}
               >
                 {activeScene.title}
               </h2>
               <p
-                className="mt-5 max-w-xl text-sm leading-7 text-[#edf2f4] sm:text-base sm:leading-8"
+                className="mt-4 max-w-xl font-serif text-base italic leading-7 text-[#edf2f4] sm:text-lg sm:leading-8"
                 style={{ textShadow: "0 1px 18px rgba(3,8,12,0.55)" }}
               >
                 {activeScene.summary}

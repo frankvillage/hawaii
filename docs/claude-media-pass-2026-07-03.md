@@ -161,6 +161,28 @@ once in globals.css (.cta / .cta-ghost / .cta-sm):
   homepage); no #bf7148 remains; hotspot pills/marker design unchanged
   (they were never orange and follow the overlay handoff)
 
+## Chrome & typography pass (2026-07-04, owner feedback)
+
+- Header rebuilt as a discreet glass slab: transparent at the top of the
+  page, compressing on scroll into a slim frosted bar (blur + saturate,
+  inset highlight). On the immersive homepage the bar carries no logo
+  until the journey begins — the stage wordmark is the only logo on
+  first paint; the small one fades in as you scroll (no more double
+  logo). The full nav ("backup") is collapsed behind a single ≡ trigger
+  that opens a frosted panel with the nine destinations; the journey is
+  navigated by soul rail + anchored markers, as intended. Stage sticky
+  offset re-anchored to the condensed bar height.
+- Typography re-derived from the published social graphics (Dropbox):
+  their voice is condensed caps + elegant serif italic. Site fonts
+  changed accordingly via next/font: Archivo (UI, replacing Manrope),
+  Playfair Display with italics (editorial serif, replacing Cormorant),
+  Oswald (condensed poster voice, new --font-display-cond / .font-cond).
+  Journey scene titles now speak the poster voice (condensed caps) with
+  serif-italic summaries — the exact pattern of the published posts.
+- Brand green #2DA12A sampled from the graphics' claims; used (as the
+  brighter #46bd42 for contrast on dark) on the /menu carte eyebrows
+  and the /villaggio kitchens label. Gold remains the journey accent.
+
 ## Known limitations / notes for the audit
 
 - Playwright's bundled Chromium cannot decode H.264, so the smoke test's
