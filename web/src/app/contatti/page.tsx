@@ -32,13 +32,13 @@ export default function ContactPage() {
             <div className="mt-6 flex flex-col gap-3">
               <Link
                 href="/prenotazioni"
-                className="rounded-full bg-[#bf7148] px-5 py-3 text-center text-sm font-semibold text-white"
+                className="cta"
               >
                 Vai alle prenotazioni
               </Link>
               <Link
                 href={siteMeta.mapUrl}
-                className="rounded-full border border-white/15 px-5 py-3 text-center text-sm font-semibold text-[#f4ede4]"
+                className="cta-ghost"
               >
                 Apri mappa
               </Link>

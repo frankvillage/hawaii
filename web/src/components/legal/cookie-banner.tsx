@@ -50,14 +50,14 @@ export function CookieBanner() {
           <button
             type="button"
             onClick={() => decide("accept")}
-            className="min-w-0 flex-1 rounded-full bg-[#bf7148] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#cb7f57]"
+            className="cta cta-sm min-w-0 flex-1"
           >
             Accetta
           </button>
           <button
             type="button"
             onClick={() => decide("reject")}
-            className="min-w-0 flex-1 rounded-full border border-white/15 px-4 py-2.5 text-sm font-semibold text-[#d9e2e7] transition hover:border-white/30 hover:text-white"
+            className="cta-ghost cta-sm min-w-0 flex-1"
           >
             Rifiuta
           </button>

@@ -437,7 +437,7 @@ export function ScrollVideoStage() {
                     target="_blank"
                     rel="noreferrer"
                     data-testid="scene-primary-action"
-                    className="inline-flex rounded-full bg-[#bf7148] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#cc7d54]"
+                    className="cta"
                   >
                     {activeScene.action.label}
                   </a>
@@ -445,7 +445,7 @@ export function ScrollVideoStage() {
                   <Link
                     href={activeScene.action?.href ?? activeScene.hotspots[0]?.href ?? homeHero.secondaryAction.href}
                     data-testid="scene-primary-action"
-                    className="inline-flex rounded-full bg-[#bf7148] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#cc7d54]"
+                    className="cta"
                   >
                     {activeScene.action?.label ?? activeScene.hotspots[0]?.label ?? "Prenota"}
                   </Link>
@@ -454,7 +454,7 @@ export function ScrollVideoStage() {
                   type="button"
                   data-testid="menu-popup-trigger"
                   onClick={() => setIsPanelOpen(true)}
-                  className="inline-flex cursor-pointer rounded-full border border-white/18 px-5 py-3 text-sm font-semibold text-[#f5efe6] transition hover:border-white/32"
+                  className="cta-ghost"
                 >
                   {activeScene.menu ? "Menu & prenota" : "Prenota"}
                 </button>
@@ -527,14 +527,14 @@ export function ScrollVideoStage() {
               <Link
                 href={sheetHotspot.href}
                 onClick={() => setSheetHotspot(null)}
-                className="inline-flex rounded-full bg-[#bf7148] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#cc7d54]"
+                className="cta"
               >
                 Apri
               </Link>
               <button
                 type="button"
                 onClick={() => setSheetHotspot(null)}
-                className="inline-flex cursor-pointer rounded-full border border-white/18 px-5 py-3 text-sm font-semibold text-[#f5efe6] transition hover:border-white/32"
+                className="cta-ghost"
               >
                 Chiudi
               </button>

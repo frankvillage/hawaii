@@ -27,17 +27,11 @@ export function EntityPageView({ page }: EntityPageProps) {
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[#e7edf1]">{page.lead}</p>
             <p className="mt-4 max-w-2xl text-base leading-8 text-white/82">{page.intro}</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link
-                href={page.primaryAction.href}
-                className="rounded-full bg-[#f4ede4] px-5 py-3 text-sm font-semibold text-[#122536] transition hover:-translate-y-0.5"
-              >
+              <Link href={page.primaryAction.href} className="cta">
                 {page.primaryAction.label}
               </Link>
               {page.secondaryAction ? (
-                <Link
-                  href={page.secondaryAction.href}
-                  className="rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-[#f4ede4] transition hover:border-white/35"
-                >
+                <Link href={page.secondaryAction.href} className="cta-ghost">
                   {page.secondaryAction.label}
                 </Link>
               ) : null}
@@ -110,14 +104,14 @@ export function EntityPageView({ page }: EntityPageProps) {
             <div className="mt-4 flex flex-col gap-3">
               <Link
                 href={page.primaryAction.href}
-                className="rounded-full bg-[#bf7148] px-5 py-3 text-center text-sm font-semibold text-white transition hover:-translate-y-0.5"
+                className="cta"
               >
                 {page.primaryAction.label}
               </Link>
               {page.secondaryAction ? (
                 <Link
                   href={page.secondaryAction.href}
-                  className="rounded-full border border-white/15 px-5 py-3 text-center text-sm font-semibold text-[#f4ede4] transition hover:border-white/35"
+                  className="cta-ghost"
                 >
                   {page.secondaryAction.label}
                 </Link>

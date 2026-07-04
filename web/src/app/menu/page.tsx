@@ -47,7 +47,7 @@ export default function MenuPage() {
                 {menu.action ? (
                   <Link
                     href={menu.action.href}
-                    className="mt-6 inline-flex rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-[#f4ede4] transition hover:border-white/35"
+                    className="cta-ghost mt-6"
                   >
                     {menu.action.label}
                   </Link>
@@ -120,7 +120,7 @@ export default function MenuPage() {
           </div>
           <Link
             href="/prenotazioni"
-            className="inline-flex rounded-full bg-[#bf7148] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5"
+            className="cta"
           >
             Prenota ora
           </Link>

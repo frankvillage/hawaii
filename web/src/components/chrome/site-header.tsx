@@ -48,7 +48,7 @@ export function SiteHeader() {
 
           <Link
             href="/prenotazioni"
-            className="rounded-full border border-[#d7a675] bg-[#bf7148] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#cb7f57]"
+            className="cta cta-sm"
           >
             Prenota
           </Link>

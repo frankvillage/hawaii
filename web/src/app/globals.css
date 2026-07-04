@@ -61,6 +61,109 @@ button {
     transform 180ms ease;
 }
 
+/* CTA system: squared "viewfinder" buttons — gold block primary, hairline
+   ghost secondary. Replaces the default rounded terracotta pills. */
+.cta,
+.cta-ghost {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 2px;
+  padding: 0.8rem 1.3rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+/* Brand: sand block with the logo's teal (#094F55 family); hover inverts. */
+.cta {
+  background: #e8c89e;
+  color: #0d3d43;
+}
+
+.cta:hover {
+  background: #0b444b;
+  color: #e8c89e;
+}
+
+.cta::before,
+.cta::after {
+  content: "";
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border: 1px solid rgba(232, 200, 158, 0.55);
+  opacity: 0.6;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+  pointer-events: none;
+}
+
+.cta::before {
+  top: -5px;
+  left: -5px;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.cta::after {
+  bottom: -5px;
+  right: -5px;
+  border-left: 0;
+  border-top: 0;
+}
+
+.cta:hover::before,
+.cta:focus-visible::before {
+  opacity: 1;
+  transform: translate(-2px, -2px);
+}
+
+.cta:hover::after,
+.cta:focus-visible::after {
+  opacity: 1;
+  transform: translate(2px, 2px);
+}
+
+.cta-ghost {
+  background: rgba(7, 17, 26, 0.32);
+  border: 1px solid rgba(245, 239, 230, 0.32);
+  color: #f5efe6;
+  backdrop-filter: blur(10px);
+}
+
+.cta-ghost:hover {
+  border-color: rgba(232, 200, 158, 0.85);
+  color: #e8c89e;
+}
+
+.cta-sm {
+  padding: 0.62rem 1rem;
+  font-size: 0.66rem;
+}
+
+.cta:disabled,
+.cta-ghost:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.cta:focus-visible,
+.cta-ghost:focus-visible {
+  outline: 1px solid rgba(232, 200, 158, 0.8);
+  outline-offset: 3px;
+}
+
 /* Journey anchored markers (design handoff: docs/overlay-redesign-handoff.md) */
 .journey-marker a:focus-visible {
   outline: 1px solid rgba(232, 200, 158, 0.8);

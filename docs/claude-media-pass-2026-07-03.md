@@ -145,6 +145,22 @@ adapted from its 7 placeholder scenes to the real 9-scene edit:
   + internal inquiry form, private events → form. No dead booking
   promises remain.
 
+## CTA rebrand (2026-07-04, owner feedback)
+
+The rounded terracotta pill buttons were called out as generic AI-default
+UI. Replaced across the whole site with a brand-grounded system defined
+once in globals.css (.cta / .cta-ghost / .cta-sm):
+
+- primary: squared sand block (#e8c89e) with the logo's teal for text
+  (#0d3d43, sampled from LOGHI/logo hawaii.png = #094F55 family),
+  small-caps Manrope, "viewfinder" corner brackets echoing the journey
+  markers; hover inverts sand→teal (contrast ≥8:1 both states)
+- secondary: squared hairline ghost, gold on hover
+- swept 12 files (stage, header, footer CTAs, cookie banner, all three
+  forms, entity pages, menu, eventi, contatti, villaggio, narrative
+  homepage); no #bf7148 remains; hotspot pills/marker design unchanged
+  (they were never orange and follow the overlay handoff)
+
 ## Known limitations / notes for the audit
 
 - Playwright's bundled Chromium cannot decode H.264, so the smoke test's

@@ -124,7 +124,7 @@ export function PrivateEventForm() {
         <button
           type="submit"
           disabled={state === "loading"}
-          className="rounded-full bg-[#bf7148] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-70"
+          className="cta"
         >
           {state === "loading" ? "Invio in corso" : "Invia richiesta"}
         </button>

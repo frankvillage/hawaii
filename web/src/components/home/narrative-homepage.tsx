@@ -119,13 +119,13 @@ export function NarrativeHomepage() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
               href="/prenotazioni"
-              className="rounded-full bg-[#bf7148] px-5 py-3 text-center text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#cc7d54]"
+              className="cta"
             >
               Vai alle prenotazioni
             </Link>
             <Link
               href="/menu"
-              className="rounded-full border border-white/20 px-5 py-3 text-center text-sm font-semibold text-[#f6efe6] transition hover:border-white/40"
+              className="cta-ghost"
             >
               Scopri i menu
             </Link>

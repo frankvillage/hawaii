@@ -121,13 +121,13 @@ export default function VillaggioPage() {
           <div className="mt-7 flex flex-wrap gap-3">
             <Link
               href="/prenotazioni"
-              className="rounded-full bg-[#bf7148] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#cc7d54]"
+              className="cta"
             >
               Prenota
             </Link>
             <Link
               href="/"
-              className="rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-[#f6efe6] transition hover:border-white/40"
+              className="cta-ghost"
             >
               Vivi il viaggio
             </Link>
@@ -169,21 +169,21 @@ export default function VillaggioPage() {
                       href={item.action.href}
                       target="_blank"
                       rel="noreferrer"
-                      className="rounded-full bg-[#bf7148] px-4 py-2.5 text-white transition hover:bg-[#cc7d54]"
+                      className="cta cta-sm"
                     >
                       {item.action.label}
                     </a>
                   ) : (
                     <Link
                       href={item.action.href}
-                      className="rounded-full bg-[#bf7148] px-4 py-2.5 text-white transition hover:bg-[#cc7d54]"
+                      className="cta cta-sm"
                     >
                       {item.action.label}
                     </Link>
                   )}
                   <Link
                     href={item.href}
-                    className="rounded-full border border-white/15 px-4 py-2.5 text-[#f4ede4] transition hover:border-white/35"
+                    className="cta-ghost cta-sm"
                   >
                     Scopri
                   </Link>
@@ -223,7 +223,7 @@ export default function VillaggioPage() {
                       <Link
                         key={action.href + action.label}
                         href={action.href}
-                        className="rounded-full border border-white/15 px-4 py-2.5 text-[#f4ede4] transition hover:border-white/35"
+                        className="cta-ghost cta-sm"
                       >
                         {action.label}
                       </Link>
