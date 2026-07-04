@@ -279,8 +279,10 @@ export function ScrollVideoStage() {
           </video>
         )}
 
-        {/* Light neutral veil only: the video is the page, text sits on glass. */}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,10,0.12),rgba(8,9,10,0.04)_30%,rgba(8,9,10,0.1)_62%,rgba(8,9,10,0.34))]" />
+        {/* No boxes: legibility comes from one light veil plus a feathered
+            scrim in the lower-left corner where the copy lives. */}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,10,0.16),rgba(8,9,10,0.02)_32%,rgba(8,9,10,0.06)_60%,rgba(8,9,10,0.3))]" />
+        <div className="absolute inset-0 bg-[radial-gradient(115%_125%_at_0%_100%,rgba(6,6,7,0.55),rgba(6,6,7,0.26)_42%,transparent_68%)]" />
 
         <div className="relative z-10 flex h-full flex-col justify-between px-4 pb-24 pt-16 sm:px-6 md:pb-6 lg:px-8 lg:pb-8">
           <div className="flex items-start justify-between gap-4">
@@ -307,19 +309,20 @@ export function ScrollVideoStage() {
 
             <div
               data-testid="scene-marker"
-              className="flex items-center gap-3 rounded-full border border-white/16 bg-[rgba(14,15,16,0.34)] py-2 pl-2.5 pr-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-xl backdrop-saturate-150"
+              className="flex items-center gap-3"
               style={{
                 transform: "translate3d(calc(var(--pointer-x) * 0.22), calc(var(--pointer-y) * 0.22), 0)",
+                filter: "drop-shadow(0 1px 10px rgba(6,6,7,0.6))",
               }}
             >
-              <svg width="38" height="38" viewBox="0 0 38 38" aria-hidden className="-rotate-90">
+              <svg width="34" height="34" viewBox="0 0 38 38" aria-hidden className="-rotate-90">
                 <circle
                   cx="19"
                   cy="19"
                   r={RING_RADIUS}
                   fill="none"
-                  stroke="rgba(245,239,230,0.18)"
-                  strokeWidth="2"
+                  stroke="rgba(245,239,230,0.28)"
+                  strokeWidth="1.5"
                 />
                 <circle
                   cx="19"
@@ -327,7 +330,7 @@ export function ScrollVideoStage() {
                   r={RING_RADIUS}
                   fill="none"
                   stroke="#e8c89e"
-                  strokeWidth="2"
+                  strokeWidth="1.5"
                   strokeLinecap="round"
                   strokeDasharray={RING_LENGTH}
                   strokeDashoffset={RING_LENGTH * (1 - sceneFraction)}
@@ -374,7 +377,10 @@ export function ScrollVideoStage() {
                   >
                     <span className="journey-dot" />
                     <span className="journey-hairline" />
-                    <span className="journey-pill inline-flex rounded-full border border-[rgba(245,239,230,0.26)] bg-[rgba(18,19,20,0.5)] px-4 py-2 text-[0.68rem] uppercase tracking-[0.16em] text-[#f5efe6] backdrop-blur-md">
+                    <span
+                      className="journey-pill inline-flex rounded-[3px] bg-[rgba(6,6,7,0.34)] px-3 py-1.5 text-[0.66rem] uppercase tracking-[0.18em] text-[#f7f2ea] backdrop-blur-[3px]"
+                      style={{ textShadow: "0 1px 8px rgba(6,6,7,0.7)" }}
+                    >
                       {hotspot.label}
                     </span>
                   </a>
@@ -399,9 +405,9 @@ export function ScrollVideoStage() {
             })}
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-end">
+          <div className="grid gap-8">
             <div
-              className="max-w-2xl rounded-[1.1rem] border border-white/14 bg-[rgba(14,15,16,0.34)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-xl backdrop-saturate-150 sm:p-6"
+              className="max-w-2xl"
               style={{
                 ...overlayStyle,
                 transform: `${overlayStyle.transform} translate3d(calc(var(--pointer-x) * -0.18), calc(var(--pointer-y) * -0.18), 0)`,
@@ -450,25 +456,12 @@ export function ScrollVideoStage() {
                   type="button"
                   data-testid="menu-popup-trigger"
                   onClick={() => setIsPanelOpen(true)}
-                  className="cta-ghost"
+                  className="inline-flex cursor-pointer items-baseline self-center border-b border-[rgba(232,200,158,0.55)] pb-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#f5efe6] transition hover:border-[#e8c89e] hover:text-[#e8c89e]"
+                  style={{ textShadow: "0 1px 12px rgba(6,6,7,0.6)" }}
                 >
                   {activeScene.menu ? "Menu & prenota" : "Prenota"}
                 </button>
               </div>
-            </div>
-
-            <div
-              className="hidden justify-self-end rounded-[1.1rem] border border-white/14 bg-[rgba(14,15,16,0.34)] p-4 text-sm text-[#e0e0db] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-xl backdrop-saturate-150 lg:block"
-              style={{
-                transform: "translate3d(calc(var(--pointer-x) * 0.14), calc(var(--pointer-y) * 0.14), 0)",
-              }}
-            >
-              <p className="text-[0.66rem] uppercase tracking-[0.24em] text-[#e8c89e]">
-                Urban Village
-              </p>
-              <p className="mt-3 leading-7">
-                Alba, spiaggia, pranzo, terrazza e notte scorrono nello stesso fronte mare.
-              </p>
             </div>
           </div>
         </div>

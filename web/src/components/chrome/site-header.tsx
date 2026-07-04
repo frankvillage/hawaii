@@ -92,9 +92,10 @@ export function SiteHeader() {
             aria-controls="site-navigation"
             aria-label="Menu"
             onClick={() => setIsOpen((open) => !open)}
-            className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-[2px] border border-white/30 bg-[rgba(255,255,255,0.14)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur-xl transition hover:border-white/60 hover:bg-[rgba(255,255,255,0.22)]"
+            className="inline-flex h-10 w-10 cursor-pointer items-center justify-center text-white/90 transition hover:text-white"
+            style={{ filter: "drop-shadow(0 1px 8px rgba(6,6,7,0.7))" }}
           >
-            <span className="text-lg leading-none">{isOpen ? "×" : "≡"}</span>
+            <span className="text-2xl leading-none">{isOpen ? "×" : "≡"}</span>
           </button>
 
           <Link href="/prenotazioni" className="cta cta-sm">
@@ -112,9 +113,7 @@ export function SiteHeader() {
       >
         <div
           className={
-            isOpen
-              ? "border-y border-white/15 bg-[rgba(255,255,255,0.1)] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-2xl backdrop-saturate-150"
-              : ""
+            isOpen ? "bg-[rgba(8,8,9,0.78)] backdrop-blur-2xl backdrop-saturate-150" : ""
           }
         >
         <nav className="mx-auto grid w-full max-w-7xl gap-1.5 px-4 py-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
@@ -123,7 +122,7 @@ export function SiteHeader() {
               key={item.href}
               href={item.href}
               onClick={() => setIsOpen(false)}
-              className="rounded-[2px] border border-white/12 bg-[rgba(255,255,255,0.06)] px-4 py-3 text-[0.72rem] uppercase tracking-[0.14em] text-[#efefea] transition hover:border-[rgba(232,200,158,0.65)] hover:text-[#e8c89e]"
+              className="border-b border-white/10 px-1 py-3 text-[0.72rem] uppercase tracking-[0.16em] text-[#efefea] transition hover:border-[rgba(232,200,158,0.6)] hover:text-[#e8c89e]"
             >
               {item.label}
             </Link>
