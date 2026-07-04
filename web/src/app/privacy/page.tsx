@@ -9,13 +9,13 @@ export const metadata = buildMetadata({
 
 export default function PrivacyPage() {
   return (
-    <main className="bg-[#07111a]">
+    <main className="bg-[#0b0c0d]">
       <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
         <p className="text-[0.72rem] uppercase tracking-[0.24em] text-[#d6b887]">Privacy</p>
         <h1 className="mt-5 font-serif text-5xl leading-[0.9] text-[#f4ede4] sm:text-6xl">
           Informativa privacy.
         </h1>
-        <p className="mt-6 text-base leading-8 text-[#c5d1d8]">
+        <p className="mt-6 text-base leading-8 text-[#cfcfca]">
           Informazioni sul trattamento dei dati personali legati a contatti,
           prenotazioni e utilizzo del sito.
         </p>
@@ -27,9 +27,9 @@ export default function PrivacyPage() {
               className="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.04)] p-5"
             >
               <h2 className="font-serif text-2xl text-[#f4ede4]">{section.title}</h2>
-              <p className="mt-3 text-sm leading-7 text-[#c5d1d8]">{section.body}</p>
+              <p className="mt-3 text-sm leading-7 text-[#cfcfca]">{section.body}</p>
               {section.bullets?.length ? (
-                <ul className="mt-4 space-y-2 text-sm leading-7 text-[#d9e2e7]">
+                <ul className="mt-4 space-y-2 text-sm leading-7 text-[#dbdbd6]">
                   {section.bullets.map((bullet) => (
                     <li
                       key={bullet}

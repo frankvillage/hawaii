@@ -39,7 +39,7 @@ export default function RootLayout({
       lang="it"
       className={`${uiSans.variable} ${editorialSerif.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#07111a] text-white">
+      <body className="min-h-full flex flex-col bg-[#0b0c0d] text-white">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema()) }}

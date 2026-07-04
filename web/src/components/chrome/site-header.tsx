@@ -50,26 +50,15 @@ export function SiteHeader() {
 
   const t = isOpen ? 1 : condense;
 
-  /* On the immersive homepage the stage carries the big wordmark: the bar
-     stays logo-free at the top and the small logo takes over as you scroll. */
+  /* On the immersive homepage the stage wordmark is the only logo: the bar
+     never shows its own. Elsewhere the logo is always on. */
   const isHome = pathname === "/";
-  const logoOpacity = isHome ? t : 1;
+  const logoOpacity = isHome ? 0 : 1;
 
   return (
-    <header
-      className="sticky top-0 z-50"
-      style={{
-        backgroundColor: `rgba(226, 238, 242, ${(0.1 * t).toFixed(3)})`,
-        borderBottom: `1px solid rgba(255, 255, 255, ${(0.16 * t).toFixed(3)})`,
-        boxShadow:
-          t > 0.05
-            ? `inset 0 1px 0 rgba(255,255,255,${(0.16 * t).toFixed(3)}), 0 18px 50px rgba(2,8,13,${(0.28 * t).toFixed(3)})`
-            : "none",
-        backdropFilter: t > 0.05 ? `blur(${Math.round(20 * t)}px) saturate(${(1 + 0.55 * t).toFixed(2)})` : "none",
-        WebkitBackdropFilter:
-          t > 0.05 ? `blur(${Math.round(20 * t)}px) saturate(${(1 + 0.55 * t).toFixed(2)})` : "none",
-      }}
-    >
+    /* Fixed and fully transparent: the video runs edge-to-edge underneath,
+       and only the individual controls carry their own frosted glass. */
+    <header className="fixed inset-x-0 top-0 z-50">
       <div
         className="mx-auto flex w-full max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8"
         style={{ height: `${(4.5 - 1.25 * t).toFixed(3)}rem`, transition: "height 120ms linear" }}
@@ -103,7 +92,7 @@ export function SiteHeader() {
             aria-controls="site-navigation"
             aria-label="Menu"
             onClick={() => setIsOpen((open) => !open)}
-            className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-[2px] border border-white/22 bg-[rgba(10,22,30,0.25)] text-[#f4ede4] backdrop-blur-md transition hover:border-white/50"
+            className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-[2px] border border-white/30 bg-[rgba(255,255,255,0.14)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur-xl transition hover:border-white/60 hover:bg-[rgba(255,255,255,0.22)]"
           >
             <span className="text-lg leading-none">{isOpen ? "×" : "≡"}</span>
           </button>
@@ -118,21 +107,29 @@ export function SiteHeader() {
         id="site-navigation"
         data-testid="mobile-nav-panel"
         className={`${
-          isOpen ? "max-h-[36rem] border-t border-white/12 opacity-100" : "max-h-0 opacity-0"
+          isOpen ? "max-h-[36rem] opacity-100" : "max-h-0 opacity-0"
         } overflow-hidden transition-[max-height,opacity] duration-200`}
       >
+        <div
+          className={
+            isOpen
+              ? "border-y border-white/15 bg-[rgba(255,255,255,0.1)] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-2xl backdrop-saturate-150"
+              : ""
+          }
+        >
         <nav className="mx-auto grid w-full max-w-7xl gap-1.5 px-4 py-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
           {[...navigation, { label: "Menu", href: "/menu" }, { label: "Feste Private", href: "/feste-private" }, { label: "Prenotazioni", href: "/prenotazioni" }].map((item) => (
             <Link
               key={item.href}
               href={item.href}
               onClick={() => setIsOpen(false)}
-              className="rounded-[2px] border border-white/12 bg-[rgba(226,238,242,0.06)] px-4 py-3 text-[0.72rem] uppercase tracking-[0.14em] text-[#eef4f6] transition hover:border-[rgba(232,200,158,0.65)] hover:text-[#e8c89e]"
+              className="rounded-[2px] border border-white/12 bg-[rgba(255,255,255,0.06)] px-4 py-3 text-[0.72rem] uppercase tracking-[0.14em] text-[#efefea] transition hover:border-[rgba(232,200,158,0.65)] hover:text-[#e8c89e]"
             >
               {item.label}
             </Link>
           ))}
         </nav>
+        </div>
       </div>
     </header>
   );

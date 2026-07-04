@@ -9,7 +9,7 @@ export const metadata = buildMetadata({
 
 export default function FaqPage() {
   return (
-    <main className="bg-[#07111a]">
+    <main className="bg-[#0b0c0d]">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqPageSchema(faqIndex)) }}
@@ -19,7 +19,7 @@ export default function FaqPage() {
         <h1 className="mt-5 font-serif text-5xl leading-[0.92] text-[#f4ede4] sm:text-6xl">
           Risposte rapide, in chiaro.
         </h1>
-        <p className="mt-6 max-w-2xl text-lg leading-8 text-[#c5d1d8]">
+        <p className="mt-6 max-w-2xl text-lg leading-8 text-[#cfcfca]">
           Le informazioni piu utili per organizzare spiaggia, tavolo, sport, terrazza
           ed eventi.
         </p>
@@ -30,7 +30,7 @@ export default function FaqPage() {
                 <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#d6b887]">
                   {group.title}
                 </p>
-                <p className="mt-3 text-base leading-8 text-[#c5d1d8]">{group.intro}</p>
+                <p className="mt-3 text-base leading-8 text-[#cfcfca]">{group.intro}</p>
               </div>
               <div className="mt-5 space-y-5">
                 {group.items.map((faq) => (
@@ -39,7 +39,7 @@ export default function FaqPage() {
                     className="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.04)] p-5"
                   >
                     <h2 className="text-xl font-semibold text-[#f4ede4]">{faq.question}</h2>
-                    <p className="mt-3 text-sm leading-7 text-[#c5d1d8]">{faq.answer}</p>
+                    <p className="mt-3 text-sm leading-7 text-[#cfcfca]">{faq.answer}</p>
                   </article>
                 ))}
               </div>

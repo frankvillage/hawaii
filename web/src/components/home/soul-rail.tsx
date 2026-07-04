@@ -52,7 +52,7 @@ export function SoulRail() {
       data-testid="soul-rail"
       className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4 md:inset-x-auto md:right-6 md:top-1/2 md:bottom-auto md:-translate-y-1/2 md:px-0"
     >
-      <nav className="pointer-events-auto rounded-full border border-white/12 bg-[rgba(5,12,19,0.72)] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl md:rounded-[2rem]">
+      <nav className="pointer-events-auto rounded-full border border-white/12 bg-[rgba(16,17,18,0.72)] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl md:rounded-[2rem]">
         <ul className="flex items-center gap-1 md:flex-col md:items-end">
           {soulNavigation.map((item) => {
             const isActive = activeSoul === item.label;
@@ -63,7 +63,7 @@ export function SoulRail() {
                   data-soul-link
                   href={item.href}
                   className={`flex min-w-[5.8rem] items-center justify-center gap-2 rounded-full px-3 py-2 text-[0.68rem] uppercase tracking-[0.22em] transition md:min-w-[7rem] md:justify-end md:px-4 ${
-                    isActive ? "text-[#e8c89e]" : "text-[#d8e2e7] hover:text-white"
+                    isActive ? "text-[#e8c89e]" : "text-[#dadad5] hover:text-white"
                   }`}
                 >
                   {item.label}

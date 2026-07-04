@@ -240,13 +240,13 @@ export function ScrollVideoStage() {
     <section
       ref={wrapperRef}
       data-testid="hero-stage"
-      className="relative bg-[#040a0f]"
+      className="relative bg-[#070808]"
       aria-label="Hawaii Urban Village journey"
     >
       <div
         ref={stageRef}
         data-testid="scroll-video-stage"
-        className="journey-stage sticky top-[3.25rem] h-[calc(100svh-3.25rem)] overflow-hidden"
+        className="journey-stage sticky top-0 h-[100svh] overflow-hidden"
         onMouseMove={handlePointerMove}
         onMouseLeave={resetPointer}
       >
@@ -279,14 +279,10 @@ export function ScrollVideoStage() {
           </video>
         )}
 
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,8,12,0.14),rgba(3,8,12,0.22)_24%,rgba(3,8,12,0.58)_62%,rgba(3,8,12,0.88))]" />
-        <div
-          className="journey-stage-light absolute inset-0"
-          style={{ opacity: 0.32 + progress * 0.4 }}
-        />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,227,173,0.22),transparent_36%)]" />
+        {/* Light neutral veil only: the video is the page, text sits on glass. */}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,10,0.12),rgba(8,9,10,0.04)_30%,rgba(8,9,10,0.1)_62%,rgba(8,9,10,0.34))]" />
 
-        <div className="relative z-10 flex h-full flex-col justify-between px-4 pb-24 pt-6 sm:px-6 md:pb-6 lg:px-8 lg:pb-8">
+        <div className="relative z-10 flex h-full flex-col justify-between px-4 pb-24 pt-16 sm:px-6 md:pb-6 lg:px-8 lg:pb-8">
           <div className="flex items-start justify-between gap-4">
             <div
               className="max-w-[16rem] sm:max-w-xl"
@@ -304,14 +300,14 @@ export function ScrollVideoStage() {
                 width={800}
                 height={377}
                 priority
-                className="mt-3 h-14 w-auto drop-shadow-[0_2px_24px_rgba(3,8,12,0.6)] sm:h-20 lg:h-24"
+                className="mt-3 h-14 w-auto drop-shadow-[0_2px_24px_rgba(8,9,10,0.6)] sm:h-20 lg:h-24"
               />
               <h1 className="sr-only">Hawaii Pescara — Urban Village</h1>
             </div>
 
             <div
               data-testid="scene-marker"
-              className="flex items-center gap-3 rounded-full border border-white/14 bg-[rgba(7,17,26,0.44)] py-2 pl-2.5 pr-4 backdrop-blur-md"
+              className="flex items-center gap-3 rounded-full border border-white/16 bg-[rgba(14,15,16,0.34)] py-2 pl-2.5 pr-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-xl backdrop-saturate-150"
               style={{
                 transform: "translate3d(calc(var(--pointer-x) * 0.22), calc(var(--pointer-y) * 0.22), 0)",
               }}
@@ -342,7 +338,7 @@ export function ScrollVideoStage() {
                   {String(activeSceneIndex + 1).padStart(2, "0")} /{" "}
                   {String(homeJourney.scenes.length).padStart(2, "0")}
                 </p>
-                <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#eef2f4]">
+                <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#efefea]">
                   {activeScene.daypart}
                 </p>
               </div>
@@ -378,22 +374,22 @@ export function ScrollVideoStage() {
                   >
                     <span className="journey-dot" />
                     <span className="journey-hairline" />
-                    <span className="journey-pill inline-flex rounded-full border border-[rgba(245,239,230,0.26)] bg-[rgba(7,17,26,0.5)] px-4 py-2 text-[0.68rem] uppercase tracking-[0.16em] text-[#f5efe6] backdrop-blur-md">
+                    <span className="journey-pill inline-flex rounded-full border border-[rgba(245,239,230,0.26)] bg-[rgba(18,19,20,0.5)] px-4 py-2 text-[0.68rem] uppercase tracking-[0.16em] text-[#f5efe6] backdrop-blur-md">
                       {hotspot.label}
                     </span>
                   </a>
 
                   <div
-                    className={`journey-minicard absolute top-full mt-2 hidden w-[216px] rounded-2xl border border-[rgba(245,239,230,0.16)] bg-[rgba(6,14,22,0.78)] p-4 backdrop-blur-xl md:block ${
+                    className={`journey-minicard absolute top-full mt-2 hidden w-[216px] rounded-2xl border border-[rgba(245,239,230,0.16)] bg-[rgba(17,18,19,0.78)] p-4 backdrop-blur-xl md:block ${
                       mirrored ? "right-2" : "left-2"
                     }`}
                   >
-                    <p className="text-[12.5px] leading-5 text-[#dfe7ea]">{captionFor(hotspot)}</p>
+                    <p className="text-[12.5px] leading-5 text-[#e0e0db]">{captionFor(hotspot)}</p>
                     <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-white/10 pt-3">
                       <span className="text-[0.66rem] uppercase tracking-[0.2em] text-[#e8c89e]">
                         Apri
                       </span>
-                      <span className="font-mono text-[0.66rem] text-[#8ea3ad]">
+                      <span className="font-mono text-[0.66rem] text-[#9a9a95]">
                         {hotspot.href.split("#")[0]}
                       </span>
                     </div>
@@ -405,7 +401,7 @@ export function ScrollVideoStage() {
 
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-end">
             <div
-              className="max-w-2xl"
+              className="max-w-2xl rounded-[1.1rem] border border-white/14 bg-[rgba(14,15,16,0.34)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-xl backdrop-saturate-150 sm:p-6"
               style={{
                 ...overlayStyle,
                 transform: `${overlayStyle.transform} translate3d(calc(var(--pointer-x) * -0.18), calc(var(--pointer-y) * -0.18), 0)`,
@@ -419,13 +415,13 @@ export function ScrollVideoStage() {
               </p>
               <h2
                 className="mt-4 max-w-[12ch] font-serif text-4xl leading-[0.95] text-[#f5efe6] sm:text-5xl lg:text-6xl"
-                style={{ textShadow: "0 2px 30px rgba(3,8,12,0.6)" }}
+                style={{ textShadow: "0 2px 30px rgba(8,9,10,0.6)" }}
               >
                 {activeScene.title}
               </h2>
               <p
-                className="mt-5 max-w-xl text-sm leading-7 text-[#edf2f4] sm:text-base sm:leading-8"
-                style={{ textShadow: "0 1px 18px rgba(3,8,12,0.55)" }}
+                className="mt-5 max-w-xl text-sm leading-7 text-[#eeeee9] sm:text-base sm:leading-8"
+                style={{ textShadow: "0 1px 18px rgba(8,9,10,0.55)" }}
               >
                 {activeScene.summary}
               </p>
@@ -462,7 +458,7 @@ export function ScrollVideoStage() {
             </div>
 
             <div
-              className="hidden justify-self-end rounded-[1.35rem] border border-white/10 bg-[rgba(7,17,26,0.34)] p-4 text-sm text-[#dfe7ea] backdrop-blur-md lg:block"
+              className="hidden justify-self-end rounded-[1.1rem] border border-white/14 bg-[rgba(14,15,16,0.34)] p-4 text-sm text-[#e0e0db] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-xl backdrop-saturate-150 lg:block"
               style={{
                 transform: "translate3d(calc(var(--pointer-x) * 0.14), calc(var(--pointer-y) * 0.14), 0)",
               }}
@@ -507,14 +503,14 @@ export function ScrollVideoStage() {
             type="button"
             aria-label="Chiudi"
             onClick={() => setSheetHotspot(null)}
-            className="absolute inset-0 cursor-pointer bg-[rgba(3,8,12,0.64)] backdrop-blur-sm"
+            className="absolute inset-0 cursor-pointer bg-[rgba(8,9,10,0.64)] backdrop-blur-sm"
           />
           <div
             role="dialog"
             aria-modal="true"
             aria-label={sheetHotspot.label}
             data-testid="hotspot-sheet"
-            className="relative w-full rounded-t-[1.8rem] border border-white/12 bg-[rgba(9,19,28,0.96)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:max-w-sm sm:rounded-[1.8rem]"
+            className="relative w-full rounded-t-[1.8rem] border border-white/12 bg-[rgba(20,21,22,0.96)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:max-w-sm sm:rounded-[1.8rem]"
           >
             <p className="text-[0.64rem] uppercase tracking-[0.26em] text-[#e8c89e]">
               Hawaii • {activeScene.eyebrow}
@@ -522,7 +518,7 @@ export function ScrollVideoStage() {
             <p className="mt-2 font-serif text-2xl leading-tight text-[#f5efe6]">
               {sheetHotspot.label}
             </p>
-            <p className="mt-3 text-sm leading-6 text-[#dfe7ea]">{captionFor(sheetHotspot)}</p>
+            <p className="mt-3 text-sm leading-6 text-[#e0e0db]">{captionFor(sheetHotspot)}</p>
             <div className="mt-5 flex gap-3">
               <Link
                 href={sheetHotspot.href}
@@ -549,7 +545,7 @@ export function ScrollVideoStage() {
             type="button"
             aria-label="Chiudi menu e prenotazioni"
             onClick={() => setIsPanelOpen(false)}
-            className="absolute inset-0 cursor-pointer bg-[rgba(3,8,12,0.64)] backdrop-blur-sm"
+            className="absolute inset-0 cursor-pointer bg-[rgba(8,9,10,0.64)] backdrop-blur-sm"
           />
 
           <div
@@ -557,7 +553,7 @@ export function ScrollVideoStage() {
             aria-modal="true"
             aria-label="Menu e prenotazioni"
             data-testid="menu-popup"
-            className="relative max-h-[85svh] w-full overflow-y-auto rounded-t-[1.8rem] border border-white/12 bg-[rgba(9,19,28,0.96)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:max-w-md sm:rounded-[1.8rem]"
+            className="relative max-h-[85svh] w-full overflow-y-auto rounded-t-[1.8rem] border border-white/12 bg-[rgba(20,21,22,0.96)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:max-w-md sm:rounded-[1.8rem]"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -574,7 +570,7 @@ export function ScrollVideoStage() {
                 aria-label="Chiudi"
                 autoFocus
                 onClick={() => setIsPanelOpen(false)}
-                className="cursor-pointer rounded-full border border-white/15 px-3 py-1.5 text-sm text-[#dfe7ea] transition hover:border-white/35"
+                className="cursor-pointer rounded-full border border-white/15 px-3 py-1.5 text-sm text-[#e0e0db] transition hover:border-white/35"
               >
                 ✕
               </button>
@@ -582,7 +578,7 @@ export function ScrollVideoStage() {
 
             {activeScene.menu ? (
               <div className="mt-5">
-                <ul className="grid gap-2.5 text-sm leading-6 text-[#e9eef1]">
+                <ul className="grid gap-2.5 text-sm leading-6 text-[#eaeae5]">
                   {activeScene.menu.items.map((item) => (
                     <li key={item.name} className="flex items-baseline justify-between gap-4">
                       <span>{item.name}</span>
@@ -614,10 +610,10 @@ export function ScrollVideoStage() {
                         href={option.href}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-baseline justify-between gap-4 rounded-[1.1rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-4 py-3 text-sm text-[#f0f4f6] transition hover:border-white/30"
+                        className="flex items-baseline justify-between gap-4 rounded-[1.1rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-4 py-3 text-sm text-[#f1f1ec] transition hover:border-white/30"
                       >
                         <span className="font-semibold">{option.label}</span>
-                        <span className="text-right text-xs text-[#b9c6cd]">{option.detail}</span>
+                        <span className="text-right text-xs text-[#c1c1bb]">{option.detail}</span>
                       </a>
                     </li>
                   ) : (
@@ -625,16 +621,16 @@ export function ScrollVideoStage() {
                       <Link
                         href={option.href}
                         onClick={() => setIsPanelOpen(false)}
-                        className="flex items-baseline justify-between gap-4 rounded-[1.1rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-4 py-3 text-sm text-[#f0f4f6] transition hover:border-white/30"
+                        className="flex items-baseline justify-between gap-4 rounded-[1.1rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-4 py-3 text-sm text-[#f1f1ec] transition hover:border-white/30"
                       >
                         <span className="font-semibold">{option.label}</span>
-                        <span className="text-right text-xs text-[#b9c6cd]">{option.detail}</span>
+                        <span className="text-right text-xs text-[#c1c1bb]">{option.detail}</span>
                       </Link>
                     </li>
                   ),
                 )}
               </ul>
-              <p className="mt-4 text-xs leading-6 text-[#b9c6cd]">
+              <p className="mt-4 text-xs leading-6 text-[#c1c1bb]">
                 {quickBooking.phones.map((phone, index) => (
                   <span key={phone.label}>
                     {index > 0 ? " · " : ""}

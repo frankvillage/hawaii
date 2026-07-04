@@ -12,18 +12,18 @@ export const metadata = buildMetadata({
 
 export default function ContactPage() {
   return (
-    <main className="bg-[#07111a]">
+    <main className="bg-[#0b0c0d]">
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:grid lg:grid-cols-[0.88fr_1.12fr] lg:gap-10 lg:px-8">
         <div>
           <p className="text-[0.72rem] uppercase tracking-[0.24em] text-[#d6b887]">Contatti</p>
           <h1 className="mt-5 max-w-[10ch] font-serif text-5xl leading-[0.9] text-[#f4ede4] sm:text-6xl">
             Hawaii, in un solo punto.
           </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-[#c5d1d8]">
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-[#cfcfca]">
             Contatti diretti per beach, ristorante, terrazza e richieste generali.
           </p>
           <div className="mt-10 rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.04)] p-6">
-            <div className="space-y-3 text-sm leading-7 text-[#d9e2e7]">
+            <div className="space-y-3 text-sm leading-7 text-[#dbdbd6]">
               <p>{siteMeta.address}</p>
               <p>Ristorante: {siteMeta.restaurantPhone}</p>
               <p>Spiaggia: {siteMeta.beachPhone}</p>
@@ -52,7 +52,7 @@ export default function ContactPage() {
             <h2 className="mt-4 font-serif text-3xl text-[#f4ede4]">
               Ti indirizziamo subito all&apos;area giusta.
             </h2>
-            <p className="mt-4 max-w-xl text-base leading-7 text-[#c5d1d8]">
+            <p className="mt-4 max-w-xl text-base leading-7 text-[#cfcfca]">
               Seleziona l&apos;area che ti interessa e lasciaci un messaggio.
             </p>
           </div>

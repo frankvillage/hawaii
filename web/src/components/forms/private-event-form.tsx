@@ -56,7 +56,7 @@ export function PrivateEventForm() {
       className="rounded-[2rem] border border-white/10 bg-[rgba(255,255,255,0.04)] p-6 backdrop-blur-sm"
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-2 text-sm text-[#d8e2e7]">
+        <label className="flex flex-col gap-2 text-sm text-[#dadad5]">
           Nome
           <input
             name="name"
@@ -64,7 +64,7 @@ export function PrivateEventForm() {
             className="rounded-2xl border border-white/10 bg-[#0b1620] px-4 py-3 text-[#f4ede4] outline-none transition focus:border-[#d6b887]"
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-[#d8e2e7]">
+        <label className="flex flex-col gap-2 text-sm text-[#dadad5]">
           Email
           <input
             name="email"
@@ -73,7 +73,7 @@ export function PrivateEventForm() {
             className="rounded-2xl border border-white/10 bg-[#0b1620] px-4 py-3 text-[#f4ede4] outline-none transition focus:border-[#d6b887]"
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-[#d8e2e7]">
+        <label className="flex flex-col gap-2 text-sm text-[#dadad5]">
           Telefono
           <input
             name="phone"
@@ -81,7 +81,7 @@ export function PrivateEventForm() {
             className="rounded-2xl border border-white/10 bg-[#0b1620] px-4 py-3 text-[#f4ede4] outline-none transition focus:border-[#d6b887]"
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-[#d8e2e7]">
+        <label className="flex flex-col gap-2 text-sm text-[#dadad5]">
           Tipo di evento
           <select
             name="eventType"
@@ -96,7 +96,7 @@ export function PrivateEventForm() {
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-2 text-sm text-[#d8e2e7] sm:max-w-[11rem]">
+        <label className="flex flex-col gap-2 text-sm text-[#dadad5] sm:max-w-[11rem]">
           Ospiti
           <input
             name="guestCount"
@@ -108,7 +108,7 @@ export function PrivateEventForm() {
         </label>
       </div>
 
-      <label className="mt-4 flex flex-col gap-2 text-sm text-[#d8e2e7]">
+      <label className="mt-4 flex flex-col gap-2 text-sm text-[#dadad5]">
         Raccontaci l&apos;evento
         <textarea
           name="message"

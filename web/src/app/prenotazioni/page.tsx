@@ -12,7 +12,7 @@ export const metadata = buildMetadata({
 
 export default function BookingPage() {
   return (
-    <main className="bg-[#07111a]">
+    <main className="bg-[#0b0c0d]">
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[0.92fr_1.08fr]">
           <div>
@@ -22,7 +22,7 @@ export default function BookingPage() {
             <h1 className="mt-5 max-w-[10ch] font-serif text-5xl leading-[0.9] text-[#f4ede4] sm:text-6xl">
               Scegli come entrare in Hawaii.
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-[#c5d1d8]">
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-[#cfcfca]">
               Spiaggia, tavolo mare, terrazza, sport o una richiesta piu ampia.
               Ogni percorso ha il suo accesso.
             </p>
@@ -36,7 +36,7 @@ export default function BookingPage() {
                   <strong className="block font-serif text-2xl text-[#f4ede4]">
                     {option.title}
                   </strong>
-                  <p className="mt-2 text-sm leading-7 text-[#c5d1d8]">
+                  <p className="mt-2 text-sm leading-7 text-[#cfcfca]">
                     {option.description}
                   </p>
                 </Link>
@@ -51,7 +51,7 @@ export default function BookingPage() {
             <h2 className="mt-4 font-serif text-4xl text-[#f4ede4]">
               Lascia i tuoi riferimenti.
             </h2>
-            <p className="mt-4 max-w-xl text-base leading-7 text-[#c5d1d8]">
+            <p className="mt-4 max-w-xl text-base leading-7 text-[#cfcfca]">
               Ti ricontattiamo con il canale piu adatto in base alla tua richiesta.
             </p>
             <div className="mt-8">

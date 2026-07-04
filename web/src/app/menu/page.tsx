@@ -11,13 +11,13 @@ export const metadata = buildMetadata({
 
 export default function MenuPage() {
   return (
-    <main className="bg-[#07111a]">
+    <main className="bg-[#0b0c0d]">
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <p className="text-[0.72rem] uppercase tracking-[0.24em] text-[#d6b887]">Menu</p>
         <h1 className="mt-5 max-w-[10ch] font-serif text-5xl leading-[0.9] text-[#f4ede4] sm:text-6xl">
           Tutta l&apos;offerta, in un solo sguardo.
         </h1>
-        <p className="mt-6 max-w-3xl text-lg leading-8 text-[#c5d1d8]">
+        <p className="mt-6 max-w-3xl text-lg leading-8 text-[#cfcfca]">
           Ristorante mare, terrazza, cocktail e carta vini: ogni proposta resta
           leggibile e subito collegata alla prenotazione.
         </p>
@@ -28,7 +28,7 @@ export default function MenuPage() {
               className="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.04)] p-5"
             >
               <strong className="block font-serif text-2xl text-[#f4ede4]">{item.title}</strong>
-              <p className="mt-2 text-sm leading-7 text-[#c5d1d8]">{item.detail}</p>
+              <p className="mt-2 text-sm leading-7 text-[#cfcfca]">{item.detail}</p>
             </article>
           ))}
         </div>
@@ -43,7 +43,7 @@ export default function MenuPage() {
                 <h2 className="mt-4 font-serif text-4xl text-[#f4ede4] sm:text-5xl">
                   {menu.title}
                 </h2>
-                <p className="mt-4 text-base leading-8 text-[#c5d1d8]">{menu.description}</p>
+                <p className="mt-4 text-base leading-8 text-[#cfcfca]">{menu.description}</p>
                 {menu.action ? (
                   <Link
                     href={menu.action.href}
@@ -84,10 +84,10 @@ export default function MenuPage() {
                       {category.title}
                     </h3>
                     {category.note ? (
-                      <p className="mt-2 text-sm leading-7 text-[#c5d1d8]">{category.note}</p>
+                      <p className="mt-2 text-sm leading-7 text-[#cfcfca]">{category.note}</p>
                     ) : null}
                     {category.dishes.length ? (
-                      <ul className="mt-4 grid gap-3 text-sm leading-7 text-[#d9e2e7]">
+                      <ul className="mt-4 grid gap-3 text-sm leading-7 text-[#dbdbd6]">
                         {category.dishes.map((dish) => (
                           <li
                             key={dish.name}
@@ -113,7 +113,7 @@ export default function MenuPage() {
             <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#d6b887]">
               Tra mare e terrazza
             </p>
-            <p className="mt-3 text-base leading-8 text-[#c5d1d8]">
+            <p className="mt-3 text-base leading-8 text-[#cfcfca]">
               Dalla cucina di mare alla brace, ogni proposta accompagna un momento
               diverso della giornata, dal pranzo al dopocena.
             </p>

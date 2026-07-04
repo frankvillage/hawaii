@@ -59,7 +59,7 @@ export function BookingInquiryForm() {
       className="rounded-[2rem] border border-white/10 bg-[rgba(255,255,255,0.04)] p-6 backdrop-blur-sm"
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-2 text-sm text-[#d8e2e7] sm:col-span-2">
+        <label className="flex flex-col gap-2 text-sm text-[#dadad5] sm:col-span-2">
           Cosa vuoi prenotare
           <select
             name="requestType"
@@ -75,7 +75,7 @@ export function BookingInquiryForm() {
           </select>
         </label>
 
-        <label className="flex flex-col gap-2 text-sm text-[#d8e2e7]">
+        <label className="flex flex-col gap-2 text-sm text-[#dadad5]">
           Nome
           <input
             name="name"
@@ -83,7 +83,7 @@ export function BookingInquiryForm() {
             className="rounded-2xl border border-white/10 bg-[#0b1620] px-4 py-3 text-[#f4ede4] outline-none transition focus:border-[#d6b887]"
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-[#d8e2e7]">
+        <label className="flex flex-col gap-2 text-sm text-[#dadad5]">
           Email
           <input
             name="email"
@@ -93,14 +93,14 @@ export function BookingInquiryForm() {
           />
         </label>
 
-        <label className="flex flex-col gap-2 text-sm text-[#d8e2e7]">
+        <label className="flex flex-col gap-2 text-sm text-[#dadad5]">
           Telefono
           <input
             name="phone"
             className="rounded-2xl border border-white/10 bg-[#0b1620] px-4 py-3 text-[#f4ede4] outline-none transition focus:border-[#d6b887]"
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-[#d8e2e7]">
+        <label className="flex flex-col gap-2 text-sm text-[#dadad5]">
           Data preferita
           <input
             name="preferredDate"
@@ -109,7 +109,7 @@ export function BookingInquiryForm() {
           />
         </label>
 
-        <label className="flex flex-col gap-2 text-sm text-[#d8e2e7] sm:max-w-[11rem]">
+        <label className="flex flex-col gap-2 text-sm text-[#dadad5] sm:max-w-[11rem]">
           Persone
           <input
             name="guestCount"
@@ -120,7 +120,7 @@ export function BookingInquiryForm() {
         </label>
       </div>
 
-      <label className="mt-4 flex flex-col gap-2 text-sm text-[#d8e2e7]">
+      <label className="mt-4 flex flex-col gap-2 text-sm text-[#dadad5]">
         Note
         <textarea
           name="message"

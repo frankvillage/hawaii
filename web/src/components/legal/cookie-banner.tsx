@@ -41,7 +41,7 @@ export function CookieBanner() {
           <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#d6b887]">
             Cookie & analytics
           </p>
-          <p className="mt-2 text-[0.95rem] leading-6 text-[#d9e2e7] sm:text-sm">
+          <p className="mt-2 text-[0.95rem] leading-6 text-[#dbdbd6] sm:text-sm">
             Usiamo solo strumenti tecnici finché non esprimi una scelta. I cookie di
             misurazione e marketing restano bloccati fino al consenso.
           </p>

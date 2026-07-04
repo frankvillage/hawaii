@@ -10,7 +10,7 @@ type EntityPageProps = {
 
 export function EntityPageView({ page }: EntityPageProps) {
   return (
-    <main className="bg-[#07111a] text-white">
+    <main className="bg-[#0b0c0d] text-white">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(entitySchema(page)) }}
@@ -24,7 +24,7 @@ export function EntityPageView({ page }: EntityPageProps) {
             <h1 className="mt-5 max-w-[11ch] font-serif text-5xl leading-[0.9] text-[#f4ede4] sm:text-6xl lg:text-7xl">
               {page.title}
             </h1>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-[#e7edf1]">{page.lead}</p>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-[#e9e9e4]">{page.lead}</p>
             <p className="mt-4 max-w-2xl text-base leading-8 text-white/82">{page.intro}</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link href={page.primaryAction.href} className="cta">
@@ -38,7 +38,7 @@ export function EntityPageView({ page }: EntityPageProps) {
             </div>
           </div>
 
-          <div className="relative min-h-[24rem] overflow-hidden rounded-[2rem] border border-white/10 bg-[rgba(7,17,26,0.28)] p-5 backdrop-blur-sm">
+          <div className="relative min-h-[24rem] overflow-hidden rounded-[2rem] border border-white/10 bg-[rgba(18,19,20,0.28)] p-5 backdrop-blur-sm">
             {page.media ? (
               <Image
                 data-testid="entity-hero-media"
@@ -49,7 +49,7 @@ export function EntityPageView({ page }: EntityPageProps) {
                 className="absolute inset-0 object-cover"
               />
             ) : null}
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(3,8,12,0.1),rgba(3,8,12,0.62))]" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,10,0.1),rgba(8,9,10,0.62))]" />
             <div className="relative z-10 flex h-full flex-col justify-end">
               <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#f0c889]">
                 In evidenza
@@ -58,7 +58,7 @@ export function EntityPageView({ page }: EntityPageProps) {
                 {page.sections.map((section) => (
                   <div
                     key={section.title}
-                    className="rounded-[1.2rem] border border-white/10 bg-[rgba(7,17,26,0.34)] p-4 backdrop-blur-sm"
+                    className="rounded-[1.2rem] border border-white/10 bg-[rgba(18,19,20,0.34)] p-4 backdrop-blur-sm"
                   >
                     <strong className="block font-serif text-xl text-[#f4ede4]">
                       {section.title}
@@ -80,13 +80,13 @@ export function EntityPageView({ page }: EntityPageProps) {
               className="border-t border-white/10 pt-6 first:border-t-0 first:pt-0"
             >
               <h2 className="font-serif text-3xl text-[#f4ede4]">{section.title}</h2>
-              <p className="mt-3 max-w-3xl text-base leading-8 text-[#c5d1d8]">
+              <p className="mt-3 max-w-3xl text-base leading-8 text-[#cfcfca]">
                 {section.body}
               </p>
               {section.bullets?.length ? (
-                <ul className="mt-4 space-y-2 text-sm leading-7 text-[#d9e2e7]">
+                <ul className="mt-4 space-y-2 text-sm leading-7 text-[#dbdbd6]">
                   {section.bullets.map((bullet) => (
-                    <li key={bullet} className="pl-4 text-[#d9e2e7] before:mr-2 before:ml-[-1rem] before:text-[#d6b887] before:content-['-']">
+                    <li key={bullet} className="pl-4 text-[#dbdbd6] before:mr-2 before:ml-[-1rem] before:text-[#d6b887] before:content-['-']">
                       {bullet}
                     </li>
                   ))}
@@ -127,7 +127,7 @@ export function EntityPageView({ page }: EntityPageProps) {
               {page.faqs.map((faq) => (
                 <div key={faq.question} className="border-t border-white/10 pt-4 first:border-t-0 first:pt-0">
                   <h3 className="font-semibold text-[#f4ede4]">{faq.question}</h3>
-                  <p className="mt-2 text-sm leading-7 text-[#c5d1d8]">{faq.answer}</p>
+                  <p className="mt-2 text-sm leading-7 text-[#cfcfca]">{faq.answer}</p>
                 </div>
               ))}
             </div>

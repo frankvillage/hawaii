@@ -88,7 +88,7 @@ const cucine = [
 
 export default function VillaggioPage() {
   return (
-    <main className="bg-[#07111a] text-white">
+    <main className="bg-[#0b0c0d] text-white">
       <section
         data-testid="classic-section"
         className="relative isolate overflow-hidden border-b border-white/10"
@@ -101,7 +101,7 @@ export default function VillaggioPage() {
           sizes="100vw"
           className="object-cover"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,8,12,0.72),rgba(3,8,12,0.42)_40%,rgba(3,8,12,0.88))]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,10,0.72),rgba(8,9,10,0.42)_40%,rgba(8,9,10,0.88))]" />
         <div className="relative z-10 mx-auto flex min-h-[62svh] max-w-7xl flex-col items-start justify-end px-4 py-14 sm:px-6 lg:px-8">
           <Image
             src="/media/hawaii/brand/logo-hawaii-white.png"
@@ -114,7 +114,7 @@ export default function VillaggioPage() {
           <h1 className="mt-6 max-w-[16ch] font-serif text-4xl leading-[0.95] text-[#f6efe6] sm:text-6xl">
             Il villaggio sul mare di Pescara.
           </h1>
-          <p className="mt-5 max-w-2xl text-base leading-8 text-[#e3eaee]">
+          <p className="mt-5 max-w-2xl text-base leading-8 text-[#e5e5e0]">
             Spiaggia, ristorante di mare, pizza, braceria in terrazza, sport ed
             eventi: tutto nello stesso fronte mare, dal primo sole alla notte.
           </p>
@@ -162,7 +162,7 @@ export default function VillaggioPage() {
                   {item.label}
                 </p>
                 <h3 className="mt-3 font-serif text-2xl text-[#f4ede4]">{item.title}</h3>
-                <p className="mt-3 text-sm leading-7 text-[#c5d1d8]">{item.body}</p>
+                <p className="mt-3 text-sm leading-7 text-[#cfcfca]">{item.body}</p>
                 <div className="mt-5 flex flex-wrap gap-3 text-sm font-semibold">
                   {item.action.external ? (
                     <a
@@ -196,7 +196,7 @@ export default function VillaggioPage() {
 
       <section
         data-testid="classic-section"
-        className="border-t border-white/10 bg-[#060e16]"
+        className="border-t border-white/10 bg-[#0a0b0c]"
       >
         <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
           <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[#d6b887]">
@@ -216,7 +216,7 @@ export default function VillaggioPage() {
                     <h3 className="mt-3 font-serif text-2xl text-[#f4ede4] sm:text-3xl">
                       {cucina.title}
                     </h3>
-                    <p className="mt-3 text-sm leading-7 text-[#c5d1d8]">{cucina.body}</p>
+                    <p className="mt-3 text-sm leading-7 text-[#cfcfca]">{cucina.body}</p>
                   </div>
                   <div className="flex flex-wrap gap-3 text-sm font-semibold">
                     {cucina.actions.map((action) => (
@@ -282,20 +282,20 @@ export default function VillaggioPage() {
                       href={option.href}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex items-baseline justify-between gap-4 rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-4 py-3.5 text-sm text-[#f0f4f6] transition hover:border-white/30"
+                      className="flex items-baseline justify-between gap-4 rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-4 py-3.5 text-sm text-[#f1f1ec] transition hover:border-white/30"
                     >
                       <span className="font-semibold">{option.label}</span>
-                      <span className="text-right text-xs text-[#b9c6cd]">{option.detail}</span>
+                      <span className="text-right text-xs text-[#c1c1bb]">{option.detail}</span>
                     </a>
                   </li>
                 ) : (
                   <li key={option.label}>
                     <Link
                       href={option.href}
-                      className="flex items-baseline justify-between gap-4 rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-4 py-3.5 text-sm text-[#f0f4f6] transition hover:border-white/30"
+                      className="flex items-baseline justify-between gap-4 rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-4 py-3.5 text-sm text-[#f1f1ec] transition hover:border-white/30"
                     >
                       <span className="font-semibold">{option.label}</span>
-                      <span className="text-right text-xs text-[#b9c6cd]">{option.detail}</span>
+                      <span className="text-right text-xs text-[#c1c1bb]">{option.detail}</span>
                     </Link>
                   </li>
                 ),
@@ -309,7 +309,7 @@ export default function VillaggioPage() {
             <h2 className="mt-4 font-serif text-3xl text-[#f4ede4] sm:text-4xl">
               Sul lungomare di Pescara.
             </h2>
-            <div className="mt-7 space-y-2 text-sm leading-7 text-[#c5d1d8]">
+            <div className="mt-7 space-y-2 text-sm leading-7 text-[#cfcfca]">
               <p>{siteMeta.address}</p>
               <p>
                 Ristorante{" "}

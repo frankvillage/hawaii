@@ -57,7 +57,7 @@ export function HomeChapter({ chapter, index }: HomeChapterProps) {
                   <h2 className="mt-4 max-w-[12ch] font-serif text-4xl leading-[0.95] text-[#f4ede4] sm:text-5xl lg:text-6xl">
                     {chapter.title}
                   </h2>
-                  <p className="mt-4 max-w-xl text-base leading-7 text-[#edf2f4] sm:text-lg">
+                  <p className="mt-4 max-w-xl text-base leading-7 text-[#eeeee9] sm:text-lg">
                     {chapter.summary}
                   </p>
 
@@ -68,7 +68,7 @@ export function HomeChapter({ chapter, index }: HomeChapterProps) {
                     {chapter.atmosphere.map((item) => (
                       <li
                         key={item}
-                        className="rounded-full border border-white/12 bg-[rgba(7,17,26,0.26)] px-3 py-1.5 backdrop-blur-sm"
+                        className="rounded-full border border-white/12 bg-[rgba(18,19,20,0.26)] px-3 py-1.5 backdrop-blur-sm"
                       >
                         {item}
                       </li>
@@ -91,7 +91,7 @@ export function HomeChapter({ chapter, index }: HomeChapterProps) {
               <div className="flex flex-col gap-3">
                 <Link
                   href={chapter.primaryAction.href}
-                  className="rounded-full bg-white/95 px-5 py-3 text-center text-sm font-semibold text-[#102437] transition hover:-translate-y-0.5"
+                  className="rounded-full bg-white/95 px-5 py-3 text-center text-sm font-semibold text-[#1c1d1e] transition hover:-translate-y-0.5"
                 >
                   {chapter.primaryAction.label}
                 </Link>
