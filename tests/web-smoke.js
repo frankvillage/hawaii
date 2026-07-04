@@ -48,8 +48,8 @@ async function main() {
       "Homepage should expose one master journey video instead of isolated chapter videos",
     );
     assert.ok(
-      (await page.locator('[data-testid="scene-hotspot"]').count()) >= 3,
-      "Homepage should expose multiple subtle hotspots tied to the visual scene",
+      (await page.locator('[data-testid="scene-hotspot"]').count()) >= 2,
+      "Homepage should expose anchored hotspots tied to the visual scene (max 2 per scene)",
     );
     assert.equal(
       await page.locator('[data-testid="scene-marker"]').count(),

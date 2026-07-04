@@ -8,6 +8,7 @@ Client: Comunica Group / Hawaii Pescara
 Before editing, read:
 
 - `docs/claude-code-design-handoff.md`
+- `docs/overlay-redesign-handoff.md`
 - `docs/codex-return-audit-brief.md`
 - `docs/hawaii-urban-village-masterplan-2026.md`
 - `docs/hawaii-content-handoff-2026.md`

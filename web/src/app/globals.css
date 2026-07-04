@@ -61,6 +61,119 @@ button {
     transform 180ms ease;
 }
 
+/* Journey anchored markers (design handoff: docs/overlay-redesign-handoff.md) */
+.journey-marker a:focus-visible {
+  outline: 1px solid rgba(232, 200, 158, 0.8);
+  outline-offset: 4px;
+  border-radius: 999px;
+}
+
+.journey-dot {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 999px;
+  background: #e8c89e;
+  box-shadow: 0 0 14px rgba(232, 200, 158, 0.75);
+  animation: journey-dot-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  animation-delay: calc(0.05s + var(--marker-i, 0) * 0.12s);
+}
+
+.journey-dot::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border-radius: 999px;
+  border: 1px solid rgba(232, 200, 158, 0.5);
+  animation: journey-pulse 2.8s ease-out infinite;
+  animation-delay: calc(var(--marker-i, 0) * 0.9s);
+}
+
+.journey-hairline {
+  width: 34px;
+  height: 1px;
+  flex: none;
+  background: linear-gradient(90deg, rgba(232, 200, 158, 0.9), rgba(232, 200, 158, 0));
+  transform-origin: left center;
+  animation: journey-line-draw 0.4s ease-out both;
+  animation-delay: calc(0.2s + var(--marker-i, 0) * 0.12s);
+}
+
+.journey-marker[data-mirrored="true"] .journey-hairline {
+  background: linear-gradient(270deg, rgba(232, 200, 158, 0.9), rgba(232, 200, 158, 0));
+  transform-origin: right center;
+}
+
+.journey-pill {
+  animation: journey-label-rise 0.4s ease-out both;
+  animation-delay: calc(0.34s + var(--marker-i, 0) * 0.12s);
+}
+
+.journey-minicard {
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+  transition:
+    opacity 0.24s ease,
+    transform 0.24s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .journey-marker:hover .journey-minicard,
+  .journey-marker:focus-within .journey-minicard {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+}
+
+@keyframes journey-dot-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes journey-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+@keyframes journey-line-draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes journey-label-rise {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 ::selection {
   background: rgba(214, 184, 135, 0.28);
 }

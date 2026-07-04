@@ -116,6 +116,35 @@ stradaparco" intentionally ignored — different winter venue).
   Spare curated photos not currently placed: estate-crudo,
   estate-spaghetti-mare, food-tonno-griglia, muulab-dolce.
 
+## Overlay redesign pass (2026-07-04)
+
+Implemented the Claude Design handoff (docs/overlay-redesign-handoff.md),
+adapted from its 7 placeholder scenes to the real 9-scene edit:
+
+- Anchored markers replace pill-only hotspots: gold dot + pulsing ring +
+  hairline + small-caps pill, mirrored when x > 62%; hover/focus opens a
+  216px mini-card (caption from routeCaptions + route); on touch the tap
+  opens a bottom sheet with caption + "Apri". Max 2 hotspots per scene,
+  re-anchored frame by frame on the hold frames (10% grid), captions and
+  deep links per destination (pizza → /menu#ristorante-mare, feste →
+  /feste-private#form).
+- Soft hold: per-scene plateau remap of the video scrub (middle 40% nearly
+  still) + settle envelope driving overlay opacity/rise and pointer-events;
+  first scene arrives settled so first paint is complete. Reduced motion:
+  settle = 1, no animations, poster fallback (unchanged).
+- Scene marker top-right now carries an SVG progress ring (scene-local
+  progress) + daypart + NN/09. Soul rail restyled: right-aligned, active
+  item gold with glowing dot. Stage wordmark is the official white logo
+  (h1 kept as sr-only text).
+- Scrim, text-shadows, parallax factors (±14px; wordmark −0.26, marker
+  +0.22, hotspots +0.4, title −0.18) per design tokens.
+- Real booking inventory re-verified on hawaiipescara.it: beach →
+  widget.spiagge.it, padel/crossfit → SportClubby app
+  (sportclubby.app.link/tfuwbM6rbyb — now wired as the sport scene CTA,
+  in the booking popup, on /sport and /villaggio), table/terrace → phone
+  + internal inquiry form, private events → form. No dead booking
+  promises remain.
+
 ## Known limitations / notes for the audit
 
 - Playwright's bundled Chromium cannot decode H.264, so the smoke test's

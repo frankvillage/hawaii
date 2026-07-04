@@ -4,11 +4,43 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { homeHero, homeJourney, quickBooking } from "@/lib/site-content";
+import {
+  homeHero,
+  homeJourney,
+  quickBooking,
+  routeCaptions,
+  type JourneyHotspot,
+} from "@/lib/site-content";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
+
+/* Soft hold: the middle 40% of each scene advances the video only slightly,
+   so the frame settles while titles and markers come in (design handoff §4). */
+function plateau(f: number) {
+  if (f < 0.3) {
+    return (f / 0.3) * 0.46;
+  }
+  if (f < 0.7) {
+    return 0.46 + ((f - 0.3) / 0.4) * 0.08;
+  }
+  return 0.54 + ((f - 0.7) / 0.3) * 0.46;
+}
+
+function sceneAt(progress: number) {
+  return (
+    homeJourney.scenes.find((scene) => progress >= scene.start && progress < scene.end) ??
+    homeJourney.scenes[homeJourney.scenes.length - 1]
+  );
+}
+
+function captionFor(hotspot: JourneyHotspot) {
+  return hotspot.caption ?? routeCaptions[hotspot.href.split("#")[0]] ?? "";
+}
+
+const RING_RADIUS = 15;
+const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 
 export function ScrollVideoStage() {
   const wrapperRef = useRef<HTMLElement>(null);
@@ -19,27 +51,7 @@ export function ScrollVideoStage() {
   const [videoDuration, setVideoDuration] = useState(homeJourney.media.duration);
   const [progress, setProgress] = useState(0);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-
-  useEffect(() => {
-    if (!isPanelOpen) {
-      return;
-    }
-
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsPanelOpen(false);
-      }
-    };
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.addEventListener("keydown", closeOnEscape);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [isPanelOpen]);
+  const [sheetHotspot, setSheetHotspot] = useState<JourneyHotspot | null>(null);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -52,6 +64,28 @@ export function ScrollVideoStage() {
 
     return () => mediaQuery.removeEventListener("change", syncMotionPreference);
   }, []);
+
+  useEffect(() => {
+    if (!isPanelOpen && !sheetHotspot) {
+      return;
+    }
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsPanelOpen(false);
+        setSheetHotspot(null);
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isPanelOpen, sheetHotspot]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -93,13 +127,17 @@ export function ScrollVideoStage() {
 
       wrapper.style.setProperty("--journey-progress", nextProgress.toFixed(4));
 
-      setProgress((current) => (Math.abs(current - nextProgress) > 0.002 ? nextProgress : current));
+      setProgress((current) => (Math.abs(current - nextProgress) > 0.0012 ? nextProgress : current));
 
       if (isReducedMotion || !video || !Number.isFinite(videoDuration) || videoDuration <= 0) {
         return;
       }
 
-      const nextTime = clamp(nextProgress * videoDuration, 0, videoDuration);
+      const scene = sceneAt(nextProgress);
+      const span = Math.max(scene.end - scene.start, 0.001);
+      const sceneFraction = clamp((nextProgress - scene.start) / span, 0, 1);
+      const mappedProgress = scene.start + plateau(sceneFraction) * span;
+      const nextTime = clamp(mappedProgress * videoDuration, 0, videoDuration);
 
       if (Math.abs(video.currentTime - nextTime) > 0.05) {
         try {
@@ -133,24 +171,33 @@ export function ScrollVideoStage() {
     };
   }, [isReducedMotion, videoDuration]);
 
-  const activeScene = useMemo(() => {
-    const directMatch =
-      homeJourney.scenes.find((scene) => progress >= scene.start && progress < scene.end) ??
-      homeJourney.scenes[homeJourney.scenes.length - 1];
-
-    return directMatch;
-  }, [progress]);
+  const activeScene = useMemo(() => sceneAt(progress), [progress]);
 
   const activeSceneIndex = useMemo(
     () => homeJourney.scenes.findIndex((scene) => scene.id === activeScene.id),
     [activeScene.id],
   );
 
-  const sceneProgress = clamp(
+  const sceneFraction = clamp(
     (progress - activeScene.start) / Math.max(activeScene.end - activeScene.start, 0.001),
     0,
     1,
   );
+
+  /* Settle envelope: overlays fade in as the scene holds, release as it scrolls
+     on. The first scene arrives already settled so the first paint is complete. */
+  const overlaySettle = isReducedMotion
+    ? 1
+    : activeSceneIndex === 0 && sceneFraction < 0.5
+      ? 1
+      : clamp((0.5 - Math.abs(sceneFraction - 0.5)) / 0.28, 0, 1);
+
+  const overlaysInteractive = overlaySettle > 0.18;
+
+  const overlayStyle = {
+    opacity: overlaySettle,
+    transform: `translateY(${((1 - overlaySettle) * 16).toFixed(1)}px)`,
+  };
 
   const handlePointerMove = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!window.matchMedia("(pointer: fine)").matches) {
@@ -164,8 +211,8 @@ export function ScrollVideoStage() {
     }
 
     const rect = stage.getBoundingClientRect();
-    const offsetX = ((event.clientX - rect.left) / rect.width - 0.5) * 16;
-    const offsetY = ((event.clientY - rect.top) / rect.height - 0.5) * 12;
+    const offsetX = ((event.clientX - rect.left) / rect.width - 0.5) * 28;
+    const offsetY = ((event.clientY - rect.top) / rect.height - 0.5) * 28;
 
     stage.style.setProperty("--pointer-x", `${offsetX.toFixed(2)}px`);
     stage.style.setProperty("--pointer-y", `${offsetY.toFixed(2)}px`);
@@ -180,6 +227,13 @@ export function ScrollVideoStage() {
 
     stage.style.setProperty("--pointer-x", "0px");
     stage.style.setProperty("--pointer-y", "0px");
+  };
+
+  const openHotspotSheet = (event: React.MouseEvent, hotspot: JourneyHotspot) => {
+    if (window.matchMedia("(hover: none), (pointer: coarse)").matches) {
+      event.preventDefault();
+      setSheetHotspot(hotspot);
+    }
   };
 
   return (
@@ -225,7 +279,7 @@ export function ScrollVideoStage() {
           </video>
         )}
 
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,8,12,0.12),rgba(3,8,12,0.2)_24%,rgba(3,8,12,0.52)_70%,rgba(3,8,12,0.84))]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,8,12,0.14),rgba(3,8,12,0.22)_24%,rgba(3,8,12,0.58)_62%,rgba(3,8,12,0.88))]" />
         <div
           className="journey-stage-light absolute inset-0"
           style={{ opacity: 0.32 + progress * 0.4 }}
@@ -237,57 +291,124 @@ export function ScrollVideoStage() {
             <div
               className="max-w-[16rem] sm:max-w-xl"
               style={{
-                transform: "translate3d(calc(var(--pointer-x) * -0.22), calc(var(--pointer-y) * -0.22), 0)",
+                transform: "translate3d(calc(var(--pointer-x) * -0.26), calc(var(--pointer-y) * -0.26), 0)",
               }}
             >
               <p className="text-[0.68rem] uppercase tracking-[0.28em] text-[#e8c89e]">
                 {homeHero.eyebrow}
               </p>
-              <h1 className="mt-3 max-w-[7ch] font-serif text-5xl leading-[0.86] text-[#f6efe6] sm:text-7xl lg:text-[7rem]">
-                {homeHero.title}
-              </h1>
+              <Image
+                src="/media/hawaii/brand/logo-hawaii-white.png"
+                alt=""
+                aria-hidden
+                width={800}
+                height={377}
+                priority
+                className="mt-3 h-14 w-auto drop-shadow-[0_2px_24px_rgba(3,8,12,0.6)] sm:h-20 lg:h-24"
+              />
+              <h1 className="sr-only">Hawaii Pescara — Urban Village</h1>
             </div>
 
             <div
               data-testid="scene-marker"
-              className="rounded-full border border-white/14 bg-[rgba(7,17,26,0.44)] px-3 py-2 text-right backdrop-blur-md"
+              className="flex items-center gap-3 rounded-full border border-white/14 bg-[rgba(7,17,26,0.44)] py-2 pl-2.5 pr-4 backdrop-blur-md"
               style={{
-                transform: "translate3d(calc(var(--pointer-x) * 0.18), calc(var(--pointer-y) * 0.18), 0)",
+                transform: "translate3d(calc(var(--pointer-x) * 0.22), calc(var(--pointer-y) * 0.22), 0)",
               }}
             >
-              <p className="text-[0.62rem] uppercase tracking-[0.24em] text-[#e8c89e]">
-                {String(activeSceneIndex + 1).padStart(2, "0")} / {String(homeJourney.scenes.length).padStart(2, "0")}
-              </p>
-              <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#eef2f4]">
-                {activeScene.daypart}
-              </p>
+              <svg width="38" height="38" viewBox="0 0 38 38" aria-hidden className="-rotate-90">
+                <circle
+                  cx="19"
+                  cy="19"
+                  r={RING_RADIUS}
+                  fill="none"
+                  stroke="rgba(245,239,230,0.18)"
+                  strokeWidth="2"
+                />
+                <circle
+                  cx="19"
+                  cy="19"
+                  r={RING_RADIUS}
+                  fill="none"
+                  stroke="#e8c89e"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeDasharray={RING_LENGTH}
+                  strokeDashoffset={RING_LENGTH * (1 - sceneFraction)}
+                />
+              </svg>
+              <div className="text-right">
+                <p className="text-[0.62rem] uppercase tracking-[0.24em] text-[#e8c89e]">
+                  {String(activeSceneIndex + 1).padStart(2, "0")} /{" "}
+                  {String(homeJourney.scenes.length).padStart(2, "0")}
+                </p>
+                <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#eef2f4]">
+                  {activeScene.daypart}
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="pointer-events-none absolute inset-0">
-            {activeScene.hotspots.map((hotspot) => (
-              <Link
-                key={`${activeScene.id}-${hotspot.label}`}
-                data-testid="scene-hotspot"
-                href={hotspot.href}
-                className="pointer-events-auto absolute inline-flex -translate-x-1/2 -translate-y-1/2 items-center rounded-full border border-white/16 bg-[rgba(7,17,26,0.46)] px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-[#f5efe6] backdrop-blur-md transition hover:border-white/36 hover:bg-[rgba(12,24,36,0.62)]"
-                style={{
-                  left: `${hotspot.x}%`,
-                  top: `${hotspot.y}%`,
-                  opacity: 0.56 + sceneProgress * 0.44,
-                  transform: `translate3d(calc(-50% + var(--pointer-x) * 0.12), calc(-50% + var(--pointer-y) * 0.12), 0) scale(${0.97 + sceneProgress * 0.03})`,
-                }}
-              >
-                {hotspot.label}
-              </Link>
-            ))}
+          <div className="pointer-events-none absolute inset-0" style={overlayStyle}>
+            {activeScene.hotspots.map((hotspot, index) => {
+              const mirrored = hotspot.x > 62;
+
+              return (
+                <div
+                  key={`${activeScene.id}-${hotspot.label}`}
+                  data-mirrored={mirrored}
+                  className="journey-marker absolute"
+                  style={
+                    {
+                      left: `${hotspot.x}%`,
+                      top: `${hotspot.y}%`,
+                      "--marker-i": index,
+                      transform:
+                        "translate(-50%, -50%) translate3d(calc(var(--pointer-x) * 0.4), calc(var(--pointer-y) * 0.4), 0)",
+                    } as React.CSSProperties
+                  }
+                >
+                  <a
+                    href={hotspot.href}
+                    data-testid="scene-hotspot"
+                    onClick={(event) => openHotspotSheet(event, hotspot)}
+                    className={`flex items-center gap-2.5 p-2 ${
+                      mirrored ? "flex-row-reverse" : ""
+                    } ${overlaysInteractive ? "pointer-events-auto" : "pointer-events-none"}`}
+                  >
+                    <span className="journey-dot" />
+                    <span className="journey-hairline" />
+                    <span className="journey-pill inline-flex rounded-full border border-[rgba(245,239,230,0.26)] bg-[rgba(7,17,26,0.5)] px-4 py-2 text-[0.68rem] uppercase tracking-[0.16em] text-[#f5efe6] backdrop-blur-md">
+                      {hotspot.label}
+                    </span>
+                  </a>
+
+                  <div
+                    className={`journey-minicard absolute top-full mt-2 hidden w-[216px] rounded-2xl border border-[rgba(245,239,230,0.16)] bg-[rgba(6,14,22,0.78)] p-4 backdrop-blur-xl md:block ${
+                      mirrored ? "right-2" : "left-2"
+                    }`}
+                  >
+                    <p className="text-[12.5px] leading-5 text-[#dfe7ea]">{captionFor(hotspot)}</p>
+                    <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-white/10 pt-3">
+                      <span className="text-[0.66rem] uppercase tracking-[0.2em] text-[#e8c89e]">
+                        Apri
+                      </span>
+                      <span className="font-mono text-[0.66rem] text-[#8ea3ad]">
+                        {hotspot.href.split("#")[0]}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-end">
             <div
               className="max-w-2xl"
               style={{
-                transform: "translate3d(calc(var(--pointer-x) * -0.16), calc(var(--pointer-y) * -0.16), 0)",
+                ...overlayStyle,
+                transform: `${overlayStyle.transform} translate3d(calc(var(--pointer-x) * -0.18), calc(var(--pointer-y) * -0.18), 0)`,
               }}
             >
               <p
@@ -296,14 +417,20 @@ export function ScrollVideoStage() {
               >
                 {activeScene.eyebrow}
               </p>
-              <h2 className="mt-4 max-w-[12ch] font-serif text-4xl leading-[0.92] text-[#f5efe6] sm:text-5xl lg:text-6xl">
+              <h2
+                className="mt-4 max-w-[12ch] font-serif text-4xl leading-[0.95] text-[#f5efe6] sm:text-5xl lg:text-6xl"
+                style={{ textShadow: "0 2px 30px rgba(3,8,12,0.6)" }}
+              >
                 {activeScene.title}
               </h2>
-              <p className="mt-5 max-w-xl text-sm leading-7 text-[#edf2f4] sm:text-base sm:leading-8">
+              <p
+                className="mt-5 max-w-xl text-sm leading-7 text-[#edf2f4] sm:text-base sm:leading-8"
+                style={{ textShadow: "0 1px 18px rgba(3,8,12,0.55)" }}
+              >
                 {activeScene.summary}
               </p>
 
-              <div className="mt-6 flex flex-wrap gap-3">
+              <div className={`mt-6 flex flex-wrap gap-3 ${overlaysInteractive ? "" : "pointer-events-none"}`}>
                 {activeScene.action?.external ? (
                   <a
                     href={activeScene.action.href}
@@ -373,6 +500,48 @@ export function ScrollVideoStage() {
           </section>
         ))}
       </div>
+
+      {sheetHotspot ? (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6">
+          <button
+            type="button"
+            aria-label="Chiudi"
+            onClick={() => setSheetHotspot(null)}
+            className="absolute inset-0 cursor-pointer bg-[rgba(3,8,12,0.64)] backdrop-blur-sm"
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={sheetHotspot.label}
+            data-testid="hotspot-sheet"
+            className="relative w-full rounded-t-[1.8rem] border border-white/12 bg-[rgba(9,19,28,0.96)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:max-w-sm sm:rounded-[1.8rem]"
+          >
+            <p className="text-[0.64rem] uppercase tracking-[0.26em] text-[#e8c89e]">
+              Hawaii • {activeScene.eyebrow}
+            </p>
+            <p className="mt-2 font-serif text-2xl leading-tight text-[#f5efe6]">
+              {sheetHotspot.label}
+            </p>
+            <p className="mt-3 text-sm leading-6 text-[#dfe7ea]">{captionFor(sheetHotspot)}</p>
+            <div className="mt-5 flex gap-3">
+              <Link
+                href={sheetHotspot.href}
+                onClick={() => setSheetHotspot(null)}
+                className="inline-flex rounded-full bg-[#bf7148] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#cc7d54]"
+              >
+                Apri
+              </Link>
+              <button
+                type="button"
+                onClick={() => setSheetHotspot(null)}
+                className="inline-flex cursor-pointer rounded-full border border-white/18 px-5 py-3 text-sm font-semibold text-[#f5efe6] transition hover:border-white/32"
+              >
+                Chiudi
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {isPanelOpen ? (
         <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6">

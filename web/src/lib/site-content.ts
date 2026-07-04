@@ -13,6 +13,19 @@ export type JourneyHotspot = {
   href: string;
   x: number;
   y: number;
+  caption?: string;
+};
+
+export const routeCaptions: Record<string, string> = {
+  "/menu": "Crudi, primi, brace e carta vini",
+  "/prenotazioni": "Spiaggia, tavolo mare o terrazza",
+  "/beach": "Ombrelloni e palme fronte mare",
+  "/sport": "Padel e outdoor training",
+  "/eventi": "Sunset, dj set e special date",
+  "/terrazza": "MUULab Riviera · sunset e brace",
+  "/ristorante-mare": "Pesce, à la carte, cocktail bar",
+  "/feste-private": "Cene riservate ed eventi su misura",
+  "/villaggio": "Il villaggio in un colpo d'occhio",
 };
 
 export type SceneMenuItem = {
@@ -139,6 +152,7 @@ export const siteMeta = {
   beachPhone: "375 5175508",
   beachBookingUrl:
     "https://widget.spiagge.it/stabilimenti-balneari/prenotazione/it-pe-65123-lido-hawaii/?ybnl=1",
+  sportBookingUrl: "https://sportclubby.app.link/tfuwbM6rbyb",
   email: "info@hawaiipescara.it",
   mapUrl: "https://g.page/r/CV_HAWAII_PESCARA",
   instagramUrl: "https://www.instagram.com/hawaii_pescara/",
@@ -194,9 +208,8 @@ export const homeJourney = {
       start: 0,
       end: 0.125,
       hotspots: [
-        { label: "Beach", href: "/beach", x: 72, y: 30 },
-        { label: "Ristorante", href: "/ristorante-mare", x: 34, y: 54 },
-        { label: "Sport", href: "/sport", x: 62, y: 72 },
+        { label: "Ingresso spiaggia", href: "/beach", x: 8, y: 31 },
+        { label: "Ristorante", href: "/ristorante-mare", x: 37, y: 27 },
       ],
       action: { label: "Scopri il villaggio", href: "/villaggio" },
     },
@@ -211,9 +224,8 @@ export const homeJourney = {
       start: 0.125,
       end: 0.2,
       hotspots: [
-        { label: "Prenota tavolo", href: "/prenotazioni", x: 30, y: 62 },
-        { label: "Scopri menu", href: "/menu", x: 74, y: 40 },
-        { label: "Cocktail bar", href: "/ristorante-mare", x: 55, y: 26 },
+        { label: "Cocktail bar", href: "/ristorante-mare", x: 62, y: 18 },
+        { label: "Scopri menu", href: "/menu#ristorante-mare", x: 86, y: 44 },
       ],
       action: { label: "Il ristorante", href: "/ristorante-mare" },
     },
@@ -228,11 +240,10 @@ export const homeJourney = {
       start: 0.2,
       end: 0.26,
       hotspots: [
-        { label: "Campi da padel", href: "/sport", x: 50, y: 42 },
-        { label: "Outdoor gym", href: "/sport", x: 24, y: 66 },
-        { label: "Prenota attività", href: "/prenotazioni", x: 76, y: 64 },
+        { label: "Campi da padel", href: "/sport", x: 31, y: 40 },
+        { label: "Outdoor gym", href: "/sport", x: 72, y: 42 },
       ],
-      action: { label: "Prenota padel", href: "/sport" },
+      action: { label: "Prenota padel", href: siteMeta.sportBookingUrl, external: true },
     },
     {
       id: "beach",
@@ -245,9 +256,8 @@ export const homeJourney = {
       start: 0.26,
       end: 0.335,
       hotspots: [
-        { label: "Prenota spiaggia", href: "/prenotazioni", x: 50, y: 66 },
-        { label: "Beach club", href: "/beach", x: 24, y: 42 },
-        { label: "Aperitivi", href: "/eventi", x: 79, y: 36 },
+        { label: "Beach club", href: "/beach", x: 22, y: 42 },
+        { label: "Aperitivi", href: "/eventi", x: 80, y: 30 },
       ],
       menu: {
         anchor: "ristorante-mare",
@@ -270,9 +280,8 @@ export const homeJourney = {
       start: 0.335,
       end: 0.45,
       hotspots: [
-        { label: "Menu pesce", href: "/menu", x: 70, y: 46 },
-        { label: "Prenota tavolo", href: "/prenotazioni", x: 32, y: 62 },
-        { label: "Ristorante", href: "/ristorante-mare", x: 18, y: 32 },
+        { label: "Prenota tavolo", href: "/prenotazioni", x: 30, y: 22 },
+        { label: "Ristorante", href: "/ristorante-mare", x: 72, y: 34 },
       ],
       menu: {
         anchor: "ristorante-mare",
@@ -295,9 +304,14 @@ export const homeJourney = {
       start: 0.45,
       end: 0.55,
       hotspots: [
-        { label: "Cucina a vista", href: "/ristorante-mare", x: 50, y: 38 },
-        { label: "Scopri menu", href: "/menu", x: 74, y: 60 },
-        { label: "Prenota", href: "/prenotazioni", x: 26, y: 64 },
+        { label: "Cucina a vista", href: "/ristorante-mare", x: 70, y: 34 },
+        {
+          label: "La pizza, a cena",
+          href: "/menu#ristorante-mare",
+          x: 85,
+          y: 63,
+          caption: "Sfizi e pizze dal forno, la sera",
+        },
       ],
       menu: {
         anchor: "ristorante-mare",
@@ -320,9 +334,8 @@ export const homeJourney = {
       start: 0.55,
       end: 0.74,
       hotspots: [
-        { label: "Terrazza", href: "/terrazza", x: 62, y: 40 },
-        { label: "Aperitivo", href: "/eventi", x: 36, y: 62 },
-        { label: "Prenota in terrazza", href: "/prenotazioni", x: 76, y: 68 },
+        { label: "Terrazza", href: "/terrazza", x: 58, y: 20 },
+        { label: "Aperitivo", href: "/eventi", x: 71, y: 52 },
       ],
       menu: {
         anchor: "muulab",
@@ -345,9 +358,8 @@ export const homeJourney = {
       start: 0.74,
       end: 0.9,
       hotspots: [
-        { label: "MUULab Riviera", href: "/terrazza", x: 50, y: 34 },
-        { label: "Menu della sera", href: "/menu", x: 28, y: 62 },
-        { label: "Prenota", href: "/prenotazioni", x: 74, y: 64 },
+        { label: "MUULab Riviera", href: "/terrazza", x: 52, y: 18 },
+        { label: "Menu della sera", href: "/menu#muulab", x: 81, y: 28 },
       ],
       menu: {
         anchor: "muulab",
@@ -370,9 +382,14 @@ export const homeJourney = {
       start: 0.9,
       end: 1,
       hotspots: [
-        { label: "Eventi", href: "/eventi", x: 55, y: 44 },
-        { label: "Feste private", href: "/feste-private", x: 30, y: 64 },
-        { label: "Prenota", href: "/prenotazioni", x: 72, y: 30 },
+        {
+          label: "Feste private",
+          href: "/feste-private#form",
+          x: 30,
+          y: 40,
+          caption: "Richiedi una data: il form è a un tocco",
+        },
+        { label: "Prenota il tavolo", href: "/prenotazioni", x: 66, y: 28 },
       ],
       action: { label: "Gli eventi", href: "/eventi" },
     },
@@ -681,8 +698,8 @@ export const pages: Record<string, EntityPage> = {
     lead: "Allenarsi sul mare fa parte del ritmo di Hawaii.",
     intro:
       "Padel, campi da gioco e outdoor training completano la giornata con energia e vista mare.",
-    primaryAction: { label: "Scopri sport", href: "/sport" },
-    secondaryAction: { label: "Prenota attività", href: "/prenotazioni" },
+    primaryAction: { label: "Prenota campi e lezioni", href: siteMeta.sportBookingUrl },
+    secondaryAction: { label: "Contattaci", href: "/contatti" },
     gradient: "from-[#152c2f] via-[#355247] to-[#bfc57d]",
     media: {
       src: "/media/hawaii/padel-court.jpg",
@@ -695,7 +712,7 @@ export const pages: Record<string, EntityPage> = {
         bullets: [
           "due campi GIMPADEL regolamentari",
           "lezioni e attività",
-          "prenotazione via app o canale dedicato",
+          "prenotazione diretta con l'app SportClubby",
         ],
       },
       {
@@ -814,8 +831,9 @@ export const quickBooking = {
     },
     {
       label: "Sport e padel",
-      detail: "Campi e outdoor training",
-      href: "/sport",
+      detail: "Campi e lezioni via app",
+      href: siteMeta.sportBookingUrl,
+      external: true,
     },
     {
       label: "Eventi e feste private",

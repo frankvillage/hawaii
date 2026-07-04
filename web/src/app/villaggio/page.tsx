@@ -34,7 +34,7 @@ const anime = [
     body: "Due campi da padel regolamentari e outdoor training a pochi passi dalla sabbia.",
     href: "/sport",
     image: { src: "/media/hawaii/padel-court.jpg", alt: "Partita di padel sui campi di Hawaii" },
-    action: { label: "Prenota attività", href: "/sport" },
+    action: { label: "Prenota campi e lezioni", href: siteMeta.sportBookingUrl, external: true },
   },
   {
     label: "Nightlife",
