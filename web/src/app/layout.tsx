@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Manrope } from "next/font/google";
+import { Archivo, Prata } from "next/font/google";
 
 import { SiteFooter } from "@/components/chrome/site-footer";
 import { SiteHeader } from "@/components/chrome/site-header";
@@ -7,15 +7,17 @@ import { CookieBanner } from "@/components/legal/cookie-banner";
 import { localBusinessSchema } from "@/lib/seo";
 import "./globals.css";
 
-const uiSans = Manrope({
+const uiSans = Archivo({
   variable: "--font-ui-sans",
   subsets: ["latin"],
 });
 
-const editorialSerif = Cormorant_Garamond({
+/* Prata: high-contrast didone, the closest voice to the Hawaii wordmark.
+   Single 400 weight by design — display use only. */
+const editorialSerif = Prata({
   variable: "--font-editorial-serif",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "400",
 });
 
 export const metadata: Metadata = {
