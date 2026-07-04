@@ -246,7 +246,7 @@ export function ScrollVideoStage() {
       <div
         ref={stageRef}
         data-testid="scroll-video-stage"
-        className="journey-stage sticky top-[4.6rem] h-[calc(100svh-4.6rem)] overflow-hidden"
+        className="journey-stage sticky top-[3.25rem] h-[calc(100svh-3.25rem)] overflow-hidden"
         onMouseMove={handlePointerMove}
         onMouseLeave={resetPointer}
       >
