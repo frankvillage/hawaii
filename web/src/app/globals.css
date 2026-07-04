@@ -285,11 +285,6 @@ button {
   font-family: var(--font-editorial-serif), Georgia, serif;
 }
 
-/* Brand poster voice: condensed caps, as in the published social graphics. */
-.font-cond {
-  font-family: var(--font-display-cond), "Arial Narrow", sans-serif;
-}
-
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

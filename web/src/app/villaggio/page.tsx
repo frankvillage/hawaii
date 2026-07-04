@@ -199,7 +199,7 @@ export default function VillaggioPage() {
         className="border-t border-white/10 bg-[#060e16]"
       >
         <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-          <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[#46bd42]">
+          <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[#d6b887]">
             Le cucine
           </p>
           <h2 className="mt-4 max-w-[20ch] font-serif text-3xl text-[#f4ede4] sm:text-4xl">

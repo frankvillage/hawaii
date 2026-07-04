@@ -37,7 +37,7 @@ export default function MenuPage() {
           {venueMenus.map((menu) => (
             <section key={menu.id} id={menu.id} className="scroll-mt-24">
               <div className="max-w-2xl">
-                <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#46bd42]">
+                <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#d6b887]">
                   {menu.eyebrow}
                 </p>
                 <h2 className="mt-4 font-serif text-4xl text-[#f4ede4] sm:text-5xl">

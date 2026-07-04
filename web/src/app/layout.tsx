@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Archivo, Oswald, Playfair_Display } from "next/font/google";
+import { Cormorant_Garamond, Manrope } from "next/font/google";
 
 import { SiteFooter } from "@/components/chrome/site-footer";
 import { SiteHeader } from "@/components/chrome/site-header";
@@ -7,22 +7,15 @@ import { CookieBanner } from "@/components/legal/cookie-banner";
 import { localBusinessSchema } from "@/lib/seo";
 import "./globals.css";
 
-const uiSans = Archivo({
+const uiSans = Manrope({
   variable: "--font-ui-sans",
   subsets: ["latin"],
 });
 
-const editorialSerif = Playfair_Display({
+const editorialSerif = Cormorant_Garamond({
   variable: "--font-editorial-serif",
   subsets: ["latin"],
-  style: ["normal", "italic"],
   weight: ["400", "500", "600", "700"],
-});
-
-const displayCondensed = Oswald({
-  variable: "--font-display-cond",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -42,7 +35,7 @@ export default function RootLayout({
   return (
     <html
       lang="it"
-      className={`${uiSans.variable} ${editorialSerif.variable} ${displayCondensed.variable} h-full antialiased`}
+      className={`${uiSans.variable} ${editorialSerif.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[#07111a] text-white">
         <script
