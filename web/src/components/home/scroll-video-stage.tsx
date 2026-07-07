@@ -299,7 +299,7 @@ export function ScrollVideoStage() {
     copyAlign === "center"
       ? "mx-auto text-center"
       : copyAlign === "right"
-        ? "ml-auto text-right md:pr-20"
+        ? "ml-auto text-right md:pr-44"
         : "";
   const copyRowJustify =
     copyAlign === "center" ? "justify-center" : copyAlign === "right" ? "justify-end" : "";
@@ -596,7 +596,7 @@ export function ScrollVideoStage() {
                   className="inline-flex cursor-pointer items-baseline self-center border-b border-[rgba(232,200,158,0.55)] pb-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#f5efe6] transition hover:border-[#e8c89e] hover:text-[#e8c89e]"
                   style={{ textShadow: "0 1px 12px rgba(6,6,7,0.6)" }}
                 >
-                  {activeScene.menu ? "Menu & prenota" : "Prenota"}
+                  {activeScene.menu ? "Menu & prenota" : "Tutte le prenotazioni"}
                 </button>
               </div>
             </div>

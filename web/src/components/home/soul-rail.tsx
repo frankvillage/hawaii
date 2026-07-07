@@ -37,7 +37,7 @@ export function SoulRail() {
         homeJourney.scenes.find((s) => progress >= s.start && progress < s.end) ??
         homeJourney.scenes[homeJourney.scenes.length - 1];
 
-      const next = scene.soul === "Transition" ? null : (scene.soul as SoulLabel);
+      const next: SoulLabel = scene.soul;
 
       setActiveSoul((current) => (current === next ? current : next));
     };
@@ -71,7 +71,9 @@ export function SoulRail() {
         className="pointer-events-auto p-1"
         style={{ filter: "drop-shadow(0 1px 10px rgba(6,6,7,0.65))" }}
       >
-        <ul className="flex items-center gap-1 md:flex-col md:items-end">
+        {/* Nine stops: on phones each stop is a dot and only the active one
+            expands its label; the md+ rail shows every label vertically. */}
+        <ul className="flex items-center gap-0.5 md:flex-col md:items-end md:gap-1">
           {soulNavigation.map((item) => {
             const isActive = activeSoul === item.label;
 
@@ -80,11 +82,15 @@ export function SoulRail() {
                 <Link
                   data-soul-link
                   href={item.href}
-                  className={`flex items-center justify-center gap-1.5 rounded-full px-2 py-2 text-[0.6rem] uppercase tracking-[0.16em] transition sm:gap-2 sm:px-3 sm:text-[0.68rem] sm:tracking-[0.22em] md:min-w-[7rem] md:justify-end md:px-4 ${
+                  aria-label={item.label}
+                  aria-current={isActive ? "true" : undefined}
+                  className={`flex items-center justify-center gap-1.5 rounded-full px-1.5 py-2 text-[0.6rem] uppercase tracking-[0.14em] transition md:min-w-[8rem] md:justify-end md:gap-2 md:px-4 md:text-[0.68rem] md:tracking-[0.22em] ${
                     isActive ? "text-[#e8c89e]" : "text-[#dadad5] hover:text-white"
                   }`}
                 >
-                  {item.label}
+                  <span className={isActive ? "" : "sr-only md:not-sr-only"}>
+                    {item.label}
+                  </span>
                   <span
                     aria-hidden
                     className={`h-1.5 w-1.5 flex-none rounded-full transition ${

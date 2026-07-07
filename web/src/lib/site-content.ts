@@ -48,7 +48,7 @@ export type JourneyScene = {
   id: string;
   anchor: string;
   daypart: string;
-  soul: "Beach" | "Ristorante" | "Sport" | "MUULab" | "Notte" | "Restaurant" | "Nightlife" | "Transition";
+  soul: "Urban Village" | "Bar" | "Sport" | "Beach Club" | "Ristorante" | "Pizzeria" | "Aperitivo" | "MUULab" | "Eventi" | "Beach" | "Notte" | "Restaurant" | "Nightlife" | "Transition";
   eyebrow: string;
   title: string;
   summary: string;
@@ -66,7 +66,7 @@ export type JourneyScene = {
 export type Chapter = {
   slug: string;
   daypart: string;
-  soul: "Beach" | "Ristorante" | "Sport" | "MUULab" | "Notte" | "Restaurant" | "Nightlife" | "Transition";
+  soul: "Urban Village" | "Bar" | "Sport" | "Beach Club" | "Ristorante" | "Pizzeria" | "Aperitivo" | "MUULab" | "Eventi" | "Beach" | "Notte" | "Restaurant" | "Nightlife" | "Transition";
   eyebrow: string;
   title: string;
   summary: string;
@@ -177,11 +177,15 @@ export const navigation = [
 ];
 
 export const soulNavigation = [
-  { label: "Beach", href: "#beach" },
-  { label: "Ristorante", href: "#lunch" },
+  { label: "Urban Village", href: "#villaggio" },
+  { label: "Bar", href: "#bar" },
   { label: "Sport", href: "#sport" },
+  { label: "Beach Club", href: "#beach" },
+  { label: "Ristorante", href: "#ristorante" },
+  { label: "Pizzeria", href: "#pizzeria" },
+  { label: "Aperitivo", href: "#aperitivo" },
   { label: "MUULab", href: "#muulab" },
-  { label: "Notte", href: "#nightlife" },
+  { label: "Eventi", href: "#eventi" },
 ] as const;
 
 export const homeHero = {
@@ -205,42 +209,59 @@ export const homeJourney = {
     alt: "La giornata di Hawaii Pescara dal mattino alla notte",
     duration: 57.2,
   },
+  /* One scene per soul: the rail below mirrors this exact order. */
   scenes: [
     {
       id: "arrivo",
       still: "/media/hawaii/journey-poster.jpg",
       align: "center",
-      anchor: "journey",
+      anchor: "villaggio",
       daypart: "Prima luce",
-      soul: "Transition",
-      eyebrow: "Fronte mare",
-      title: "Il villaggio si apre sul mare.",
-      summary: "Palme, insegna e fronte mare: Hawaii comincia dal lungomare di Pescara.",
+      soul: "Urban Village",
+      eyebrow: "Urban Village",
+      title: "Benvenuto nel villaggio sul mare.",
+      summary:
+        "Uno dei beach resort più suggestivi della riviera adriatica: spiaggia, ristorante, sport e terrazza vivono lo stesso fronte mare.",
       start: 0,
       end: 0.125,
       hotspots: [
         { label: "Ingresso spiaggia", href: "/beach", x: 8, y: 31 },
-        { label: "Ristorante", href: "/ristorante-mare", x: 37, y: 27 },
+        { label: "Verso il ristorante", href: "/ristorante-mare", x: 37, y: 27 },
       ],
       action: { label: "Scopri il villaggio", href: "/villaggio" },
     },
     {
-      id: "restaurant",
+      id: "bar",
       still: "/media/hawaii/morning-bar.jpg",
       align: "left",
-      anchor: "restaurant",
+      anchor: "bar",
       daypart: "Mattina",
-      soul: "Ristorante",
-      eyebrow: "Bar & sala",
-      title: "La mattina comincia al bancone.",
-      summary: "Caffè, bancone e sala che prende ritmo verso il mezzogiorno.",
+      soul: "Bar",
+      eyebrow: "Cocktail bar",
+      title: "Al bancone, dal caffè al cocktail.",
+      summary:
+        "Il bar apre la giornata e non la lascia più: caffè del mattino, mixology e distillati premium, con bartender che ti cuciono addosso il cocktail perfetto.",
       start: 0.125,
       end: 0.2,
       hotspots: [
-        { label: "Cocktail bar", href: "/ristorante-mare", x: 62, y: 18 },
-        { label: "Scopri menu", href: "/menu#ristorante-mare", x: 86, y: 44 },
+        { label: "Il bancone", href: "/ristorante-mare", x: 62, y: 18 },
+        {
+          label: "Drink list",
+          href: "/menu#ristorante-mare",
+          x: 86,
+          y: 44,
+          caption: "Classic taste, signature e distillati premium",
+        },
       ],
-      action: { label: "Il ristorante", href: "/ristorante-mare" },
+      menu: {
+        anchor: "ristorante-mare",
+        items: [
+          { name: "Americano classic taste", price: "€ 10" },
+          { name: "Negroni classic taste", price: "€ 10" },
+          { name: "Tonic Riviera", price: "€ 10" },
+        ],
+      },
+      action: { label: "Il cocktail bar", href: "/ristorante-mare" },
     },
     {
       id: "sport",
@@ -250,15 +271,16 @@ export const homeJourney = {
       daypart: "Tarda mattina",
       soul: "Sport",
       eyebrow: "Sport",
-      title: "Il padel entra nel paesaggio.",
-      summary: "Campi da gioco e outdoor training a pochi passi dalla sabbia.",
+      title: "Il padel torna sulla sabbia.",
+      summary:
+        "Due campi regolamentari GIMPADEL e crossfit in spiaggia: il campo o la lezione si prenotano direttamente dall'app.",
       start: 0.2,
       end: 0.26,
       hotspots: [
         { label: "Campi da padel", href: "/sport", x: 31, y: 40 },
-        { label: "Outdoor gym", href: "/sport", x: 72, y: 42 },
+        { label: "Crossfit in spiaggia", href: "/sport", x: 72, y: 42 },
       ],
-      action: { label: "Prenota padel", href: siteMeta.sportBookingUrl, external: true },
+      action: { label: "Prenota il campo", href: siteMeta.sportBookingUrl, external: true },
     },
     {
       id: "beach",
@@ -266,15 +288,22 @@ export const homeJourney = {
       align: "center",
       anchor: "beach",
       daypart: "Pieno giorno",
-      soul: "Beach",
-      eyebrow: "Beach",
-      title: "La giornata si distende tra sabbia e mare.",
-      summary: "Ombrelloni, camminamenti chiari e tutta la calma del fronte mare.",
+      soul: "Beach Club",
+      eyebrow: "Beach Club",
+      title: "Una delle spiagge più ampie della costa.",
+      summary:
+        "Palme distanziate, sabbia fine e un giardino sempre curato: comodità e riservatezza, con il servizio che arriva fin sotto l'ombrellone.",
       start: 0.26,
       end: 0.335,
       hotspots: [
-        { label: "Beach club", href: "/beach", x: 22, y: 42 },
-        { label: "Aperitivi", href: "/eventi", x: 80, y: 30 },
+        { label: "Palme e ombrelloni", href: "/beach", x: 22, y: 42 },
+        {
+          label: "Servizio in spiaggia",
+          href: "/menu#ristorante-mare",
+          x: 80,
+          y: 30,
+          caption: "Fritti al cono e sandwich, sotto la palma",
+        },
       ],
       menu: {
         anchor: "ristorante-mare",
@@ -287,20 +316,21 @@ export const homeJourney = {
       action: { label: "Prenota ombrellone", href: siteMeta.beachBookingUrl, external: true },
     },
     {
-      id: "lunch",
+      id: "ristorante",
       still: "/media/hawaii/lunch-service.jpg",
       align: "right",
-      anchor: "lunch",
+      anchor: "ristorante",
       daypart: "Pranzo",
       soul: "Ristorante",
-      eyebrow: "Ristorante mare",
-      title: "A pranzo il pesce arriva in tavola.",
-      summary: "Sala luminosa, servizio e piatti di mare nel pieno della giornata.",
+      eyebrow: "Ristorante di mare",
+      title: "A pranzo comanda il pescato del giorno.",
+      summary:
+        "Menù à la carte di mare con l'estro dello chef: il pescato dell'Adriatico passa per la brigata e arriva al tavolo vista mare.",
       start: 0.335,
       end: 0.45,
       hotspots: [
-        { label: "Prenota tavolo", href: "/prenotazioni", x: 30, y: 22 },
-        { label: "Ristorante", href: "/ristorante-mare", x: 72, y: 34 },
+        { label: "Il tavolo vista mare", href: "/prenotazioni", x: 30, y: 22 },
+        { label: "Menu di mare", href: "/menu#ristorante-mare", x: 72, y: 34 },
       ],
       menu: {
         anchor: "ristorante-mare",
@@ -310,55 +340,63 @@ export const homeJourney = {
           { name: "Riso vialone nano, scampi ed erbette", price: "€ 18" },
         ],
       },
-      action: { label: "Menu food", href: "/menu#ristorante-mare" },
+      action: { label: "Menu di mare", href: "/menu#ristorante-mare" },
     },
     {
-      id: "cucina",
+      id: "pizzeria",
       still: "/media/hawaii/kitchen-brace.jpg",
       align: "left",
-      anchor: "cucina",
+      anchor: "pizzeria",
       daypart: "Verso sera",
-      soul: "Ristorante",
-      eyebrow: "Cucina a vista",
-      title: "La cucina lavora a vista.",
-      summary: "Piatti espressi, fuoco e mani veloci dietro il bancone.",
+      soul: "Pizzeria",
+      eyebrow: "Pizzeria",
+      title: "La sera si accende anche il forno.",
+      summary:
+        "A cena la cucina a vista sforna la pizza: le migliori farine e prodotti a km zero, per una serata più informale senza rinunciare al gusto.",
       start: 0.45,
       end: 0.55,
       hotspots: [
         { label: "Cucina a vista", href: "/ristorante-mare", x: 70, y: 34 },
         {
-          label: "La pizza, a cena",
+          label: "Le pizze",
           href: "/menu#ristorante-mare",
           x: 85,
           y: 63,
-          caption: "Sfizi e pizze dal forno, la sera",
+          caption: "Farine selezionate e prodotti a km zero",
         },
       ],
       menu: {
         anchor: "ristorante-mare",
         items: [
+          { name: "La pizza, a cena", price: "da € 8" },
           { name: "Polpo alla griglia", price: "€ 18" },
           { name: "Tonno alla griglia", price: "€ 20" },
-          { name: "La pizza, a cena", price: "da € 8" },
         ],
       },
-      action: { label: "Menu food", href: "/menu#ristorante-mare" },
+      action: { label: "Menu della cena", href: "/menu#ristorante-mare" },
     },
     {
-      id: "sunset",
+      id: "aperitivo",
       still: "/media/hawaii/terrace-daybed.jpg",
       align: "center",
-      anchor: "sunset",
+      anchor: "aperitivo",
       daypart: "Tramonto",
-      soul: "MUULab",
-      eyebrow: "Terrazza",
-      title: "Il giorno sale in terrazza e cambia luce.",
-      summary: "Daybed, bollicine e tavoli vista mare aprono la parte più sospesa della sera.",
+      soul: "Aperitivo",
+      eyebrow: "Aperitivo in terrazza",
+      title: "Il tramonto è il momento dell'aperitivo.",
+      summary:
+        "Daybed e tavoli vista mare per un aperitivo di pesce con la giusta atmosfera; il giovedì champagne, crudi e musica dal vivo.",
       start: 0.55,
       end: 0.74,
       hotspots: [
-        { label: "Terrazza", href: "/terrazza", x: 58, y: 20 },
-        { label: "Aperitivo", href: "/eventi", x: 71, y: 52 },
+        { label: "Aperitivo vista mare", href: "/terrazza", x: 58, y: 20 },
+        {
+          label: "Il giovedì in terrazza",
+          href: "/eventi",
+          x: 71,
+          y: 52,
+          caption: "Champagne, crudi e musica dal tramonto",
+        },
       ],
       menu: {
         anchor: "muulab",
@@ -379,12 +417,13 @@ export const homeJourney = {
       soul: "MUULab",
       eyebrow: "MUULab Riviera",
       title: "La sera prende il profumo della brace.",
-      summary: "In terrazza la cena vive tra brace, cucina a vista e panorama.",
+      summary:
+        "Cucina creativa e carni alla brace in terrazza, dove la cucina a vista e il panorama sul mare fanno da padroni.",
       start: 0.74,
       end: 0.9,
       hotspots: [
         { label: "MUULab Riviera", href: "/terrazza", x: 52, y: 18 },
-        { label: "Menu della sera", href: "/menu#muulab", x: 81, y: 28 },
+        { label: "Menu della brace", href: "/menu#muulab", x: 81, y: 28 },
       ],
       menu: {
         anchor: "muulab",
@@ -397,15 +436,16 @@ export const homeJourney = {
       action: { label: "La braceria", href: "/menu#muulab" },
     },
     {
-      id: "nightlife",
+      id: "eventi",
       still: "/media/hawaii/night-event.jpg",
       align: "center",
-      anchor: "nightlife",
+      anchor: "eventi",
       daypart: "Notte",
-      soul: "Notte",
+      soul: "Eventi",
       eyebrow: "Eventi",
-      title: "Dopo cena il ritmo si accende.",
-      summary: "Dj set, tavoli evento e notti che riportano lentamente verso una nuova alba.",
+      title: "La tua estate tra musica, food & fun.",
+      summary:
+        "Dj set, serate evento e feste private: dopo cena il villaggio resta acceso fino a tardi.",
       start: 0.9,
       end: 1,
       hotspots: [
@@ -414,9 +454,9 @@ export const homeJourney = {
           href: "/feste-private#form",
           x: 30,
           y: 40,
-          caption: "Richiedi una data: il form è a un tocco",
+          caption: "Banqueting e momenti speciali su misura",
         },
-        { label: "Prenota il tavolo", href: "/prenotazioni", x: 66, y: 28 },
+        { label: "Le serate", href: "/eventi", x: 66, y: 28 },
       ],
       action: { label: "Gli eventi", href: "/eventi" },
     },
@@ -592,11 +632,11 @@ export const pages: Record<string, EntityPage> = {
     slug: "beach",
     navLabel: "Beach",
     eyebrow: "Beach Club",
-    title: "La giornata comincia sulla spiaggia.",
-    lead: "Ampiezza, ordine, comfort e una relazione continua con il mare.",
+    title: "Tra le spiagge più ampie della costa.",
+    lead: "Palme distanziate, sabbia fine e un giardino sempre curato: comodità e riservatezza davanti al mare.",
     intro:
-      "La spiaggia di Hawaii invita a fermarsi: ombra leggera, mare davanti e tutto il tempo per restare fino al tramonto.",
-    primaryAction: { label: "Prenota spiaggia", href: "/prenotazioni" },
+      "L'ampiezza della nostra spiaggia permette un vero distanziamento tra le palme; l'attenzione ai servizi e la cura degli ospiti fanno il resto, dal primo caffè fino al tramonto.",
+    primaryAction: { label: "Prenota palma o ombrellone", href: siteMeta.beachBookingUrl },
     secondaryAction: { label: "Contattaci", href: "/contatti" },
     gradient: "from-[#0e3147] via-[#1d6079] to-[#cde0df]",
     media: {
@@ -606,27 +646,27 @@ export const pages: Record<string, EntityPage> = {
     sections: [
       {
         title: "La spiaggia",
-        body: "Palme, ombrelloni e mare aperto disegnano una giornata rilassata, ordinata e luminosa.",
+        body: "Sabbia fine, palme distanziate e un giardino sempre curato donano fascino e riservatezza alla giornata di mare.",
         bullets: [
-          "postazioni fronte mare",
-          "ombrelloni e palme",
-          "servizi pensati per l'intera giornata",
-          "passaggio naturale verso pranzo e aperitivo",
+          "palme e ombrelloni fronte mare",
+          "spazi ampi, senza ressa",
+          "servizio bar fin sotto l'ombrellone",
+          "teli, comfort e cura degli ospiti",
         ],
       },
       {
-        title: "Dal mattino al tramonto",
-        body: "La spiaggia resta connessa al resto di Hawaii: un caffe al mattino, un pranzo leggero, un aperitivo vista mare.",
+        title: "Fino al tramonto",
+        body: "Dopo una giornata di mare concediti un momento di gusto e relax: sei nel posto ideale per un aperitivo di pesce con la giusta atmosfera.",
       },
     ],
     faqs: [
       {
         question: "Come si prenota la spiaggia?",
-        answer: "Dal sito puoi richiedere facilmente ombrellone o palma e ricevere tutte le indicazioni utili.",
+        answer: "Palma o ombrellone si prenotano online in pochi passaggi dal widget di prenotazione, oppure chiamando il numero della spiaggia.",
       },
       {
         question: "La spiaggia è collegata al ristorante?",
-        answer: "Si. Beach club, pranzo, aperitivo e tramonto fanno parte dello stesso percorso.",
+        answer: "Sì: pranzo, aperitivo e cena sono a pochi passi dall'ombrellone, e il servizio bar arriva direttamente in spiaggia.",
       },
     ],
     schemaType: "LocalBusiness",
@@ -634,13 +674,13 @@ export const pages: Record<string, EntityPage> = {
   "ristorante-mare": {
     slug: "ristorante-mare",
     navLabel: "Ristorante Mare",
-    eyebrow: "Ristorante",
-    title: "Pesce, à la carte, cocktail bar.",
-    lead: "Il piano terra racconta il lato diurno e conviviale di Hawaii.",
+    eyebrow: "Ristorante di mare",
+    title: "Il pescato del giorno, dall'Adriatico alla tavola.",
+    lead: "Una location suggestiva ti aspetta a pranzo e a cena, con un menù à la carte di mare e tutto l'estro del nostro chef.",
     intro:
-      "Qui il mare arriva in tavola con piatti di pesce, menu a la carte, cocktail bar e un ritmo piu aperto e conviviale.",
-    primaryAction: { label: "Prenota tavolo", href: "/prenotazioni" },
-    secondaryAction: { label: "Scopri il menu", href: "/menu" },
+      "Il pescato del giorno arriva dal mare Adriatico, passa per le mani della brigata di cucina e si sposa con le materie prime più fresche del territorio. Chiedi al maître i piatti del giorno.",
+    primaryAction: { label: "Prenota il tavolo", href: "/prenotazioni" },
+    secondaryAction: { label: "Guarda il menù", href: "/menu#ristorante-mare" },
     gradient: "from-[#18384e] via-[#405667] to-[#dbc8ad]",
     media: {
       src: "/media/hawaii/dinner-table.jpg",
@@ -649,27 +689,31 @@ export const pages: Record<string, EntityPage> = {
     sections: [
       {
         title: "Pranzo e cena di mare",
-        body: "Il piano terra accoglie il lato piu fresco e conviviale di Hawaii, tra piatti di pesce, carta vini e cocktail bar.",
+        body: "Materie prime sempre fresche, crudi, primi e griglia: piatti che catturano prima l'olfatto, poi la vista, poi il gusto.",
         bullets: [
-          "pranzo e cena",
-          "menu à la carte di mare",
-          "cocktail bar integrato",
-          "tavoli interni ed esterni",
+          "menù à la carte di mare",
+          "piatti del giorno dalla brigata",
+          "carta vini con servizio Coravin",
+          "tavoli interni ed esterni, anche sotto la palma",
         ],
       },
       {
-        title: "Il gusto del giorno",
-        body: "Servizio curato, luce naturale e un'atmosfera informale accompagnano dal pranzo alla sera.",
+        title: "La pizza, a cena",
+        body: "Per un pasto più informale scegli una buona pizza italiana: il giusto mix tra le migliori farine e prodotti a km zero la rende leggera e gustosa.",
+      },
+      {
+        title: "Cocktail bar",
+        body: "Dedicato a chi ama la mixology: distillati premium e bartender che capiscono le tue preferenze per proporti il tuo cocktail perfetto.",
       },
     ],
     faqs: [
       {
         question: "Il ristorante mare è diverso dalla terrazza?",
-        answer: "Si. Il piano terra racconta il lato di mare di Hawaii; la terrazza vive il tramonto e la cena con un tono piu serale.",
+        answer: "Sì: al piano terra vivono il pesce e la pizza, dalla colazione alla cena; in terrazza MUULab Riviera accende il tramonto e la brace.",
       },
       {
-        question: "Il menu è disponibile online?",
-        answer: "Si. Le proposte sono organizzate per aree, con accesso rapido alla prenotazione del tavolo.",
+        question: "Il menù è disponibile online?",
+        answer: "Sì, la carta completa con i prezzi è sulla pagina menù; i piatti del giorno te li racconta il maître al tavolo.",
       },
     ],
     schemaType: "Restaurant",
@@ -682,12 +726,12 @@ export const pages: Record<string, EntityPage> = {
       src: "/media/hawaii/brand/muulab-riviera-sand.png",
       alt: "MUULab Riviera",
     },
-    title: "Vista mare, tramonto, cucina creativa e brace.",
-    lead: "La terrazza è la trasformazione serale premium di Hawaii.",
+    title: "Una location esclusiva dalla vista mozzafiato.",
+    lead: "La cucina creativa e le carni alla brace ti aspettano in terrazza, dove la cucina a vista e il tramonto fanno da padroni.",
     intro:
-      "MUULab Riviera vive la sera con vista mare, cucina creativa, brace e un tono piu raccolto rispetto al piano terra.",
-    primaryAction: { label: "Prenota in terrazza", href: "/prenotazioni" },
-    secondaryAction: { label: "Scopri gli eventi", href: "/eventi" },
+      "MUULab Riviera è l'anima serale del villaggio: si sale per l'aperitivo al tramonto e si resta per la cena, tra brace, crudi di carne e una carta vini che attraversa mezza Europa.",
+    primaryAction: { label: "Prenota MUULab Riviera", href: "/prenotazioni" },
+    secondaryAction: { label: "Guarda il menù", href: "/menu#muulab" },
     gradient: "from-[#241b21] via-[#66453a] to-[#f0b16f]",
     media: {
       src: "/media/hawaii/terrace-evening.jpg",
@@ -696,27 +740,27 @@ export const pages: Record<string, EntityPage> = {
     sections: [
       {
         title: "Il tramonto in terrazza",
-        body: "Vista mare, cocktail e luce calda introducono la parte piu panoramica della giornata.",
+        body: "Daybed, bollicine e tavoli vista mare: la golden hour è il momento più panoramico della giornata, con il giovedì dedicato a champagne, crudi e musica dal vivo.",
         bullets: [
-          "location esclusiva vista mare",
-          "cucina creativa",
-          "carni alla brace",
-          "cucina a vista",
+          "vista mare a tutta terrazza",
+          "cucina creativa e a vista",
+          "carni alla brace e crudi di carne",
+          "cantina con servizio Coravin",
         ],
       },
       {
-        title: "Dalla golden hour alla cena",
-        body: "Aperitivo, dinner e dopocena condividono lo stesso panorama con un tono piu raccolto ed esclusivo.",
+        title: "La cena alla brace",
+        body: "Picanha, fiorentina, tagli da un chilo in su: la brace lavora a vista mentre la sera scende sul mare.",
       },
     ],
     faqs: [
       {
         question: "MUULab Riviera è prenotabile separatamente?",
-        answer: "Si. La terrazza ha un percorso dedicato, separato dal ristorante di mare al piano terra.",
+        answer: "Sì, la terrazza ha una prenotazione dedicata, separata dal ristorante di mare al piano terra.",
       },
       {
         question: "La terrazza è pensata per aperitivo o cena?",
-        answer: "Per entrambi. Si inizia con il tramonto e si prosegue con la cena tra brace e cucina a vista.",
+        answer: "Per entrambi: si comincia con il tramonto e si prosegue a tavola, tra brace e cucina a vista.",
       },
     ],
     schemaType: "Restaurant",
@@ -725,11 +769,11 @@ export const pages: Record<string, EntityPage> = {
     slug: "sport",
     navLabel: "Sport",
     eyebrow: "Sport",
-    title: "Padel e crossfit outdoor sul mare.",
-    lead: "Allenarsi sul mare fa parte del ritmo di Hawaii.",
+    title: "Il padel torna sulla spiaggia di Hawaii.",
+    lead: "Per tutti gli amanti del benessere: padel e crossfit a pochi passi dalla sabbia.",
     intro:
-      "Padel, campi da gioco e outdoor training completano la giornata con energia e vista mare.",
-    primaryAction: { label: "Prenota campi e lezioni", href: siteMeta.sportBookingUrl },
+      "Lo sport più praticato del momento e il fitness che ti accompagna per tutta l'estate: campo o lezione si prenotano in un attimo dall'app.",
+    primaryAction: { label: "Prenota campo o lezione", href: siteMeta.sportBookingUrl },
     secondaryAction: { label: "Contattaci", href: "/contatti" },
     gradient: "from-[#152c2f] via-[#355247] to-[#bfc57d]",
     media: {
@@ -739,26 +783,26 @@ export const pages: Record<string, EntityPage> = {
     sections: [
       {
         title: "Padel",
-        body: "Due campi regolamentari GIMPADEL e un ritmo attivo che affianca la vita in spiaggia.",
+        body: "Due campi da gioco regolamentari GIMPADEL, per divertirsi con gli amici o allenarsi sul serio: il padel sviluppa coordinazione e un sano agonismo che serve anche fuori dal campo.",
         bullets: [
-          "due campi GIMPADEL regolamentari",
-          "lezioni e attività",
-          "prenotazione diretta con l'app SportClubby",
+          "due campi regolamentari GIMPADEL",
+          "partite libere e lezioni con istruttore",
+          "prenotazione dall'app SportClubby",
         ],
       },
       {
-        title: "Outdoor training",
-        body: "Crossfit e allenamento all'aperto portano energia, mare e benessere nello stesso luogo.",
+        title: "Crossfit",
+        body: "La spiaggia offre la possibilità di allenarsi all'aperto per tutta l'estate, con corsi pensati sia per chi inizia sia per chi è già esperto.",
       },
     ],
     faqs: [
       {
-        question: "Lo sport è prenotabile dal sito?",
-        answer: "Si. Il sito accompagna verso il canale corretto per prenotare campi e attivita.",
+        question: "Come si prenotano campo e lezioni?",
+        answer: "Tramite l'app SportClubby: scegli campo o lezione, giorno e orario. Il link diretto è in questa pagina.",
       },
       {
         question: "Sport e spiaggia convivono nella stessa giornata?",
-        answer: "Si. E uno dei tratti che rende Hawaii un vero Urban Village.",
+        answer: "Sì: una partita al mattino, il mare dopo. È uno dei tratti che rendono Hawaii un vero urban village.",
       },
     ],
     schemaType: "SportsActivityLocation",
@@ -767,11 +811,11 @@ export const pages: Record<string, EntityPage> = {
     slug: "eventi",
     navLabel: "Eventi",
     eyebrow: "Eventi & Nightlife",
-    title: "Dj set, sunset, tavoli evento, after dinner.",
-    lead: "Quando scende la sera, Hawaii cambia ritmo.",
+    title: "Vivi con noi la tua estate tra musica, food & fun.",
+    lead: "Quando scende la sera il villaggio cambia ritmo: dj set, format fissi e date speciali.",
     intro:
-      "Sunset, dj set, tavoli evento e date speciali prolungano la giornata fino a notte.",
-    primaryAction: { label: "Scopri gli eventi", href: "/eventi" },
+      "La domenica pomeriggio con dj set, il giovedì in terrazza con champagne e crudi, le serate evento annunciate sui social: ogni settimana ha i suoi appuntamenti.",
+    primaryAction: { label: "Prenota il tavolo", href: "/prenotazioni" },
     secondaryAction: { label: "Feste private", href: "/feste-private" },
     gradient: "from-[#12161f] via-[#283140] to-[#7b5149]",
     media: {
@@ -780,22 +824,22 @@ export const pages: Record<string, EntityPage> = {
     },
     sections: [
       {
-        title: "Sunset e dopocena",
-        body: "Aperitivi, tavoli e musica accompagnano la giornata verso la notte.",
+        title: "I format della settimana",
+        body: "Come di Domenica — pranzo à la carte che si allunga nel pomeriggio con dj set — e il giovedì in terrazza, con champagne, crudi e la musica di Mirko Alfonso e Gianluca Fratti.",
       },
       {
-        title: "Date speciali",
-        body: "Dj set, ospiti e serate dedicate danno un ritmo diverso ai weekend sul mare.",
+        title: "Special date",
+        body: "Dj set, ospiti e tappe d'estate come l'Aperol tour: le date speciali arrivano prima di tutto sui nostri canali social.",
       },
     ],
     faqs: [
       {
         question: "Gli eventi sono prenotabili?",
-        answer: "Si. Quando previsto, il sito accompagna direttamente verso tavolo, RSVP o richiesta informazioni.",
+        answer: "Sì: il tavolo per le serate si prenota dalla pagina prenotazioni, e per le date speciali trovi le indicazioni sui social.",
       },
       {
         question: "Eventi e terrazza sono collegati?",
-        answer: "Si. Sunset, terrazza, nightlife e feste private fanno parte dello stesso racconto serale.",
+        answer: "Sì: sunset, terrazza, nightlife e feste private fanno parte della stessa sera.",
       },
     ],
     schemaType: "EventVenue",
@@ -803,11 +847,11 @@ export const pages: Record<string, EntityPage> = {
   "feste-private": {
     slug: "feste-private",
     navLabel: "Feste Private",
-    eyebrow: "Private events",
-    title: "Occasioni private sul mare.",
-    lead: "Una cornice elegante per ricorrenze, cene riservate ed eventi dedicati.",
+    eyebrow: "Feste private & banqueting",
+    title: "Vivi con noi i tuoi momenti più speciali.",
+    lead: "Rendili indimenticabili: una cornice sul mare per ricorrenze, cene riservate ed eventi dedicati.",
     intro:
-      "Compleanni, cene private, ricorrenze ed eventi aziendali trovano qui spazi e atmosfera da personalizzare.",
+      "Offriamo un servizio di banqueting all'interno del beach resort, dal catering alla mise en place, con tutti i comfort di cui hai bisogno.",
     primaryAction: { label: "Richiedi un evento", href: "/feste-private#form" },
     secondaryAction: { label: "Contatti", href: "/contatti" },
     gradient: "from-[#1d2029] via-[#463b40] to-[#c79f72]",
@@ -820,21 +864,21 @@ export const pages: Record<string, EntityPage> = {
         title: "Occasioni private",
         body: "Compleanni, ricorrenze, cene riservate ed eventi aziendali trovano una cornice sul mare da modellare su misura.",
         bullets: [
-          "cene private",
+          "cene private e ricorrenze",
           "feste di compleanno",
-          "eventi corporate",
-          "format brandizzati",
+          "eventi aziendali",
+          "banqueting e catering interni",
         ],
       },
       {
         title: "Su misura",
-        body: "Spazi, menu e atmosfera possono essere calibrati in base all'occasione e al numero di ospiti.",
+        body: "Spazi, menù, allestimento e musica si calibrano sull'occasione e sul numero di ospiti: raccontaci l'idea e costruiamo il resto.",
       },
     ],
     faqs: [
       {
-        question: "È possibile personalizzare format e menu?",
-        answer: "Si. Ogni richiesta puo essere costruita su misura tra menu, spazi, allestimento e timing.",
+        question: "È possibile personalizzare format e menù?",
+        answer: "Sì, ogni richiesta viene costruita su misura tra menù, spazi, allestimento e orari. Compila il form e ti ricontattiamo.",
       },
     ],
     schemaType: "LocalBusiness",

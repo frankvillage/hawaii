@@ -270,6 +270,39 @@ Post-preview feedback (same day, owner watching the live Pages build):
   (hero, eyebrow reworded to avoid duplication) and on the /menu
   MUULab carte.
 
+## Total audit pass (2026-07-07, evening — owner feedback on the live preview)
+
+- Nine souls, one per scene, rail = timeline (owner's taxonomy):
+  Urban Village · Bar · Sport · Beach Club · Ristorante · Pizzeria ·
+  Aperitivo · MUULab · Eventi. Scene anchors renamed to match
+  (#villaggio…#eventi); every scene now talks only about its own
+  service (the Bar scene is bar-only, the kitchen scene is the
+  pizzeria della cena, etc.). The rail lights the stop exactly while
+  that sector is in frame; on phones the nine stops render as dots
+  with only the active label expanded (271 px at 390 px viewport).
+- Hotspots re-synced and re-linked: every hotspot now points at an
+  existing page/anchor verified by an automated crawl (24 internal
+  links, all 200, all anchors present, zero failed resources) —
+  e.g. the beach "Aperitivi→/eventi" mismatch is gone, the bar scene
+  links the drink list, the sport scene links only /sport.
+- Double "Prenota" fixed: on scenes without a menu the popup trigger
+  reads "Tutte le prenotazioni", so it no longer clashes with the
+  scene CTA ("Prenota il campo" on padel).
+- Entity pages rebuilt: the hero is now the page photo full-bleed
+  with feathered scrims and the copy on top — no more colored
+  gradient with the photo trapped in a side box. External booking
+  CTAs (spiagge.it, SportClubby) open in a new tab.
+- Copy rewritten with the old site's voice (fetched from
+  hawaiipescara.it: home, il progetto, la spiaggia, il ristorante,
+  lo sport, MUULab Riviera): "tra le spiagge più ampie della costa",
+  "il pescato del giorno arriva dal mare Adriatico", "una location
+  esclusiva dalla vista mozzafiato", "vivi con noi i tuoi momenti
+  più speciali"… Also fixed the robotic tells (missing accents:
+  piu/attivita/puo/Si → più/attività/può/Sì).
+- Right-aligned scene copy indented further (md:pr-44) so the longer
+  nine-label rail never overlaps eyebrow or title.
+- Smoke updated to assert the nine rail stops in scene order.
+
 Verification 2026-07-07: `npm --prefix web run lint` ✓, server build ✓,
 static export build ✓, `npm run test:web:smoke` ✓ (updated 5-soul
 assertion), Playwright visual QA desktop 1440 + mobile 390 (mp4 build →

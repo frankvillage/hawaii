@@ -15,8 +15,24 @@ export function EntityPageView({ page }: EntityPageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(entitySchema(page)) }}
       />
-      <section className={`bg-gradient-to-br ${page.gradient}`}>
-        <div className="mx-auto grid min-h-[calc(100svh-4.6rem)] max-w-7xl items-end gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1.08fr_0.92fr] lg:px-8 lg:py-16">
+      {/* Full-bleed photo hero: the page image IS the band, the copy sits on
+          a feathered scrim — same language as the homepage journey. */}
+      <section className="relative overflow-hidden">
+        {page.media ? (
+          <Image
+            data-testid="entity-hero-media"
+            src={page.media.src}
+            alt={page.media.alt}
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-center"
+          />
+        ) : null}
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,10,0.42),rgba(8,9,10,0.08)_38%,rgba(8,9,10,0.22)_62%,rgba(8,9,10,0.78))]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_130%_at_0%_100%,rgba(6,6,7,0.6),rgba(6,6,7,0.24)_44%,transparent_70%)]" />
+
+        <div className="relative z-10 mx-auto flex min-h-[86svh] max-w-7xl flex-col justify-end px-4 pb-14 pt-32 sm:px-6 lg:px-8 lg:pb-16">
           <div className="max-w-3xl">
             {page.brandLogo ? (
               <Image
@@ -27,55 +43,50 @@ export function EntityPageView({ page }: EntityPageProps) {
                 className="mb-6 h-12 w-auto sm:h-16"
               />
             ) : null}
-            <p className="text-[0.72rem] uppercase tracking-[0.24em] text-[#f0c889]">
+            <p
+              className="text-[0.72rem] uppercase tracking-[0.24em] text-[#f0c889]"
+              style={{ textShadow: "0 1px 12px rgba(6,6,7,0.6)" }}
+            >
               {page.eyebrow}
             </p>
-            <h1 className="mt-5 max-w-[11ch] font-serif text-5xl leading-[0.9] text-[#f4ede4] sm:text-6xl lg:text-7xl">
+            <h1
+              className="mt-5 max-w-[13ch] font-serif text-5xl leading-[0.94] text-[#f4ede4] sm:text-6xl lg:text-7xl"
+              style={{ textShadow: "0 2px 30px rgba(8,9,10,0.65)" }}
+            >
               {page.title}
             </h1>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-[#e9e9e4]">{page.lead}</p>
-            <p className="mt-4 max-w-2xl text-base leading-8 text-white/82">{page.intro}</p>
+            <p
+              className="mt-5 max-w-2xl text-lg leading-8 text-[#efefe9]"
+              style={{ textShadow: "0 1px 18px rgba(8,9,10,0.6)" }}
+            >
+              {page.lead}
+            </p>
+            <p
+              className="mt-3 max-w-2xl text-base leading-8 text-white/85"
+              style={{ textShadow: "0 1px 18px rgba(8,9,10,0.6)" }}
+            >
+              {page.intro}
+            </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href={page.primaryAction.href} className="cta">
-                {page.primaryAction.label}
-              </Link>
+              {page.primaryAction.href.startsWith("http") ? (
+                <a
+                  href={page.primaryAction.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="cta"
+                >
+                  {page.primaryAction.label}
+                </a>
+              ) : (
+                <Link href={page.primaryAction.href} className="cta">
+                  {page.primaryAction.label}
+                </Link>
+              )}
               {page.secondaryAction ? (
                 <Link href={page.secondaryAction.href} className="cta-ghost">
                   {page.secondaryAction.label}
                 </Link>
               ) : null}
-            </div>
-          </div>
-
-          <div className="relative min-h-[24rem] overflow-hidden rounded-[2rem] border border-white/10 bg-[rgba(18,19,20,0.28)] p-5 backdrop-blur-sm">
-            {page.media ? (
-              <Image
-                data-testid="entity-hero-media"
-                src={page.media.src}
-                alt={page.media.alt}
-                fill
-                sizes="(max-width: 1024px) 100vw, 42vw"
-                className="absolute inset-0 object-cover"
-              />
-            ) : null}
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,10,0.1),rgba(8,9,10,0.62))]" />
-            <div className="relative z-10 flex h-full flex-col justify-end">
-              <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#f0c889]">
-                In evidenza
-              </p>
-              <div className="mt-4 grid gap-3">
-                {page.sections.map((section) => (
-                  <div
-                    key={section.title}
-                    className="rounded-[1.2rem] border border-white/10 bg-[rgba(18,19,20,0.34)] p-4 backdrop-blur-sm"
-                  >
-                    <strong className="block font-serif text-xl text-[#f4ede4]">
-                      {section.title}
-                    </strong>
-                    <p className="mt-2 text-sm leading-7 text-[#dce4ea]">{section.body}</p>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>
@@ -111,12 +122,20 @@ export function EntityPageView({ page }: EntityPageProps) {
               Prenota
             </p>
             <div className="mt-4 flex flex-col gap-3">
-              <Link
-                href={page.primaryAction.href}
-                className="cta"
-              >
-                {page.primaryAction.label}
-              </Link>
+              {page.primaryAction.href.startsWith("http") ? (
+                <a
+                  href={page.primaryAction.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="cta"
+                >
+                  {page.primaryAction.label}
+                </a>
+              ) : (
+                <Link href={page.primaryAction.href} className="cta">
+                  {page.primaryAction.label}
+                </Link>
+              )}
               {page.secondaryAction ? (
                 <Link
                   href={page.secondaryAction.href}
