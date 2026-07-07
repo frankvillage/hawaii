@@ -143,6 +143,10 @@ export type EntityPage = {
   secondaryAction?: Action;
   gradient: string;
   media?: MediaAsset;
+  /* Extra hero photos: with 2+ entries the hero becomes a slow crossfade. */
+  heroMedia?: MediaAsset[];
+  /* Photo strip rendered between the text sections. */
+  gallery?: MediaAsset[];
   /* Official venue wordmark, shown above the hero eyebrow. */
   brandLogo?: MediaAsset;
   sections: PageSection[];
@@ -226,7 +230,13 @@ export const homeJourney = {
       end: 0.125,
       hotspots: [
         { label: "Ingresso spiaggia", href: "/beach", x: 8, y: 31 },
-        { label: "Verso il ristorante", href: "/ristorante-mare", x: 37, y: 27 },
+        {
+          label: "Verso il ristorante",
+          href: "/ristorante-mare",
+          x: 37,
+          y: 27,
+          caption: "Pesce, pizza e cocktail bar al piano terra",
+        },
       ],
       action: { label: "Scopri il villaggio", href: "/villaggio" },
     },
@@ -244,7 +254,13 @@ export const homeJourney = {
       start: 0.125,
       end: 0.2,
       hotspots: [
-        { label: "Il bancone", href: "/ristorante-mare", x: 62, y: 18 },
+        {
+          label: "Il bancone",
+          href: "/ristorante-mare",
+          x: 62,
+          y: 18,
+          caption: "Caffè del mattino, mixology e distillati premium",
+        },
         {
           label: "Drink list",
           href: "/menu#ristorante-mare",
@@ -329,7 +345,13 @@ export const homeJourney = {
       start: 0.335,
       end: 0.45,
       hotspots: [
-        { label: "Il tavolo vista mare", href: "/prenotazioni", x: 30, y: 22 },
+        {
+          label: "Il tavolo vista mare",
+          href: "/prenotazioni",
+          x: 30,
+          y: 22,
+          caption: "Il tuo tavolo vista mare, a pranzo e a cena",
+        },
         { label: "Menu di mare", href: "/menu#ristorante-mare", x: 72, y: 34 },
       ],
       menu: {
@@ -356,7 +378,13 @@ export const homeJourney = {
       start: 0.45,
       end: 0.55,
       hotspots: [
-        { label: "Cucina a vista", href: "/ristorante-mare", x: 70, y: 34 },
+        {
+          label: "Cucina a vista",
+          href: "/ristorante-mare",
+          x: 70,
+          y: 34,
+          caption: "Il forno e la brigata lavorano a vista",
+        },
         {
           label: "Le pizze",
           href: "/menu#ristorante-mare",
@@ -389,7 +417,13 @@ export const homeJourney = {
       start: 0.55,
       end: 0.74,
       hotspots: [
-        { label: "Aperitivo vista mare", href: "/terrazza", x: 58, y: 20 },
+        {
+          label: "Aperitivo vista mare",
+          href: "/terrazza",
+          x: 58,
+          y: 20,
+          caption: "Daybed e bollicine alla golden hour",
+        },
         {
           label: "Il giovedì in terrazza",
           href: "/eventi",
@@ -643,6 +677,11 @@ export const pages: Record<string, EntityPage> = {
       src: "/media/hawaii/beach-umbrellas.jpg",
       alt: "Spiaggia Hawaii con ombrelloni, palme e mare",
     },
+    gallery: [
+      { src: "/media/hawaii/photos/estate-spaghetti-mare.jpg", alt: "Spaghetti di mare serviti fronte spiaggia" },
+      { src: "/media/hawaii/photos/estate-gamberoni.jpg", alt: "Gamberoni alla griglia con salse" },
+      { src: "/media/hawaii/photos/estate-crudo.jpg", alt: "Crudo di pesce dell'aperitivo in spiaggia" },
+    ],
     sections: [
       {
         title: "La spiaggia",
@@ -683,9 +722,28 @@ export const pages: Record<string, EntityPage> = {
     secondaryAction: { label: "Guarda il menù", href: "/menu#ristorante-mare" },
     gradient: "from-[#18384e] via-[#405667] to-[#dbc8ad]",
     media: {
-      src: "/media/hawaii/dinner-table.jpg",
-      alt: "Piatto e tavolo del ristorante mare",
+      src: "/media/hawaii/photos/ristorante-hero-1.jpg",
+      alt: "Tavolo apparecchiato del ristorante di mare con calici e piatto",
     },
+    heroMedia: [
+      {
+        src: "/media/hawaii/photos/ristorante-hero-1.jpg",
+        alt: "Tavolo apparecchiato del ristorante di mare con calici e piatto",
+      },
+      {
+        src: "/media/hawaii/photos/ristorante-hero-2.jpg",
+        alt: "Tagliolini alle vongole del ristorante di mare",
+      },
+      {
+        src: "/media/hawaii/photos/ristorante-hero-3.jpg",
+        alt: "Trancio di tonno alla griglia con salse",
+      },
+    ],
+    gallery: [
+      { src: "/media/hawaii/photos/food-insalata-gambero.jpg", alt: "Insalata di gamberi e finocchi" },
+      { src: "/media/hawaii/photos/food-risotto-bollicine.jpg", alt: "Risotto servito con bollicine" },
+      { src: "/media/hawaii/photos/pizza-forno.jpg", alt: "Pizza appena sfornata" },
+    ],
     sections: [
       {
         title: "Pranzo e cena di mare",
@@ -734,9 +792,28 @@ export const pages: Record<string, EntityPage> = {
     secondaryAction: { label: "Guarda il menù", href: "/menu#muulab" },
     gradient: "from-[#241b21] via-[#66453a] to-[#f0b16f]",
     media: {
-      src: "/media/hawaii/terrace-evening.jpg",
-      alt: "Terrazza MUULab Riviera al cambio di luce",
+      src: "/media/hawaii/photos/terrazza-hero-1.jpg",
+      alt: "Calice versato su una tartare in terrazza da MUULab Riviera",
     },
+    heroMedia: [
+      {
+        src: "/media/hawaii/photos/terrazza-hero-1.jpg",
+        alt: "Calice versato su una tartare in terrazza da MUULab Riviera",
+      },
+      {
+        src: "/media/hawaii/photos/terrazza-hero-2.jpg",
+        alt: "Crudo di carne e rosé sul tavolo verde della terrazza",
+      },
+      {
+        src: "/media/hawaii/photos/terrazza-hero-3.jpg",
+        alt: "Crudo di carne servito tra le sedute in vimini della terrazza",
+      },
+    ],
+    gallery: [
+      { src: "/media/hawaii/photos/muulab-tartare.jpg", alt: "Tartare di manzo di MUULab Riviera" },
+      { src: "/media/hawaii/photos/brace-fuoco.jpg", alt: "La brace accesa della terrazza" },
+      { src: "/media/hawaii/photos/muulab-dolce.jpg", alt: "Dolce al piatto di MUULab Riviera" },
+    ],
     sections: [
       {
         title: "Il tramonto in terrazza",
@@ -1090,7 +1167,7 @@ export const venueMenus: VenueMenu[] = [
     id: "muulab",
     eyebrow: "Terrazza — MUULab Riviera",
     logo: {
-      src: "/media/hawaii/brand/muulab-riviera-sand.png",
+      src: "/media/hawaii/brand/muulab-riviera-dark.png",
       alt: "MUULab Riviera",
     },
     title: "La braceria della terrazza",

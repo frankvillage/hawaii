@@ -303,6 +303,43 @@ Post-preview feedback (same day, owner watching the live Pages build):
   nine-label rail never overlaps eyebrow or title.
 - Smoke updated to assert the nine rail stops in scene order.
 
+## Light theme + photo pass (2026-07-07, night — owner feedback round 3)
+
+- CRITICAL Pages fix: hotspot pills were plain `<a href>` so they
+  missed the basePath on GitHub Pages → 404 ("cucina a vista" etc.).
+  Now Next `Link` (basePath-aware). All other plain `<a>`s audited:
+  the remaining ones are external-only branches.
+- Secondary pages went LIGHT like the old site (owner's call): cream
+  `#f8f5ee`, dark-teal ink `#16292d`, darker gold accents `#96703d`,
+  white cards with soft shadows. The homepage journey stays dark and
+  immersive. `theme-light` / `theme-dark` scopes drive the ghost-CTA
+  variants; photo heroes inside light pages keep the dark treatment.
+- Header: lockup enlarged (4.35rem → 3.1rem condensed; bar 5.75rem);
+  theme-aware — transparent with the white lockup on the homepage,
+  frosted light bar with a new dark lockup (`logo-lockup-dark.png`)
+  everywhere else; the open nav panel is now frosted LIGHT glass on
+  every page (was "troppo dark").
+- Typography: hero leads in italic Cormorant, numbered section
+  eyebrows (01/02/03), hairline rules, two-column bullets with gold
+  dashes — less "dozzinale", still fully readable.
+- Hero photos: video stills were too soft for the light heroes, so
+  the delivered photo kits are in: /ristorante-mare and /terrazza get
+  3-photo slow-crossfade hero sliders (HeroSlider, reduced-motion
+  safe) from the "Foto Food Hawaii Pesce definitive" and "MUULAB
+  RIVIERA_ESTATE_2025" sets (portrait sources pre-cropped to
+  landscape); /beach /terrazza /ristorante-mare get photo strips in
+  the body. MUULab wordmark now has a dark variant for the light
+  /menu page.
+- Soul rail: frosted glass capsule behind the stops so they read on
+  bright scenes (the owner's beach screenshot).
+- Scene-true mini-card captions (the bar hotspot no longer says
+  "Pesce, à la carte"); the mini-card footer shows "Apri →" instead
+  of the raw route path.
+- Pages without a photo hero (menu, prenotazioni, contatti, faq,
+  legal) got fixed-header clearance (pt-32). Villaggio's "cucine"
+  band converted to a warm light tone; feste-private's gradient hero
+  replaced by a light editorial opening with the form beside.
+
 Verification 2026-07-07: `npm --prefix web run lint` ✓, server build ✓,
 static export build ✓, `npm run test:web:smoke` ✓ (updated 5-soul
 assertion), Playwright visual QA desktop 1440 + mobile 390 (mp4 build →

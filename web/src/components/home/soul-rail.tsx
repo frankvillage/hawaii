@@ -67,9 +67,10 @@ export function SoulRail() {
       data-testid="soul-rail"
       className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4 md:inset-x-auto md:right-6 md:top-1/2 md:bottom-auto md:-translate-y-1/2 md:px-0"
     >
+      {/* Light glass backing keeps the stops readable over bright footage. */}
       <nav
-        className="pointer-events-auto p-1"
-        style={{ filter: "drop-shadow(0 1px 10px rgba(6,6,7,0.65))" }}
+        className="pointer-events-auto rounded-full border border-white/10 bg-[rgba(10,11,12,0.34)] px-2 py-1 backdrop-blur-md md:rounded-[1.4rem] md:px-2 md:py-3"
+        style={{ filter: "drop-shadow(0 1px 10px rgba(6,6,7,0.45))" }}
       >
         {/* Nine stops: on phones each stop is a dot and only the active one
             expands its label; the md+ rail shows every label vertically. */}

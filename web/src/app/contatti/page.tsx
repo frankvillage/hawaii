@@ -12,18 +12,18 @@ export const metadata = buildMetadata({
 
 export default function ContactPage() {
   return (
-    <main className="bg-[#0b0c0d]">
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:grid lg:grid-cols-[0.88fr_1.12fr] lg:gap-10 lg:px-8">
+    <main className="theme-light bg-[#f8f5ee]">
+      <section className="mx-auto max-w-6xl px-4 pt-32 pb-16 sm:px-6 lg:grid lg:grid-cols-[0.88fr_1.12fr] lg:gap-10 lg:px-8">
         <div>
-          <p className="text-[0.72rem] uppercase tracking-[0.24em] text-[#d6b887]">Contatti</p>
-          <h1 className="mt-5 max-w-[10ch] font-serif text-5xl leading-[0.9] text-[#f4ede4] sm:text-6xl">
+          <p className="text-[0.72rem] uppercase tracking-[0.24em] text-[#96703d]">Contatti</p>
+          <h1 className="mt-5 max-w-[10ch] font-serif text-5xl leading-[0.9] text-[#16292d] sm:text-6xl">
             Hawaii, in un solo punto.
           </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-[#cfcfca]">
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-[#4c5453]">
             Contatti diretti per beach, ristorante, terrazza e richieste generali.
           </p>
-          <div className="mt-10 rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.04)] p-6">
-            <div className="space-y-3 text-sm leading-7 text-[#dbdbd6]">
+          <div className="mt-10 rounded-[1.6rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)] p-6">
+            <div className="space-y-3 text-sm leading-7 text-[#3c4a4e]">
               <p>{siteMeta.address}</p>
               <p>Ristorante: {siteMeta.restaurantPhone}</p>
               <p>Spiaggia: {siteMeta.beachPhone}</p>
@@ -46,13 +46,13 @@ export default function ContactPage() {
           </div>
 
           <div className="mt-8">
-            <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#d6b887]">
+            <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#96703d]">
               Scrivici
             </p>
-            <h2 className="mt-4 font-serif text-3xl text-[#f4ede4]">
+            <h2 className="mt-4 font-serif text-3xl text-[#16292d]">
               Ti indirizziamo subito all&apos;area giusta.
             </h2>
-            <p className="mt-4 max-w-xl text-base leading-7 text-[#cfcfca]">
+            <p className="mt-4 max-w-xl text-base leading-7 text-[#4c5453]">
               Seleziona l&apos;area che ti interessa e lasciaci un messaggio.
             </p>
           </div>

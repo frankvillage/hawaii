@@ -141,6 +141,32 @@ button {
   color: #e8c89e;
 }
 
+/* Light-theme pages: the ghost CTA flips to dark ink; a .theme-dark scope
+   (photo heroes inside light pages) restores the frosted variant. */
+.theme-light .cta-ghost {
+  background: transparent;
+  border-color: rgba(28, 43, 46, 0.4);
+  color: #16292d;
+  backdrop-filter: none;
+}
+
+.theme-light .cta-ghost:hover {
+  border-color: #96703d;
+  color: #96703d;
+}
+
+.theme-light .theme-dark .cta-ghost {
+  background: rgba(7, 17, 26, 0.32);
+  border-color: rgba(245, 239, 230, 0.32);
+  color: #f5efe6;
+  backdrop-filter: blur(10px);
+}
+
+.theme-light .theme-dark .cta-ghost:hover {
+  border-color: rgba(232, 200, 158, 0.85);
+  color: #e8c89e;
+}
+
 .cta-sm {
   padding: 0.62rem 1rem;
   font-size: 0.66rem;

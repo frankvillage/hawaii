@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { HeroSlider } from "@/components/pages/hero-slider";
 import type { EntityPage } from "@/lib/site-content";
 import { entitySchema } from "@/lib/seo";
 
@@ -8,31 +9,50 @@ type EntityPageProps = {
   page: EntityPage;
 };
 
+function ActionLink({
+  href,
+  label,
+  ghost,
+}: {
+  href: string;
+  label: string;
+  ghost?: boolean;
+}) {
+  const className = ghost ? "cta-ghost" : "cta";
+
+  return href.startsWith("http") ? (
+    <a href={href} target="_blank" rel="noreferrer" className={className}>
+      {label}
+    </a>
+  ) : (
+    <Link href={href} className={className}>
+      {label}
+    </Link>
+  );
+}
+
 export function EntityPageView({ page }: EntityPageProps) {
+  const slides = page.heroMedia?.length
+    ? page.heroMedia
+    : page.media
+      ? [page.media]
+      : [];
+
   return (
-    <main className="bg-[#0b0c0d] text-white">
+    <main className="theme-light bg-[#f8f5ee] text-[#1c2b2e]">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(entitySchema(page)) }}
       />
-      {/* Full-bleed photo hero: the page image IS the band, the copy sits on
-          a feathered scrim — same language as the homepage journey. */}
-      <section className="relative overflow-hidden">
-        {page.media ? (
-          <Image
-            data-testid="entity-hero-media"
-            src={page.media.src}
-            alt={page.media.alt}
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-center"
-          />
-        ) : null}
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,10,0.42),rgba(8,9,10,0.08)_38%,rgba(8,9,10,0.22)_62%,rgba(8,9,10,0.78))]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_130%_at_0%_100%,rgba(6,6,7,0.6),rgba(6,6,7,0.24)_44%,transparent_70%)]" />
 
-        <div className="relative z-10 mx-auto flex min-h-[86svh] max-w-7xl flex-col justify-end px-4 pb-14 pt-32 sm:px-6 lg:px-8 lg:pb-16">
+      {/* Full-bleed photo hero: the page photos ARE the band (slow crossfade
+          when more than one), the copy sits on a feathered scrim. */}
+      <section className="theme-dark relative overflow-hidden bg-[#0b0c0d]">
+        {slides.length ? <HeroSlider slides={slides} testId="entity-hero-media" /> : null}
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,10,0.44),rgba(8,9,10,0.1)_38%,rgba(8,9,10,0.24)_62%,rgba(8,9,10,0.8))]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_130%_at_0%_100%,rgba(6,6,7,0.62),rgba(6,6,7,0.26)_44%,transparent_70%)]" />
+
+        <div className="relative z-10 mx-auto flex min-h-[82svh] max-w-7xl flex-col justify-end px-4 pb-14 pt-32 sm:px-6 lg:px-8 lg:pb-16">
           <div className="max-w-3xl">
             {page.brandLogo ? (
               <Image
@@ -50,117 +70,123 @@ export function EntityPageView({ page }: EntityPageProps) {
               {page.eyebrow}
             </p>
             <h1
-              className="mt-5 max-w-[13ch] font-serif text-5xl leading-[0.94] text-[#f4ede4] sm:text-6xl lg:text-7xl"
+              className="mt-5 max-w-[15ch] font-serif text-5xl leading-[0.96] text-[#faf6ee] sm:text-6xl lg:text-7xl"
               style={{ textShadow: "0 2px 30px rgba(8,9,10,0.65)" }}
             >
               {page.title}
             </h1>
             <p
-              className="mt-5 max-w-2xl text-lg leading-8 text-[#efefe9]"
+              className="mt-5 max-w-2xl font-serif text-xl italic leading-8 text-[#f3ecdf] sm:text-2xl sm:leading-9"
               style={{ textShadow: "0 1px 18px rgba(8,9,10,0.6)" }}
             >
               {page.lead}
             </p>
-            <p
-              className="mt-3 max-w-2xl text-base leading-8 text-white/85"
-              style={{ textShadow: "0 1px 18px rgba(8,9,10,0.6)" }}
-            >
-              {page.intro}
-            </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              {page.primaryAction.href.startsWith("http") ? (
-                <a
-                  href={page.primaryAction.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="cta"
-                >
-                  {page.primaryAction.label}
-                </a>
-              ) : (
-                <Link href={page.primaryAction.href} className="cta">
-                  {page.primaryAction.label}
-                </Link>
-              )}
+              <ActionLink href={page.primaryAction.href} label={page.primaryAction.label} />
               {page.secondaryAction ? (
-                <Link href={page.secondaryAction.href} className="cta-ghost">
-                  {page.secondaryAction.label}
-                </Link>
+                <ActionLink
+                  href={page.secondaryAction.href}
+                  label={page.secondaryAction.label}
+                  ghost
+                />
               ) : null}
             </div>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[1.08fr_0.92fr] lg:px-8">
-        <div className="space-y-6">
-          {page.sections.map((section) => (
-            <article
-              key={section.title}
-              className="border-t border-white/10 pt-6 first:border-t-0 first:pt-0"
-            >
-              <h2 className="font-serif text-3xl text-[#f4ede4]">{section.title}</h2>
-              <p className="mt-3 max-w-3xl text-base leading-8 text-[#cfcfca]">
-                {section.body}
+      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+        <p className="mx-auto max-w-3xl text-center font-serif text-2xl leading-9 text-[#2c3b3e] sm:text-[1.7rem]">
+          {page.intro}
+        </p>
+        <span aria-hidden className="mx-auto mt-8 block h-px w-16 bg-[#96703d]/60" />
+
+        <div className="mt-14 grid gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+          <div>
+            {page.sections.map((section, index) => (
+              <article
+                key={section.title}
+                className={index > 0 ? "mt-12 border-t border-[#1c2b2e]/10 pt-12" : ""}
+              >
+                <p className="text-[0.66rem] uppercase tracking-[0.24em] text-[#96703d]">
+                  {String(index + 1).padStart(2, "0")}
+                </p>
+                <h2 className="mt-3 font-serif text-3xl leading-tight text-[#16292d] sm:text-4xl">
+                  {section.title}
+                </h2>
+                <p className="mt-4 max-w-2xl text-base leading-8 text-[#4c5453]">
+                  {section.body}
+                </p>
+                {section.bullets?.length ? (
+                  <ul className="mt-5 grid gap-2 text-[0.95rem] leading-7 text-[#3c4a4e] sm:grid-cols-2">
+                    {section.bullets.map((bullet) => (
+                      <li key={bullet} className="flex items-baseline gap-2.5">
+                        <span aria-hidden className="h-px w-4 flex-none translate-y-[-3px] bg-[#96703d]" />
+                        {bullet}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </article>
+            ))}
+
+            {page.gallery?.length ? (
+              <div className="mt-12 grid grid-cols-3 gap-3">
+                {page.gallery.map((photo) => (
+                  <div
+                    key={photo.src}
+                    className="relative aspect-[4/5] overflow-hidden rounded-[1.2rem] shadow-[0_16px_40px_rgba(23,32,34,0.12)]"
+                  >
+                    <Image
+                      src={photo.src}
+                      alt={photo.alt}
+                      fill
+                      sizes="(max-width: 1024px) 33vw, 320px"
+                      className="object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <aside className="space-y-6 lg:pl-6">
+            <div className="rounded-[1.4rem] bg-white p-6 shadow-[0_18px_50px_rgba(23,32,34,0.08)]">
+              <p className="text-[0.66rem] uppercase tracking-[0.24em] text-[#96703d]">
+                Prenota
               </p>
-              {section.bullets?.length ? (
-                <ul className="mt-4 space-y-2 text-sm leading-7 text-[#dbdbd6]">
-                  {section.bullets.map((bullet) => (
-                    <li key={bullet} className="pl-4 text-[#dbdbd6] before:mr-2 before:ml-[-1rem] before:text-[#d6b887] before:content-['-']">
-                      {bullet}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </article>
-          ))}
+              <div className="mt-4 flex flex-col gap-3">
+                <ActionLink href={page.primaryAction.href} label={page.primaryAction.label} />
+                {page.secondaryAction ? (
+                  <ActionLink
+                    href={page.secondaryAction.href}
+                    label={page.secondaryAction.label}
+                    ghost
+                  />
+                ) : null}
+              </div>
+            </div>
+
+            <div className="rounded-[1.4rem] bg-white p-6 shadow-[0_18px_50px_rgba(23,32,34,0.08)]">
+              <p className="text-[0.66rem] uppercase tracking-[0.24em] text-[#96703d]">
+                Domande frequenti
+              </p>
+              <div className="mt-4 space-y-5">
+                {page.faqs.map((faq) => (
+                  <div
+                    key={faq.question}
+                    className="border-t border-[#1c2b2e]/10 pt-4 first:border-t-0 first:pt-0"
+                  >
+                    <h3 className="font-serif text-lg leading-snug text-[#16292d]">
+                      {faq.question}
+                    </h3>
+                    <p className="mt-2 text-sm leading-7 text-[#4c5453]">{faq.answer}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
         </div>
-
-        <aside className="space-y-5">
-          <div className="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-5">
-            <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#d6b887]">
-              Prenota
-            </p>
-            <div className="mt-4 flex flex-col gap-3">
-              {page.primaryAction.href.startsWith("http") ? (
-                <a
-                  href={page.primaryAction.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="cta"
-                >
-                  {page.primaryAction.label}
-                </a>
-              ) : (
-                <Link href={page.primaryAction.href} className="cta">
-                  {page.primaryAction.label}
-                </Link>
-              )}
-              {page.secondaryAction ? (
-                <Link
-                  href={page.secondaryAction.href}
-                  className="cta-ghost"
-                >
-                  {page.secondaryAction.label}
-                </Link>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-5">
-            <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#d6b887]">
-              FAQ
-            </p>
-            <div className="mt-4 space-y-4">
-              {page.faqs.map((faq) => (
-                <div key={faq.question} className="border-t border-white/10 pt-4 first:border-t-0 first:pt-0">
-                  <h3 className="font-semibold text-[#f4ede4]">{faq.question}</h3>
-                  <p className="mt-2 text-sm leading-7 text-[#cfcfca]">{faq.answer}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </aside>
       </section>
     </main>
   );

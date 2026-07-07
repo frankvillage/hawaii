@@ -9,13 +9,13 @@ export const metadata = buildMetadata({
 
 export default function PrivacyPage() {
   return (
-    <main className="bg-[#0b0c0d]">
-      <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
-        <p className="text-[0.72rem] uppercase tracking-[0.24em] text-[#d6b887]">Privacy</p>
-        <h1 className="mt-5 font-serif text-5xl leading-[0.9] text-[#f4ede4] sm:text-6xl">
+    <main className="theme-light bg-[#f8f5ee]">
+      <section className="mx-auto max-w-4xl px-4 pt-32 pb-16 sm:px-6 lg:px-8">
+        <p className="text-[0.72rem] uppercase tracking-[0.24em] text-[#96703d]">Privacy</p>
+        <h1 className="mt-5 font-serif text-5xl leading-[0.9] text-[#16292d] sm:text-6xl">
           Informativa privacy.
         </h1>
-        <p className="mt-6 text-base leading-8 text-[#cfcfca]">
+        <p className="mt-6 text-base leading-8 text-[#4c5453]">
           Informazioni sul trattamento dei dati personali legati a contatti,
           prenotazioni e utilizzo del sito.
         </p>
@@ -24,16 +24,16 @@ export default function PrivacyPage() {
           {legalSections.privacy.map((section) => (
             <article
               key={section.title}
-              className="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.04)] p-5"
+              className="rounded-[1.6rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)] p-5"
             >
-              <h2 className="font-serif text-2xl text-[#f4ede4]">{section.title}</h2>
-              <p className="mt-3 text-sm leading-7 text-[#cfcfca]">{section.body}</p>
+              <h2 className="font-serif text-2xl text-[#16292d]">{section.title}</h2>
+              <p className="mt-3 text-sm leading-7 text-[#4c5453]">{section.body}</p>
               {section.bullets?.length ? (
-                <ul className="mt-4 space-y-2 text-sm leading-7 text-[#dbdbd6]">
+                <ul className="mt-4 space-y-2 text-sm leading-7 text-[#3c4a4e]">
                   {section.bullets.map((bullet) => (
                     <li
                       key={bullet}
-                      className="pl-4 before:mr-2 before:ml-[-1rem] before:text-[#d6b887] before:content-['-']"
+                      className="pl-4 before:mr-2 before:ml-[-1rem] before:text-[#96703d] before:content-['-']"
                     >
                       {bullet}
                     </li>

@@ -53,41 +53,41 @@ export function PrivateEventForm() {
     <form
       id="form"
       onSubmit={handleSubmit}
-      className="rounded-[2rem] border border-white/10 bg-[rgba(255,255,255,0.04)] p-6 backdrop-blur-sm"
+      className="rounded-[2rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)] p-6 backdrop-blur-sm"
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-2 text-sm text-[#dadad5]">
+        <label className="flex flex-col gap-2 text-sm text-[#4c5453]">
           Nome
           <input
             name="name"
             required
-            className="rounded-2xl border border-white/10 bg-[#0b1620] px-4 py-3 text-[#f4ede4] outline-none transition focus:border-[#d6b887]"
+            className="rounded-2xl border border-[#1c2b2e]/10 bg-white px-4 py-3 text-[#16292d] outline-none transition focus:border-[#96703d]"
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-[#dadad5]">
+        <label className="flex flex-col gap-2 text-sm text-[#4c5453]">
           Email
           <input
             name="email"
             type="email"
             required
-            className="rounded-2xl border border-white/10 bg-[#0b1620] px-4 py-3 text-[#f4ede4] outline-none transition focus:border-[#d6b887]"
+            className="rounded-2xl border border-[#1c2b2e]/10 bg-white px-4 py-3 text-[#16292d] outline-none transition focus:border-[#96703d]"
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-[#dadad5]">
+        <label className="flex flex-col gap-2 text-sm text-[#4c5453]">
           Telefono
           <input
             name="phone"
             required
-            className="rounded-2xl border border-white/10 bg-[#0b1620] px-4 py-3 text-[#f4ede4] outline-none transition focus:border-[#d6b887]"
+            className="rounded-2xl border border-[#1c2b2e]/10 bg-white px-4 py-3 text-[#16292d] outline-none transition focus:border-[#96703d]"
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-[#dadad5]">
+        <label className="flex flex-col gap-2 text-sm text-[#4c5453]">
           Tipo di evento
           <select
             name="eventType"
             required
             defaultValue={eventTypes[0]}
-            className="rounded-2xl border border-white/10 bg-[#0b1620] px-4 py-3 text-[#f4ede4] outline-none transition focus:border-[#d6b887]"
+            className="rounded-2xl border border-[#1c2b2e]/10 bg-white px-4 py-3 text-[#16292d] outline-none transition focus:border-[#96703d]"
           >
             {eventTypes.map((eventType) => (
               <option key={eventType} value={eventType}>
@@ -96,25 +96,25 @@ export function PrivateEventForm() {
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-2 text-sm text-[#dadad5] sm:max-w-[11rem]">
+        <label className="flex flex-col gap-2 text-sm text-[#4c5453] sm:max-w-[11rem]">
           Ospiti
           <input
             name="guestCount"
             type="number"
             min="1"
             required
-            className="rounded-2xl border border-white/10 bg-[#0b1620] px-4 py-3 text-[#f4ede4] outline-none transition focus:border-[#d6b887]"
+            className="rounded-2xl border border-[#1c2b2e]/10 bg-white px-4 py-3 text-[#16292d] outline-none transition focus:border-[#96703d]"
           />
         </label>
       </div>
 
-      <label className="mt-4 flex flex-col gap-2 text-sm text-[#dadad5]">
+      <label className="mt-4 flex flex-col gap-2 text-sm text-[#4c5453]">
         Raccontaci l&apos;evento
         <textarea
           name="message"
           required
           rows={5}
-          className="rounded-[1.5rem] border border-white/10 bg-[#0b1620] px-4 py-3 text-[#f4ede4] outline-none transition focus:border-[#d6b887]"
+          className="rounded-[1.5rem] border border-[#1c2b2e]/10 bg-white px-4 py-3 text-[#16292d] outline-none transition focus:border-[#96703d]"
         />
       </label>
 
@@ -128,7 +128,7 @@ export function PrivateEventForm() {
         >
           {state === "loading" ? "Invio in corso" : "Invia richiesta"}
         </button>
-        <p className="text-sm text-[#b7c2c9]">
+        <p className="text-sm text-[#5d6a68]">
           {state === "success"
             ? "Richiesta inviata correttamente."
             : state === "error"

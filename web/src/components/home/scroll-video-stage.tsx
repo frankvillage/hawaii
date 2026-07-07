@@ -496,7 +496,7 @@ export function ScrollVideoStage() {
                     } as React.CSSProperties
                   }
                 >
-                  <a
+                  <Link
                     href={hotspot.href}
                     data-testid="scene-hotspot"
                     onClick={(event) => openHotspotSheet(event, hotspot)}
@@ -512,7 +512,7 @@ export function ScrollVideoStage() {
                     >
                       {hotspot.label}
                     </span>
-                  </a>
+                  </Link>
 
                   <div
                     className={`journey-minicard absolute top-full mt-2 hidden w-[216px] rounded-2xl border border-[rgba(245,239,230,0.16)] bg-[rgba(17,18,19,0.78)] p-4 backdrop-blur-xl md:block ${
@@ -524,8 +524,8 @@ export function ScrollVideoStage() {
                       <span className="text-[0.66rem] uppercase tracking-[0.2em] text-[#e8c89e]">
                         Apri
                       </span>
-                      <span className="font-mono text-[0.66rem] text-[#9a9a95]">
-                        {hotspot.href.split("#")[0]}
+                      <span aria-hidden className="text-[0.8rem] text-[#e8c89e]">
+                        →
                       </span>
                     </div>
                   </div>

@@ -11,13 +11,13 @@ export const metadata = buildMetadata({
 
 export default function MenuPage() {
   return (
-    <main className="bg-[#0b0c0d]">
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <p className="text-[0.72rem] uppercase tracking-[0.24em] text-[#d6b887]">Il Menu</p>
-        <h1 className="mt-5 max-w-[12ch] font-serif text-5xl leading-[0.9] text-[#f4ede4] sm:text-6xl">
+    <main className="theme-light bg-[#f8f5ee]">
+      <section className="mx-auto max-w-7xl px-4 pt-32 pb-16 sm:px-6 lg:px-8">
+        <p className="text-[0.72rem] uppercase tracking-[0.24em] text-[#96703d]">Il Menu</p>
+        <h1 className="mt-5 max-w-[12ch] font-serif text-5xl leading-[0.9] text-[#16292d] sm:text-6xl">
           Menù d&apos;estate.
         </h1>
-        <p className="mt-6 max-w-3xl text-lg leading-8 text-[#cfcfca]">
+        <p className="mt-6 max-w-3xl text-lg leading-8 text-[#4c5453]">
           La cura per la materia prima, la semplicità e la bontà di piatti
           studiati per sapere di mare.
         </p>
@@ -25,10 +25,10 @@ export default function MenuPage() {
           {menuHighlights.map((item) => (
             <article
               key={item.title}
-              className="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.04)] p-5"
+              className="rounded-[1.6rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)] p-5"
             >
-              <strong className="block font-serif text-2xl text-[#f4ede4]">{item.title}</strong>
-              <p className="mt-2 text-sm leading-7 text-[#cfcfca]">{item.detail}</p>
+              <strong className="block font-serif text-2xl text-[#16292d]">{item.title}</strong>
+              <p className="mt-2 text-sm leading-7 text-[#4c5453]">{item.detail}</p>
             </article>
           ))}
         </div>
@@ -46,13 +46,13 @@ export default function MenuPage() {
                     className="mb-5 h-12 w-auto sm:h-14"
                   />
                 ) : null}
-                <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#d6b887]">
+                <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#96703d]">
                   {menu.eyebrow}
                 </p>
-                <h2 className="mt-4 font-serif text-4xl text-[#f4ede4] sm:text-5xl">
+                <h2 className="mt-4 font-serif text-4xl text-[#16292d] sm:text-5xl">
                   {menu.title}
                 </h2>
-                <p className="mt-4 text-base leading-8 text-[#cfcfca]">{menu.description}</p>
+                <p className="mt-4 text-base leading-8 text-[#4c5453]">{menu.description}</p>
                 {menu.action ? (
                   <Link
                     href={menu.action.href}
@@ -68,7 +68,7 @@ export default function MenuPage() {
                   {menu.photos.map((photo) => (
                     <div
                       key={photo.src}
-                      className="relative aspect-[4/3] overflow-hidden rounded-[1.4rem] border border-white/10"
+                      className="relative aspect-[4/3] overflow-hidden rounded-[1.4rem] border border-[#1c2b2e]/10"
                     >
                       <Image
                         src={photo.src}
@@ -87,24 +87,24 @@ export default function MenuPage() {
                   <article
                     key={`${menu.id}-${category.title}`}
                     data-testid="menu-section"
-                    className="rounded-[2rem] border border-white/10 bg-[rgba(255,255,255,0.04)] p-6"
+                    className="rounded-[2rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)] p-6"
                   >
-                    <h3 className="font-serif text-2xl text-[#f4ede4] sm:text-3xl">
+                    <h3 className="font-serif text-2xl text-[#16292d] sm:text-3xl">
                       {category.title}
                     </h3>
                     {category.note ? (
-                      <p className="mt-2 text-sm leading-7 text-[#cfcfca]">{category.note}</p>
+                      <p className="mt-2 text-sm leading-7 text-[#4c5453]">{category.note}</p>
                     ) : null}
                     {category.dishes.length ? (
-                      <ul className="mt-4 grid gap-3 text-sm leading-7 text-[#dbdbd6]">
+                      <ul className="mt-4 grid gap-3 text-sm leading-7 text-[#3c4a4e]">
                         {category.dishes.map((dish) => (
                           <li
                             key={dish.name}
-                            className="flex items-baseline justify-between gap-4 border-b border-white/8 pb-2 last:border-b-0 last:pb-0"
+                            className="flex items-baseline justify-between gap-4 border-b border-[#1c2b2e]/10 pb-2 last:border-b-0 last:pb-0"
                           >
                             <span>{dish.name}</span>
                             {dish.price ? (
-                              <span className="whitespace-nowrap text-[#d6b887]">{dish.price}</span>
+                              <span className="whitespace-nowrap text-[#96703d]">{dish.price}</span>
                             ) : null}
                           </li>
                         ))}
@@ -117,12 +117,12 @@ export default function MenuPage() {
           ))}
         </div>
 
-        <div className="mt-14 flex flex-col gap-4 rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mt-14 flex flex-col gap-4 rounded-[2rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)] p-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">
-            <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#d6b887]">
+            <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#96703d]">
               Tra mare e terrazza
             </p>
-            <p className="mt-3 text-base leading-8 text-[#cfcfca]">
+            <p className="mt-3 text-base leading-8 text-[#4c5453]">
               Dalla cucina di mare alla brace, ogni proposta accompagna un momento
               diverso della giornata, dal pranzo al dopocena.
             </p>
