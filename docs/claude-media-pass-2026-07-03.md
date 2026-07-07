@@ -340,6 +340,14 @@ Post-preview feedback (same day, owner watching the live Pages build):
   band converted to a warm light tone; feste-private's gradient hero
   replaced by a light editorial opening with the form beside.
 
+- Mobile scrub unlock (owner: video frozen on the first frame on
+  phones): iOS/Safari does not paint seeked frames until the video has
+  been unlocked by a play. The stage now issues a muted programmatic
+  play stopped on the first `playing` event (allowed thanks to
+  muted+playsInline), with a first-touch fallback trigger; duration
+  sync no longer pauses (it aborted the unlock play). Verified under
+  iPhone emulation: currentTime 0 → 16.4s on a scroll jump.
+
 Verification 2026-07-07: `npm --prefix web run lint` ✓, server build ✓,
 static export build ✓, `npm run test:web:smoke` ✓ (updated 5-soul
 assertion), Playwright visual QA desktop 1440 + mobile 390 (mp4 build →

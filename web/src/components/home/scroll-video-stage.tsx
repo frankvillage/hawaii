@@ -113,14 +113,36 @@ export function ScrollVideoStage() {
       if (Number.isFinite(video.duration) && video.duration > 0) {
         setVideoDuration(video.duration);
       }
+    };
 
+    /* iOS/Safari never paints seeked frames until the video has been
+       "unlocked" by a play. Muted + playsInline allows a programmatic play,
+       which we stop immediately; the first touch is the fallback trigger. */
+    const stopAfterUnlock = () => {
       video.pause();
+
+      try {
+        video.currentTime = targetTimeRef.current;
+      } catch {
+        // Seek can be rejected while metadata is still settling.
+      }
+    };
+
+    const unlock = () => {
+      video.play().catch(() => {});
     };
 
     video.addEventListener("loadedmetadata", syncDuration);
+    video.addEventListener("playing", stopAfterUnlock);
+    window.addEventListener("touchstart", unlock, { once: true, passive: true });
+    unlock();
     syncDuration();
 
-    return () => video.removeEventListener("loadedmetadata", syncDuration);
+    return () => {
+      video.removeEventListener("loadedmetadata", syncDuration);
+      video.removeEventListener("playing", stopAfterUnlock);
+      window.removeEventListener("touchstart", unlock);
+    };
   }, []);
 
   /* Backup screens: if the video cannot load (network error, unsupported
