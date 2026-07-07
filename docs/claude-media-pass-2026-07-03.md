@@ -251,6 +251,25 @@ per il deploy") plus the GitHub Pages preview pipeline.
   enable it once in Settings → Pages → Source: "GitHub Actions",
   then re-run the workflow. First run's build stage passed on CI.
 
+Post-preview feedback (same day, owner watching the live Pages build):
+
+- Damped scrub: scroll no longer drives `video.currentTime` directly.
+  The scroll handler only moves a target; a rAF follower eases the
+  video toward it (`1 - exp(-dt * 4)` per frame), so take-off and stop
+  are soft and fast flicks turn into a glide. Measured: a jump to the
+  beach hold plays 0 → 16.7s of footage over ~1.4s with ease-out
+  instead of snapping. Reduced-motion path unchanged (poster, no video).
+- Soul rail re-synced to the footage: the IntersectionObserver on the
+  scene anchors (which pre-lit "Ristorante" during the opening aerial)
+  is gone. The rail now computes the active scene from the same scroll
+  progress as the stage and lights a soul only while its sector is in
+  frame; Transition scenes (arrival aerial) light nothing. Stops stay
+  clickable anchors into the journey.
+- Official MUULab Riviera wordmark (owner-delivered zip) added as
+  transparent sand + white variants in `brand/`; shown on /terrazza
+  (hero, eyebrow reworded to avoid duplication) and on the /menu
+  MUULab carte.
+
 Verification 2026-07-07: `npm --prefix web run lint` ✓, server build ✓,
 static export build ✓, `npm run test:web:smoke` ✓ (updated 5-soul
 assertion), Playwright visual QA desktop 1440 + mobile 390 (mp4 build →

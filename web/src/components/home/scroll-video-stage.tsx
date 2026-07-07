@@ -51,10 +51,15 @@ const fallbackStills = Array.from(
   ]),
 );
 
+/* How quickly the video chases the scroll target (per second). Lower is
+   softer: ~0.63 of the remaining distance is covered each 1/RATE seconds. */
+const SCRUB_DAMPING_RATE = 4;
+
 export function ScrollVideoStage() {
   const wrapperRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const targetTimeRef = useRef(0);
 
   const [isReducedMotion, setIsReducedMotion] = useState(false);
   const [videoDuration, setVideoDuration] = useState(homeJourney.media.duration);
@@ -190,15 +195,10 @@ export function ScrollVideoStage() {
       const span = Math.max(scene.end - scene.start, 0.001);
       const sceneFraction = clamp((nextProgress - scene.start) / span, 0, 1);
       const mappedProgress = scene.start + plateau(sceneFraction) * span;
-      const nextTime = clamp(mappedProgress * videoDuration, 0, videoDuration);
 
-      if (Math.abs(video.currentTime - nextTime) > 0.05) {
-        try {
-          video.currentTime = nextTime;
-        } catch {
-          // Safari can occasionally reject seeks while metadata is still settling.
-        }
-      }
+      /* Only move the target here: the damped follower below owns the seeks,
+         so the footage glides after the scroll instead of snapping with it. */
+      targetTimeRef.current = clamp(mappedProgress * videoDuration, 0, videoDuration);
     };
 
     const requestUpdate = () => {
@@ -222,6 +222,44 @@ export function ScrollVideoStage() {
         window.cancelAnimationFrame(frame);
       }
     };
+  }, [isReducedMotion, videoDuration]);
+
+  /* Damped scrub: the video eases toward the scroll target every frame, so
+     both take-off and stop are soft instead of tracking the finger 1:1. */
+  useEffect(() => {
+    if (isReducedMotion || !Number.isFinite(videoDuration) || videoDuration <= 0) {
+      return;
+    }
+
+    let frame = 0;
+    let last = performance.now();
+
+    const follow = (now: number) => {
+      const dt = Math.min((now - last) / 1000, 0.1);
+      last = now;
+
+      const video = videoRef.current;
+
+      if (video) {
+        const current = video.currentTime;
+        const delta = targetTimeRef.current - current;
+        const step = delta * (1 - Math.exp(-dt * SCRUB_DAMPING_RATE));
+
+        if (Math.abs(step) > 0.012) {
+          try {
+            video.currentTime = current + step;
+          } catch {
+            // Safari can occasionally reject seeks while metadata is settling.
+          }
+        }
+      }
+
+      frame = window.requestAnimationFrame(follow);
+    };
+
+    frame = window.requestAnimationFrame(follow);
+
+    return () => window.cancelAnimationFrame(frame);
   }, [isReducedMotion, videoDuration]);
 
   const activeScene = useMemo(() => sceneAt(progress), [progress]);

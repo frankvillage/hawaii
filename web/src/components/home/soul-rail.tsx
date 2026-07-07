@@ -3,48 +3,63 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { soulNavigation } from "@/lib/site-content";
+import { homeJourney, soulNavigation } from "@/lib/site-content";
 
 type SoulLabel = (typeof soulNavigation)[number]["label"];
 
-const defaultSoul: SoulLabel = soulNavigation[0].label;
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
 
 export function SoulRail() {
-  const [activeSoul, setActiveSoul] = useState<SoulLabel>(defaultSoul);
+  /* null = no sector on screen yet (arrival aerial, transitions). */
+  const [activeSoul, setActiveSoul] = useState<SoulLabel | null>(null);
 
+  /* The rail follows the journey's active scene, so a soul lights up exactly
+     while its sector is in frame — same progress math as the video stage. */
   useEffect(() => {
-    const sections = Array.from(
-      document.querySelectorAll<HTMLElement>("[data-chapter][data-soul]"),
-    );
+    const stage = document.querySelector<HTMLElement>('[data-testid="hero-stage"]');
 
-    if (!sections.length) {
+    if (!stage) {
       return;
     }
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+    let frame = 0;
 
-        if (!visible) {
-          return;
-        }
+    const sync = () => {
+      frame = 0;
 
-        const soul = visible.target.getAttribute("data-soul");
-        if (soul && soul !== "Transition") {
-          setActiveSoul(soul as SoulLabel);
-        }
-      },
-      {
-        rootMargin: "-30% 0px -35% 0px",
-        threshold: [0.2, 0.45, 0.7],
-      },
-    );
+      const rect = stage.getBoundingClientRect();
+      const scrollable = Math.max(stage.offsetHeight - window.innerHeight, 1);
+      const progress = clamp(-rect.top / scrollable, 0, 1);
 
-    sections.forEach((section) => observer.observe(section));
+      const scene =
+        homeJourney.scenes.find((s) => progress >= s.start && progress < s.end) ??
+        homeJourney.scenes[homeJourney.scenes.length - 1];
 
-    return () => observer.disconnect();
+      const next = scene.soul === "Transition" ? null : (scene.soul as SoulLabel);
+
+      setActiveSoul((current) => (current === next ? current : next));
+    };
+
+    const requestSync = () => {
+      if (!frame) {
+        frame = window.requestAnimationFrame(sync);
+      }
+    };
+
+    sync();
+    window.addEventListener("scroll", requestSync, { passive: true });
+    window.addEventListener("resize", requestSync);
+
+    return () => {
+      window.removeEventListener("scroll", requestSync);
+      window.removeEventListener("resize", requestSync);
+
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+      }
+    };
   }, []);
 
   return (
