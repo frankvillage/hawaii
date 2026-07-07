@@ -65,7 +65,7 @@ export function SoulRail() {
                 <Link
                   data-soul-link
                   href={item.href}
-                  className={`flex min-w-[5.8rem] items-center justify-center gap-2 rounded-full px-3 py-2 text-[0.68rem] uppercase tracking-[0.22em] transition md:min-w-[7rem] md:justify-end md:px-4 ${
+                  className={`flex items-center justify-center gap-1.5 rounded-full px-2 py-2 text-[0.6rem] uppercase tracking-[0.16em] transition sm:gap-2 sm:px-3 sm:text-[0.68rem] sm:tracking-[0.22em] md:min-w-[7rem] md:justify-end md:px-4 ${
                     isActive ? "text-[#e8c89e]" : "text-[#dadad5] hover:text-white"
                   }`}
                 >

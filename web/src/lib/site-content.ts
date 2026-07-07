@@ -57,6 +57,8 @@ export type JourneyScene = {
   hotspots: JourneyHotspot[];
   menu?: SceneMenu;
   action?: SceneAction;
+  /* Where the copy block sits, chosen per frame composition. */
+  align?: "left" | "center" | "right";
 };
 
 export type Chapter = {
@@ -199,6 +201,7 @@ export const homeJourney = {
   scenes: [
     {
       id: "arrivo",
+      align: "center",
       anchor: "journey",
       daypart: "Prima luce",
       soul: "Transition",
@@ -215,6 +218,7 @@ export const homeJourney = {
     },
     {
       id: "restaurant",
+      align: "left",
       anchor: "restaurant",
       daypart: "Mattina",
       soul: "Restaurant",
@@ -231,6 +235,7 @@ export const homeJourney = {
     },
     {
       id: "sport",
+      align: "right",
       anchor: "sport",
       daypart: "Tarda mattina",
       soul: "Sport",
@@ -247,6 +252,7 @@ export const homeJourney = {
     },
     {
       id: "beach",
+      align: "center",
       anchor: "beach",
       daypart: "Pieno giorno",
       soul: "Beach",
@@ -271,6 +277,7 @@ export const homeJourney = {
     },
     {
       id: "lunch",
+      align: "right",
       anchor: "lunch",
       daypart: "Pranzo",
       soul: "Restaurant",
@@ -295,6 +302,7 @@ export const homeJourney = {
     },
     {
       id: "cucina",
+      align: "left",
       anchor: "cucina",
       daypart: "Verso sera",
       soul: "Restaurant",
@@ -325,6 +333,7 @@ export const homeJourney = {
     },
     {
       id: "sunset",
+      align: "center",
       anchor: "sunset",
       daypart: "Tramonto",
       soul: "Nightlife",
@@ -349,6 +358,7 @@ export const homeJourney = {
     },
     {
       id: "muulab",
+      align: "right",
       anchor: "muulab",
       daypart: "Sera",
       soul: "Restaurant",
@@ -373,6 +383,7 @@ export const homeJourney = {
     },
     {
       id: "nightlife",
+      align: "center",
       anchor: "nightlife",
       daypart: "Notte",
       soul: "Nightlife",

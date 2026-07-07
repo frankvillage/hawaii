@@ -194,6 +194,16 @@ export function ScrollVideoStage() {
 
   const overlaysInteractive = overlaySettle > 0.18;
 
+  const copyAlign = activeScene.align ?? "left";
+  const copyAlignClasses =
+    copyAlign === "center"
+      ? "mx-auto text-center"
+      : copyAlign === "right"
+        ? "ml-auto text-right"
+        : "";
+  const copyRowJustify =
+    copyAlign === "center" ? "justify-center" : copyAlign === "right" ? "justify-end" : "";
+
   const overlayStyle = {
     opacity: overlaySettle,
     transform: `translateY(${((1 - overlaySettle) * 16).toFixed(1)}px)`,
@@ -280,9 +290,20 @@ export function ScrollVideoStage() {
         )}
 
         {/* No boxes: legibility comes from one light veil plus a feathered
-            scrim in the lower-left corner where the copy lives. */}
+            scrim that follows the copy block (left / center / right). */}
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,10,0.16),rgba(8,9,10,0.02)_32%,rgba(8,9,10,0.06)_60%,rgba(8,9,10,0.3))]" />
-        <div className="absolute inset-0 bg-[radial-gradient(115%_125%_at_0%_100%,rgba(6,6,7,0.55),rgba(6,6,7,0.26)_42%,transparent_68%)]" />
+        <div
+          className="absolute inset-0 bg-[radial-gradient(115%_125%_at_0%_100%,rgba(6,6,7,0.55),rgba(6,6,7,0.26)_42%,transparent_68%)] transition-opacity duration-700"
+          style={{ opacity: copyAlign === "left" ? 1 : 0 }}
+        />
+        <div
+          className="absolute inset-0 bg-[radial-gradient(105%_120%_at_50%_115%,rgba(6,6,7,0.55),rgba(6,6,7,0.24)_42%,transparent_70%)] transition-opacity duration-700"
+          style={{ opacity: copyAlign === "center" ? 1 : 0 }}
+        />
+        <div
+          className="absolute inset-0 bg-[radial-gradient(115%_125%_at_100%_100%,rgba(6,6,7,0.55),rgba(6,6,7,0.26)_42%,transparent_68%)] transition-opacity duration-700"
+          style={{ opacity: copyAlign === "right" ? 1 : 0 }}
+        />
 
         <div className="relative z-10 flex h-full flex-col justify-between px-4 pb-24 pt-16 sm:px-6 md:pb-6 lg:px-8 lg:pb-8">
           <div className="flex items-start justify-between gap-4">
@@ -292,7 +313,7 @@ export function ScrollVideoStage() {
                 transform: "translate3d(calc(var(--pointer-x) * -0.26), calc(var(--pointer-y) * -0.26), 0)",
               }}
             >
-              <p className="text-[0.68rem] uppercase tracking-[0.28em] text-[#e8c89e]">
+              <p className="hidden text-[0.68rem] uppercase tracking-[0.28em] text-[#e8c89e] sm:block">
                 {homeHero.eyebrow}
               </p>
               <Image
@@ -302,7 +323,7 @@ export function ScrollVideoStage() {
                 width={800}
                 height={377}
                 priority
-                className="mt-3 h-14 w-auto drop-shadow-[0_2px_24px_rgba(8,9,10,0.6)] sm:h-20 lg:h-24"
+                className="h-10 w-auto drop-shadow-[0_2px_24px_rgba(8,9,10,0.6)] sm:mt-3 sm:h-20 lg:h-24"
               />
               <h1 className="sr-only">Hawaii Pescara — Urban Village</h1>
             </div>
@@ -341,7 +362,7 @@ export function ScrollVideoStage() {
                   {String(activeSceneIndex + 1).padStart(2, "0")} /{" "}
                   {String(homeJourney.scenes.length).padStart(2, "0")}
                 </p>
-                <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#efefea]">
+                <p className="mt-1 hidden text-xs uppercase tracking-[0.18em] text-[#efefea] sm:block">
                   {activeScene.daypart}
                 </p>
               </div>
@@ -407,7 +428,7 @@ export function ScrollVideoStage() {
 
           <div className="grid gap-8">
             <div
-              className="max-w-2xl"
+              className={`max-w-2xl ${copyAlignClasses}`}
               style={{
                 ...overlayStyle,
                 transform: `${overlayStyle.transform} translate3d(calc(var(--pointer-x) * -0.18), calc(var(--pointer-y) * -0.18), 0)`,
@@ -420,19 +441,27 @@ export function ScrollVideoStage() {
                 {activeScene.eyebrow}
               </p>
               <h2
-                className="mt-4 max-w-[12ch] font-serif text-4xl leading-[0.95] text-[#f5efe6] sm:text-5xl lg:text-6xl"
+                className={`mt-4 max-w-[14ch] font-serif text-3xl leading-[0.98] text-[#f5efe6] sm:text-5xl lg:text-6xl ${
+                  copyAlign === "center" ? "mx-auto" : copyAlign === "right" ? "ml-auto" : ""
+                }`}
                 style={{ textShadow: "0 2px 30px rgba(8,9,10,0.6)" }}
               >
                 {activeScene.title}
               </h2>
               <p
-                className="mt-5 max-w-xl text-sm leading-7 text-[#eeeee9] sm:text-base sm:leading-8"
+                className={`mt-4 max-w-xl text-sm leading-7 text-[#eeeee9] sm:mt-5 sm:text-base sm:leading-8 ${
+                  copyAlign === "center" ? "mx-auto" : copyAlign === "right" ? "ml-auto" : ""
+                }`}
                 style={{ textShadow: "0 1px 18px rgba(8,9,10,0.55)" }}
               >
                 {activeScene.summary}
               </p>
 
-              <div className={`mt-6 flex flex-wrap gap-3 ${overlaysInteractive ? "" : "pointer-events-none"}`}>
+              <div
+                className={`mt-5 flex flex-wrap gap-3 sm:mt-6 ${copyRowJustify} ${
+                  overlaysInteractive ? "" : "pointer-events-none"
+                }`}
+              >
                 {activeScene.action?.external ? (
                   <a
                     href={activeScene.action.href}
