@@ -43,9 +43,12 @@ export function SiteHeader() {
     };
   }, []);
 
-  useEffect(() => {
+  /* Close the panel when navigation lands on a new page. */
+  const [lastPathname, setLastPathname] = useState(pathname);
+  if (lastPathname !== pathname) {
+    setLastPathname(pathname);
     setIsOpen(false);
-  }, [pathname]);
+  }
 
   const t = isOpen ? 1 : condense;
 
@@ -66,7 +69,21 @@ export function SiteHeader() {
           className="inline-flex h-10 w-10 cursor-pointer items-center justify-center text-white/90 transition hover:text-white"
           style={{ filter: "drop-shadow(0 1px 8px rgba(6,6,7,0.7))" }}
         >
-          <span className="text-2xl leading-none">{isOpen ? "×" : "≡"}</span>
+          {/* Three slim lines, as on the old site; they fold into an × when open. */}
+          <span aria-hidden className="relative block h-3.5 w-6">
+            <span
+              className="absolute inset-x-0 top-0 h-px bg-current transition-transform duration-200"
+              style={isOpen ? { transform: "translateY(6.5px) rotate(45deg)" } : undefined}
+            />
+            <span
+              className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-current transition-opacity duration-200"
+              style={isOpen ? { opacity: 0 } : undefined}
+            />
+            <span
+              className="absolute inset-x-0 bottom-0 h-px bg-current transition-transform duration-200"
+              style={isOpen ? { transform: "translateY(-6.5px) rotate(-45deg)" } : undefined}
+            />
+          </span>
         </button>
 
         <Link

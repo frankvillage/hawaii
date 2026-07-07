@@ -48,7 +48,7 @@ export type JourneyScene = {
   id: string;
   anchor: string;
   daypart: string;
-  soul: "Beach" | "Restaurant" | "Sport" | "Nightlife" | "Transition";
+  soul: "Beach" | "Ristorante" | "Sport" | "MUULab" | "Notte" | "Restaurant" | "Nightlife" | "Transition";
   eyebrow: string;
   title: string;
   summary: string;
@@ -59,12 +59,14 @@ export type JourneyScene = {
   action?: SceneAction;
   /* Where the copy block sits, chosen per frame composition. */
   align?: "left" | "center" | "right";
+  /* Hold-frame still shown as the backup screen if the video fails. */
+  still?: string;
 };
 
 export type Chapter = {
   slug: string;
   daypart: string;
-  soul: "Beach" | "Restaurant" | "Sport" | "Nightlife" | "Transition";
+  soul: "Beach" | "Ristorante" | "Sport" | "MUULab" | "Notte" | "Restaurant" | "Nightlife" | "Transition";
   eyebrow: string;
   title: string;
   summary: string;
@@ -172,9 +174,10 @@ export const navigation = [
 
 export const soulNavigation = [
   { label: "Beach", href: "#beach" },
-  { label: "Restaurant", href: "#restaurant" },
+  { label: "Ristorante", href: "#lunch" },
   { label: "Sport", href: "#sport" },
-  { label: "Nightlife", href: "#nightlife" },
+  { label: "MUULab", href: "#muulab" },
+  { label: "Notte", href: "#nightlife" },
 ] as const;
 
 export const homeHero = {
@@ -201,6 +204,7 @@ export const homeJourney = {
   scenes: [
     {
       id: "arrivo",
+      still: "/media/hawaii/journey-poster.jpg",
       align: "center",
       anchor: "journey",
       daypart: "Prima luce",
@@ -218,10 +222,11 @@ export const homeJourney = {
     },
     {
       id: "restaurant",
+      still: "/media/hawaii/morning-bar.jpg",
       align: "left",
       anchor: "restaurant",
       daypart: "Mattina",
-      soul: "Restaurant",
+      soul: "Ristorante",
       eyebrow: "Bar & sala",
       title: "La mattina comincia al bancone.",
       summary: "Caffè, bancone e sala che prende ritmo verso il mezzogiorno.",
@@ -235,6 +240,7 @@ export const homeJourney = {
     },
     {
       id: "sport",
+      still: "/media/hawaii/padel-court.jpg",
       align: "right",
       anchor: "sport",
       daypart: "Tarda mattina",
@@ -252,6 +258,7 @@ export const homeJourney = {
     },
     {
       id: "beach",
+      still: "/media/hawaii/beach-umbrellas.jpg",
       align: "center",
       anchor: "beach",
       daypart: "Pieno giorno",
@@ -277,10 +284,11 @@ export const homeJourney = {
     },
     {
       id: "lunch",
+      still: "/media/hawaii/lunch-service.jpg",
       align: "right",
       anchor: "lunch",
       daypart: "Pranzo",
-      soul: "Restaurant",
+      soul: "Ristorante",
       eyebrow: "Ristorante mare",
       title: "A pranzo il pesce arriva in tavola.",
       summary: "Sala luminosa, servizio e piatti di mare nel pieno della giornata.",
@@ -302,10 +310,11 @@ export const homeJourney = {
     },
     {
       id: "cucina",
+      still: "/media/hawaii/kitchen-brace.jpg",
       align: "left",
       anchor: "cucina",
       daypart: "Verso sera",
-      soul: "Restaurant",
+      soul: "Ristorante",
       eyebrow: "Cucina a vista",
       title: "La cucina lavora a vista.",
       summary: "Piatti espressi, fuoco e mani veloci dietro il bancone.",
@@ -333,10 +342,11 @@ export const homeJourney = {
     },
     {
       id: "sunset",
+      still: "/media/hawaii/terrace-daybed.jpg",
       align: "center",
       anchor: "sunset",
       daypart: "Tramonto",
-      soul: "Nightlife",
+      soul: "MUULab",
       eyebrow: "Terrazza",
       title: "Il giorno sale in terrazza e cambia luce.",
       summary: "Daybed, bollicine e tavoli vista mare aprono la parte più sospesa della sera.",
@@ -358,10 +368,11 @@ export const homeJourney = {
     },
     {
       id: "muulab",
+      still: "/media/hawaii/muulab-bar.jpg",
       align: "right",
       anchor: "muulab",
       daypart: "Sera",
-      soul: "Restaurant",
+      soul: "MUULab",
       eyebrow: "MUULab Riviera",
       title: "La sera prende il profumo della brace.",
       summary: "In terrazza la cena vive tra brace, cucina a vista e panorama.",
@@ -383,10 +394,11 @@ export const homeJourney = {
     },
     {
       id: "nightlife",
+      still: "/media/hawaii/night-event.jpg",
       align: "center",
       anchor: "nightlife",
       daypart: "Notte",
-      soul: "Nightlife",
+      soul: "Notte",
       eyebrow: "Eventi",
       title: "Dopo cena il ritmo si accende.",
       summary: "Dj set, tavoli evento e notti che riportano lentamente verso una nuova alba.",
@@ -1123,29 +1135,30 @@ export const venueMenus: VenueMenu[] = [
   },
 ];
 
+/* Formats recycled from the events page of the current WordPress site. */
 export const eventFormats: EventFormat[] = [
   {
-    title: "Sunset Terrace",
-    timing: "Tramonto",
+    title: "Come di Domenica",
+    timing: "Domenica · 16:00 – 22:00",
     description:
-      "Aperitivo vista mare, luce calda, cocktail e tavoli che accompagnano il passaggio verso la sera.",
-    notes: ["vista mare", "cocktail", "golden hour"],
-    action: { label: "Prenota il tramonto", href: "/prenotazioni" },
+      "Il format della domenica: pranzo à la carte che si allunga nel pomeriggio, dj set e il mare davanti fino al tramonto.",
+    notes: ["pranzo à la carte", "dj set", "pomeriggio sul mare"],
+    action: { label: "Prenota il tavolo", href: "/prenotazioni" },
   },
   {
-    title: "Dinner & After Dinner",
-    timing: "Sera",
+    title: "Il Giovedì in terrazza",
+    timing: "Giovedì · 18:00 – 01:00",
     description:
-      "Cena in terrazza, brace e una transizione naturale verso il dopocena con musica e tavoli.",
-    notes: ["brace", "cena", "tavoli serali"],
-    action: { label: "Scopri la terrazza", href: "/terrazza" },
+      "Aperitivo al tramonto in terrazza con champagne e crudi di mare, accompagnato dalla musica di Mirko Alfonso e Gianluca Fratti.",
+    notes: ["sunset aperitivo", "champagne e crudi", "musica dal vivo"],
+    action: { label: "Prenota la terrazza", href: "/terrazza" },
   },
   {
-    title: "Dj Set & Special Date",
-    timing: "Notte",
+    title: "Special Date",
+    timing: "Date selezionate",
     description:
-      "Format serali, special guest, tavoli evento e serate che tengono acceso il luogo fino a tardi.",
-    notes: ["dj set", "special date", "nightlife"],
+      "Serate speciali e tappe d'estate — come l'Aperol tour — con dj set, ospiti e tavoli evento annunciati sui canali social.",
+    notes: ["dj set", "special guest", "tavoli evento"],
     action: { label: "Richiedi info eventi", href: "/contatti" },
   },
 ];
@@ -1176,47 +1189,65 @@ export const faqIndex: FaqItem[] = [
   ...pages["eventi"].faqs,
 ];
 
+/* Aligned with the informativa published on www.hawaiipescara.it/privacy-policy
+   (titolare: Kona S.R.L.). Keep in sync with the WordPress site. */
 export const legalSections: Record<"privacy" | "cookie", LegalSection[]> = {
   privacy: [
     {
       title: "Titolare del trattamento",
-      body: "Nella versione definitiva saranno riportati ragione sociale completa, sede, contatti del titolare e riferimenti aggiornati.",
+      body: "Il titolare del trattamento è Kona S.R.L., Viale della Riviera 154, 65123 Pescara (PE). Per ogni richiesta relativa ai dati personali: info@hawaiipescara.it · 375 5175508.",
     },
     {
-      title: "Finalita del trattamento",
-      body: "Questa informativa descrive finalita legate a contatto, prenotazioni, richieste evento e gestione tecnica del sito.",
+      title: "Navigazione sul sito",
+      body: "Durante la navigazione vengono raccolti dati tecnici quali indirizzi IP, indirizzi URI delle risorse richieste e orari di connessione, oltre ai cookie descritti nell'informativa dedicata.",
       bullets: [
-        "gestione delle richieste inviate dai form",
-        "organizzazione di prenotazioni e contatti commerciali",
-        "sicurezza e manutenzione tecnica del sito",
+        "finalità: funzionamento del sito, sicurezza e analisi statistica",
+        "base giuridica: art. 6.1.b GDPR per gli strumenti tecnici; consenso per gli strumenti di profilazione",
+        "conservazione: dati di navigazione fino a 1 mese; cookie fino a 12 mesi",
       ],
     },
     {
-      title: "Base giuridica e tempi di conservazione",
-      body: "Nella versione definitiva saranno specificate basi giuridiche, tempi di conservazione e criteri applicati dal titolare.",
+      title: "Form di contatto e prenotazioni",
+      body: "I dati inviati tramite i form (nome, cognome, email, telefono) sono trattati per rispondere a richieste informative e commerciali e per gestire prenotazioni ed eventi.",
+      bullets: [
+        "base giuridica: esecuzione di misure precontrattuali richieste dall'interessato",
+        "conservazione: massimo 12 mesi dalla richiesta",
+      ],
+    },
+    {
+      title: "Clienti e fornitori",
+      body: "Per clienti e fornitori sono trattati dati identificativi, di contatto e riferimenti di pagamento, per l'esecuzione del contratto, gli adempimenti legali e fiscali e la difesa dei diritti del titolare.",
+      bullets: [
+        "base giuridica: necessità contrattuale, obblighi di legge, legittimo interesse",
+        "conservazione: durata del contratto e successivi 10 anni",
+      ],
     },
     {
       title: "Diritti dell'interessato",
-      body: "Saranno indicati i riferimenti per accesso, rettifica, cancellazione, limitazione, opposizione e reclamo.",
+      body: "In qualsiasi momento è possibile richiedere accesso, rettifica, cancellazione, portabilità, limitazione del trattamento e revoca del consenso scrivendo a info@hawaiipescara.it.",
     },
   ],
   cookie: [
     {
+      title: "Cosa sono e come li usiamo",
+      body: "Il sito utilizza cookie tecnici necessari al funzionamento e, previo consenso, strumenti di misurazione. I dati di navigazione sono conservati fino a 1 mese; i cookie fino a 12 mesi.",
+    },
+    {
       title: "Categorie di cookie",
-      body: "Questa pagina distingue cookie tecnici, analytics e strumenti di terze parti effettivamente attivi sul sito.",
+      body: "Le categorie in uso rispecchiano quelle dichiarate nell'informativa privacy del titolare Kona S.R.L.",
       bullets: [
-        "cookie tecnici necessari",
-        "analytics configurati nel rispetto del consenso",
-        "eventuali integrazioni di terze parti da validare",
+        "cookie tecnici necessari (base giuridica: art. 6.1.b GDPR)",
+        "cookie analitici e statistici, attivati solo dopo il consenso",
+        "eventuali cookie di profilazione di terze parti, solo previo consenso esplicito",
       ],
     },
     {
       title: "Gestione del consenso",
-      body: "Questa sezione spiega come l'utente puo accettare, rifiutare o modificare le preferenze in qualsiasi momento.",
+      body: "Al primo accesso il banner consente di accettare o rifiutare i cookie non necessari; la scelta è modificabile in qualsiasi momento da questa pagina o dalle impostazioni del browser, dove i cookie possono anche essere eliminati.",
     },
     {
-      title: "Elenco strumenti",
-      body: "Nella versione definitiva saranno elencati strumenti analytics, pixel o servizi esterni realmente attivi in produzione.",
+      title: "Titolare e contatti",
+      body: "Titolare del trattamento: Kona S.R.L., Viale della Riviera 154, 65123 Pescara (PE) · info@hawaiipescara.it. Per il quadro completo si rimanda all'informativa privacy.",
     },
   ],
 };

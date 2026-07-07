@@ -1,9 +1,24 @@
 import type { NextConfig } from "next";
 
+/* STATIC_EXPORT=1 builds the fully static variant used by the GitHub Pages
+   preview: no API routes, no header/rewrite support (Pages serves plain
+   files), and NEXT_PUBLIC_BASE_PATH carries the "/<repo>" prefix. The normal
+   server build is untouched. */
+const isStaticExport = process.env.STATIC_EXPORT === "1";
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  ...(isStaticExport
+    ? {
+        output: "export" as const,
+        basePath,
+        images: { unoptimized: true },
+        trailingSlash: true,
+      }
+    : {}),
   /* WordPress fusion ("strangler" pattern): every path this app does not
      serve falls through to the existing WordPress site, so the domain can
      point here while WP keeps serving its own pages unchanged (wp-admin
@@ -12,7 +27,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     const wpOrigin = process.env.WP_ORIGIN_URL?.replace(/\/$/, "");
 
-    if (!wpOrigin) {
+    if (!wpOrigin || isStaticExport) {
       return [];
     }
 
@@ -28,6 +43,10 @@ const nextConfig: NextConfig = {
     };
   },
   async headers() {
+    if (isStaticExport) {
+      return [];
+    }
+
     return [
       {
         source: "/:path*",

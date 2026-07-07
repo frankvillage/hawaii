@@ -42,6 +42,15 @@ function captionFor(hotspot: JourneyHotspot) {
 const RING_RADIUS = 15;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 
+/* Every hold-frame still used by the backup layer, deduplicated so the
+   crossfade stack mounts each image exactly once. */
+const fallbackStills = Array.from(
+  new Set([
+    homeJourney.media.poster,
+    ...homeJourney.scenes.map((scene) => scene.still ?? homeJourney.media.poster),
+  ]),
+);
+
 export function ScrollVideoStage() {
   const wrapperRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -52,6 +61,7 @@ export function ScrollVideoStage() {
   const [progress, setProgress] = useState(0);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [sheetHotspot, setSheetHotspot] = useState<JourneyHotspot | null>(null);
+  const [videoFailed, setVideoFailed] = useState(false);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -106,6 +116,49 @@ export function ScrollVideoStage() {
     syncDuration();
 
     return () => video.removeEventListener("loadedmetadata", syncDuration);
+  }, []);
+
+  /* Backup screens: if the video cannot load (network error, unsupported
+     codec, blocked media), the journey falls back to the per-scene hold-frame
+     stills so scrolling still tells the whole story. */
+  useEffect(() => {
+    const video = videoRef.current;
+
+    if (!video) {
+      return;
+    }
+
+    const markFailed = () => setVideoFailed(true);
+    const markRecovered = () => setVideoFailed(false);
+
+    /* When every <source> is rejected, the error fires on the last <source>,
+       not on the <video> element itself. */
+    const sources = Array.from(video.querySelectorAll("source"));
+
+    video.addEventListener("error", markFailed);
+    video.addEventListener("loadeddata", markRecovered);
+    sources.forEach((source) => source.addEventListener("error", markFailed));
+
+    /* The error may have fired before hydration attached these listeners. */
+    const probeTimer = window.setTimeout(() => {
+      if (video.error || video.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
+        setVideoFailed(true);
+      }
+    }, 0);
+
+    const stallTimer = window.setTimeout(() => {
+      if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+        setVideoFailed(true);
+      }
+    }, 8000);
+
+    return () => {
+      video.removeEventListener("error", markFailed);
+      video.removeEventListener("loadeddata", markRecovered);
+      sources.forEach((source) => source.removeEventListener("error", markFailed));
+      window.clearTimeout(probeTimer);
+      window.clearTimeout(stallTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -185,21 +238,30 @@ export function ScrollVideoStage() {
   );
 
   /* Settle envelope: overlays fade in as the scene holds, release as it scrolls
-     on. The first scene arrives already settled so the first paint is complete. */
-  const overlaySettle = isReducedMotion
+     on. The copy block gets a floor on the first scene so the first paint is
+     complete; hotspots always follow the raw envelope so markers only appear
+     once the footage has actually reached the held frame — never over the
+     distant aerial that opens a scene. */
+  const rawSettle = isReducedMotion
     ? 1
-    : activeSceneIndex === 0 && sceneFraction < 0.5
-      ? 1
-      : clamp((0.5 - Math.abs(sceneFraction - 0.5)) / 0.28, 0, 1);
+    : clamp((0.5 - Math.abs(sceneFraction - 0.5)) / 0.28, 0, 1);
+
+  const overlaySettle =
+    !isReducedMotion && activeSceneIndex === 0 && sceneFraction < 0.5 ? 1 : rawSettle;
 
   const overlaysInteractive = overlaySettle > 0.18;
+  const hotspotsInteractive = rawSettle > 0.18;
+
+  const activeStill = activeScene.still ?? homeJourney.media.poster;
 
   const copyAlign = activeScene.align ?? "left";
+  /* Right-aligned blocks stay clear of the WhatsApp button and the desktop
+     soul rail parked along the right edge. */
   const copyAlignClasses =
     copyAlign === "center"
       ? "mx-auto text-center"
       : copyAlign === "right"
-        ? "ml-auto text-right"
+        ? "ml-auto text-right md:pr-20"
         : "";
   const copyRowJustify =
     copyAlign === "center" ? "justify-center" : copyAlign === "right" ? "justify-end" : "";
@@ -207,6 +269,11 @@ export function ScrollVideoStage() {
   const overlayStyle = {
     opacity: overlaySettle,
     transform: `translateY(${((1 - overlaySettle) * 16).toFixed(1)}px)`,
+  };
+
+  const hotspotLayerStyle = {
+    opacity: rawSettle,
+    transform: `translateY(${((1 - rawSettle) * 16).toFixed(1)}px)`,
   };
 
   const handlePointerMove = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -289,6 +356,26 @@ export function ScrollVideoStage() {
           </video>
         )}
 
+        {!isReducedMotion && videoFailed ? (
+          <div
+            data-testid="journey-fallback"
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+          >
+            {fallbackStills.map((still) => (
+              <Image
+                key={still}
+                src={still}
+                alt=""
+                fill
+                sizes="100vw"
+                className="absolute inset-0 object-cover object-center transition-opacity duration-700"
+                style={{ opacity: still === activeStill ? 1 : 0 }}
+              />
+            ))}
+          </div>
+        ) : null}
+
         {/* No boxes: legibility comes from one light veil plus a feathered
             scrim that follows the copy block (left / center / right). */}
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,10,0.16),rgba(8,9,10,0.02)_32%,rgba(8,9,10,0.06)_60%,rgba(8,9,10,0.3))]" />
@@ -305,7 +392,9 @@ export function ScrollVideoStage() {
           style={{ opacity: copyAlign === "right" ? 1 : 0 }}
         />
 
-        <div className="relative z-10 flex h-full flex-col justify-between px-4 pb-24 pt-24 sm:px-6 md:pb-6 lg:px-8 lg:pb-8">
+        {/* pb-36 keeps the CTA row clear of the soul rail and the WhatsApp
+            button on phones; both float over the stage's bottom band. */}
+        <div className="relative z-10 flex h-full flex-col justify-between px-4 pb-36 pt-24 sm:px-6 md:pb-6 lg:px-8 lg:pb-8">
           <div className="flex items-start justify-end gap-4">
             <h1 className="sr-only">Hawaii Pescara — Urban Village</h1>
 
@@ -350,7 +439,7 @@ export function ScrollVideoStage() {
             </div>
           </div>
 
-          <div className="pointer-events-none absolute inset-0" style={overlayStyle}>
+          <div className="pointer-events-none absolute inset-0" style={hotspotLayerStyle}>
             {activeScene.hotspots.map((hotspot, index) => {
               const mirrored = hotspot.x > 62;
 
@@ -375,7 +464,7 @@ export function ScrollVideoStage() {
                     onClick={(event) => openHotspotSheet(event, hotspot)}
                     className={`flex items-center gap-2.5 p-2 ${
                       mirrored ? "flex-row-reverse" : ""
-                    } ${overlaysInteractive ? "pointer-events-auto" : "pointer-events-none"}`}
+                    } ${hotspotsInteractive ? "pointer-events-auto" : "pointer-events-none"}`}
                   >
                     <span className="journey-dot" />
                     <span className="journey-hairline" />

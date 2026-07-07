@@ -1,0 +1,80 @@
+# GitHub Pages preview of the Hawaii Urban Village experience.
+#
+# Pages serves plain static files, so this builds the STATIC_EXPORT variant of
+# the Next.js app (see web/next.config.ts): no API routes (the inquiry forms
+# degrade to their error state with the phone/WhatsApp contacts still
+# available), no CSP headers, no WordPress fallback rewrites. The production
+# deploy on a real host keeps all of those.
+name: Deploy GitHub Pages preview
+
+on:
+  push:
+    branches:
+      - main
+      - claude/codex-handoff-assets-se8fjq
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      # Route handlers (POST) cannot ship in a static export.
+      - name: Drop server-only API routes
+        run: rm -rf web/src/app/api
+
+      - name: Build static export
+        working-directory: web
+        env:
+          STATIC_EXPORT: "1"
+          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+        run: npm run build
+
+      # Root-absolute media URLs ("/media/...") live in content strings that
+      # Next's basePath does not rewrite (plain <video>/<source> srcs and
+      # unoptimized <Image> srcs), so prefix them in the exported files.
+      - name: Prefix media URLs with the base path
+        run: |
+          find web/out -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.txt' \) -print0 |
+            xargs -0 sed -i \
+              -e 's|"/media/|"/${{ github.event.repository.name }}/media/|g' \
+              -e "s|'/media/|'/${{ github.event.repository.name }}/media/|g" \
+              -e 's|(/media/|(/${{ github.event.repository.name }}/media/|g'
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

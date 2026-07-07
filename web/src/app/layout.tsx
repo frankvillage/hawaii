@@ -23,6 +23,7 @@ const editorialSerif = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.hawaiipescara.it"),
   title: {
     default: "Hawaii Pescara | Urban Village",
     template: "%s",

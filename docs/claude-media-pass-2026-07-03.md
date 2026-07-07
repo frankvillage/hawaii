@@ -189,6 +189,69 @@ once in globals.css (.cta / .cta-ghost / .cta-sm):
   Embedding the scroll app inside WP was rejected (double maintenance,
   loses the app's routing/optimizations).
 
+## Pre-deploy execution pass (2026-07-07)
+
+Owner's pre-deploy batch ("migliorare l'esecuzione prima di prepararci
+per il deploy") plus the GitHub Pages preview pipeline.
+
+- Legal pages aligned "in toto" with the old site: `legalSections` now
+  carries the real informativa (titolare Kona S.R.L., Viale della
+  Riviera 154; navigation data ≤1 month, cookies ≤12 months, form data
+  12 months, contract data 10 years, GDPR rights via
+  info@hawaiipescara.it). The old cookie-policy URL 404s; cookies are
+  covered inside the privacy informativa and mirrored on /cookie.
+- /eventi recycled from the old site's real formats: "Come di
+  Domenica" (16:00–22:00, pranzo à la carte + dj set), "Il Giovedì in
+  terrazza" (18:00–01:00, champagne e crudi, musica di Mirko Alfonso e
+  Gianluca Fratti), "Special Date" (Aperol tour e serate annunciate
+  sui social).
+- Hotspot timing fixed (owner: markers appeared over the distant
+  aerial): the hotspot layer now follows the RAW settle envelope — 0
+  at scene entry, 1 only at the hold frame — while the copy block
+  keeps its first-paint floor on scene 1. Verified numerically
+  (opacity 0 at scene start / 0.24 just after entry / 1 at hold) and
+  on real frames via the WebM pass.
+- Video-failure backup screens: every scene carries a `still`
+  (hold-frame JPG already in the media inventory). A listener set
+  (video error, per-`<source>` error — the event fires on the last
+  source, not the element —, a 0 ms probe for pre-hydration errors,
+  an 8 s readyState stall timer) flips to a crossfading stills layer
+  above the still-mounted video; `loadeddata` recovers. Reduced-motion
+  keeps its existing poster path.
+- Soul rail: 5 stops (Beach, Ristorante, Sport, MUULab, Notte) — the
+  two restaurants are now distinct as requested; scene souls remapped
+  accordingly; fits 390 px (380 px measured, no overflow); smoke
+  assertion updated.
+- Header hamburger: the heavy ≡ glyph replaced with three slim 1 px
+  lines (old-site style) folding into an × when open; same
+  aria-label/expanded/controls contract.
+- favicon.ico regenerated from the brand mark (48/32/16 multi-size;
+  it was still the create-next-app default). icon.png / apple-icon.png
+  / opengraph-image.jpg unchanged.
+- SEO: `metadataBase` added to the root layout (sitemap.ts, robots.ts
+  and per-page canonicals already existed; both marked force-static
+  for the export build).
+- Collision fixes found during QA: mobile stage clearance raised to
+  pb-36 so the CTA row clears the WhatsApp button; right-aligned
+  scenes get md:pr-20 so "Menu & prenota" clears the FAB and the
+  desktop soul rail; header nav-close-on-navigation moved from a
+  setState-in-effect to the render-adjustment pattern (lint).
+- GitHub Pages preview pipeline: `STATIC_EXPORT=1` builds an
+  `output: "export"` variant (basePath from NEXT_PUBLIC_BASE_PATH,
+  unoptimized images, trailing slashes; headers/rewrites skipped).
+  `.github/workflows/deploy-pages.yml` builds it with the API routes
+  dropped (static hosting can't serve POST), prefixes root-absolute
+  "/media/…" strings in html/js/css/txt (basePath doesn't rewrite
+  plain string srcs), and deploys via actions/deploy-pages. Verified
+  locally by serving `out/` under `/hawaii`: zero failed requests on
+  /, /menu, /villaggio. On Pages the inquiry forms show their error
+  state (phones/WhatsApp remain); the WP fusion bridge is inactive.
+
+Verification 2026-07-07: `npm --prefix web run lint` ✓, server build ✓,
+static export build ✓, `npm run test:web:smoke` ✓ (updated 5-soul
+assertion), Playwright visual QA desktop 1440 + mobile 390 (mp4 build →
+fallback stills exercised; WebM build → real frames) ✓.
+
 ## Known limitations / notes for the audit
 
 - Playwright's bundled Chromium cannot decode H.264, so the smoke test's

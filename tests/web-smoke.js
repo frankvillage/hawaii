@@ -25,8 +25,8 @@ async function main() {
     const soulLabels = await readTextContents(page, "[data-soul-link]");
     assert.deepEqual(
       soulLabels,
-      ["Beach", "Restaurant", "Sport", "Nightlife"],
-      "Homepage should expose the four souls as a minimal persistent rail",
+      ["Beach", "Ristorante", "Sport", "MUULab", "Notte"],
+      "Homepage should expose the five souls as a minimal persistent rail",
     );
 
     const storyLabels = await readTextContents(page, "[data-testid='scene-eyebrow']");
