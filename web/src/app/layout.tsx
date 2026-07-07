@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Archivo, Prata } from "next/font/google";
+import { Cormorant_Garamond, Jost } from "next/font/google";
 
 import { SiteFooter } from "@/components/chrome/site-footer";
 import { SiteHeader } from "@/components/chrome/site-header";
@@ -8,17 +8,18 @@ import { CookieBanner } from "@/components/legal/cookie-banner";
 import { localBusinessSchema } from "@/lib/seo";
 import "./globals.css";
 
-const uiSans = Archivo({
+/* Same pairing as the live WordPress site (theme "patiotime"):
+   Cormorant Garamond + Jost, for stylistic continuity across the merge. */
+const uiSans = Jost({
   variable: "--font-ui-sans",
   subsets: ["latin"],
 });
 
-/* Prata: high-contrast didone, the closest voice to the Hawaii wordmark.
-   Single 400 weight by design — display use only. */
-const editorialSerif = Prata({
+const editorialSerif = Cormorant_Garamond({
   variable: "--font-editorial-serif",
   subsets: ["latin"],
-  weight: "400",
+  style: ["normal", "italic"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
