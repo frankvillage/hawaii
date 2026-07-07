@@ -348,6 +348,20 @@ Post-preview feedback (same day, owner watching the live Pages build):
   sync no longer pauses (it aborted the unlock play). Verified under
   iPhone emulation: currentTime 0 → 16.4s on a scroll jump.
 
+- Scrub softened further (owner: jerky, too touch-sensitive): damping
+  rate 4 → 2.4, chase speed capped at 5× realtime (a flick becomes a
+  fast-forward that eases into the stop, never a jump cut), and a new
+  seek is only issued once the previous one has landed (stacked seeks
+  while the decoder is busy were the visible stutter).
+- /eventi rebuilt on the shared photo-hero pattern: crossfade slider
+  (night dj-set frame, terrace-ambience shot exported from the social
+  kit, sunset daybed), light body, white format cards, 3-photo gallery;
+  feste-private also gets a gallery. Note: the delivered folders
+  contain no crowd/dj photography — the night frame from the video is
+  the only true event image; flagged to the owner.
+- Header bar now semi-transparent (0.62 alpha frosted, panel 0.78) and
+  the lockup grew again (5rem → 3.5rem condensed).
+
 Verification 2026-07-07: `npm --prefix web run lint` ✓, server build ✓,
 static export build ✓, `npm run test:web:smoke` ✓ (updated 5-soul
 assertion), Playwright visual QA desktop 1440 + mobile 390 (mp4 build →

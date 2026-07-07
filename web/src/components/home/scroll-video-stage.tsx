@@ -53,7 +53,12 @@ const fallbackStills = Array.from(
 
 /* How quickly the video chases the scroll target (per second). Lower is
    softer: ~0.63 of the remaining distance is covered each 1/RATE seconds. */
-const SCRUB_DAMPING_RATE = 4;
+const SCRUB_DAMPING_RATE = 2.4;
+
+/* Ceiling on the chase speed, as a multiple of realtime playback. Without it
+   a hard flick teleports across the footage and reads as a jump cut; with it
+   the video fast-forwards, then eases into the stop. */
+const SCRUB_MAX_SPEED = 5;
 
 export function ScrollVideoStage() {
   const wrapperRef = useRef<HTMLElement>(null);
@@ -262,10 +267,15 @@ export function ScrollVideoStage() {
 
       const video = videoRef.current;
 
-      if (video) {
+      /* Wait for the previous seek to land before issuing the next one:
+         stacking seeks while the decoder is busy is what reads as stutter. */
+      if (video && !video.seeking) {
         const current = video.currentTime;
         const delta = targetTimeRef.current - current;
-        const step = delta * (1 - Math.exp(-dt * SCRUB_DAMPING_RATE));
+        let step = delta * (1 - Math.exp(-dt * SCRUB_DAMPING_RATE));
+
+        const maxStep = dt * SCRUB_MAX_SPEED;
+        step = clamp(step, -maxStep, maxStep);
 
         if (Math.abs(step) > 0.012) {
           try {

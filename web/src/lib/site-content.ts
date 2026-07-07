@@ -899,6 +899,25 @@ export const pages: Record<string, EntityPage> = {
       src: "/media/hawaii/night-event.jpg",
       alt: "Evento serale di Hawaii visto dall'alto",
     },
+    heroMedia: [
+      {
+        src: "/media/hawaii/night-event.jpg",
+        alt: "Evento serale di Hawaii visto dall'alto",
+      },
+      {
+        src: "/media/hawaii/photos/eventi-terrazza-ambience.jpg",
+        alt: "I tavoli della terrazza pronti per la serata",
+      },
+      {
+        src: "/media/hawaii/terrace-daybed.jpg",
+        alt: "Daybed della terrazza al tramonto",
+      },
+    ],
+    gallery: [
+      { src: "/media/hawaii/photos/muulab-vino.jpg", alt: "Calice servito in terrazza all'aperitivo" },
+      { src: "/media/hawaii/terrace-evening.jpg", alt: "La terrazza che si accende la sera" },
+      { src: "/media/hawaii/photos/muulab-dolce.jpg", alt: "Il dolce del dopocena" },
+    ],
     sections: [
       {
         title: "I format della settimana",
@@ -936,6 +955,11 @@ export const pages: Record<string, EntityPage> = {
       src: "/media/hawaii/terrace-daybed.jpg",
       alt: "Setup serale della terrazza per eventi privati",
     },
+    gallery: [
+      { src: "/media/hawaii/photos/ristorante-hero-1.jpg", alt: "Tavolo apparecchiato con calici per una cena riservata" },
+      { src: "/media/hawaii/photos/food-risotto-bollicine.jpg", alt: "Risotto servito con bollicine" },
+      { src: "/media/hawaii/photos/muulab-vino.jpg", alt: "Vino al calice servito in terrazza" },
+    ],
     sections: [
       {
         title: "Occasioni private",

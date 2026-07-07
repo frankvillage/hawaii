@@ -63,12 +63,12 @@ export function SiteHeader() {
         className={
           isImmersive
             ? ""
-            : "border-b border-[#123338]/10 bg-[rgba(250,247,240,0.86)] backdrop-blur-xl"
+            : "border-b border-[#123338]/10 bg-[rgba(250,247,240,0.62)] backdrop-blur-xl"
         }
       >
         <div
           className="relative mx-auto flex w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"
-          style={{ height: `${(5.75 - 1.6 * t).toFixed(3)}rem`, transition: "height 120ms linear" }}
+          style={{ height: `${(6.4 - 1.9 * t).toFixed(3)}rem`, transition: "height 120ms linear" }}
         >
           <button
             type="button"
@@ -119,7 +119,7 @@ export function SiteHeader() {
                 isImmersive ? "drop-shadow-[0_2px_16px_rgba(6,6,7,0.65)]" : ""
               }`}
               style={{
-                height: `${(4.35 - 1.25 * t).toFixed(3)}rem`,
+                height: `${(5 - 1.5 * t).toFixed(3)}rem`,
                 transition: "height 120ms linear",
               }}
             />
@@ -143,7 +143,7 @@ export function SiteHeader() {
         <div
           className={
             isOpen
-              ? "border-b border-[#123338]/10 bg-[rgba(250,247,240,0.9)] backdrop-blur-2xl backdrop-saturate-150"
+              ? "border-b border-[#123338]/10 bg-[rgba(250,247,240,0.78)] backdrop-blur-2xl backdrop-saturate-150"
               : ""
           }
         >
