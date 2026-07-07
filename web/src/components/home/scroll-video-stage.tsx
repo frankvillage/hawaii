@@ -139,7 +139,9 @@ export function ScrollVideoStage() {
 
     video.addEventListener("loadedmetadata", syncDuration);
     video.addEventListener("playing", stopAfterUnlock);
-    window.addEventListener("touchstart", unlock, { once: true, passive: true });
+    /* Not `once`: the source may be swapped for the buffered blob below, and
+       Low Power Mode rejects non-gesture plays — every touch re-tries. */
+    window.addEventListener("touchstart", unlock, { passive: true });
     unlock();
     syncDuration();
 
@@ -147,6 +149,54 @@ export function ScrollVideoStage() {
       video.removeEventListener("loadedmetadata", syncDuration);
       video.removeEventListener("playing", stopAfterUnlock);
       window.removeEventListener("touchstart", unlock);
+    };
+  }, []);
+
+  /* iOS Safari only paints scrubbed frames reliably when the data is already
+     buffered — with plain progressive loading the frame stays frozen on the
+     poster. Stream the chosen source into a fully-buffered blob and point the
+     element at it; the <source> pipeline stays as the fallback. */
+  useEffect(() => {
+    const video = videoRef.current;
+
+    if (!video) {
+      return;
+    }
+
+    let objectUrl: string | null = null;
+    let cancelled = false;
+
+    const wantsDesktop = window.matchMedia("(min-aspect-ratio: 3/4)").matches;
+    const src = wantsDesktop ? homeJourney.media.src : homeJourney.media.mobileSrc;
+
+    fetch(src, { cache: "force-cache" })
+      .then((response) => (response.ok ? response.blob() : Promise.reject(new Error())))
+      .then((blob) => {
+        if (cancelled) {
+          return;
+        }
+
+        objectUrl = URL.createObjectURL(blob);
+        video.src = objectUrl;
+        video.load();
+        video.play().catch(() => {});
+
+        try {
+          video.currentTime = targetTimeRef.current;
+        } catch {
+          // The follower will land the seek once metadata settles.
+        }
+      })
+      .catch(() => {
+        // Keep progressive <source> playback; the stills cover total failure.
+      });
+
+    return () => {
+      cancelled = true;
+
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
     };
   }, []);
 
@@ -511,7 +561,7 @@ export function ScrollVideoStage() {
 
           <div className="pointer-events-none absolute inset-0" style={hotspotLayerStyle}>
             {activeScene.hotspots.map((hotspot, index) => {
-              const mirrored = hotspot.x > 62;
+              const mirrored = hotspot.x > 50;
 
               return (
                 <div
@@ -523,8 +573,12 @@ export function ScrollVideoStage() {
                       left: `${hotspot.x}%`,
                       top: `${hotspot.y}%`,
                       "--marker-i": index,
-                      transform:
-                        "translate(-50%, -50%) translate3d(calc(var(--pointer-x) * 0.4), calc(var(--pointer-y) * 0.4), 0)",
+                      /* Anchor the DOT on (x, y): the pill grows inward
+                         (mirrored past 62%), so markers near the edges can
+                         never run off screen. 13px = row padding + dot half. */
+                      transform: `${
+                        mirrored ? "translate(calc(-100% + 13px), -50%)" : "translate(-13px, -50%)"
+                      } translate3d(calc(var(--pointer-x) * 0.4), calc(var(--pointer-y) * 0.4), 0)`,
                     } as React.CSSProperties
                   }
                 >
@@ -539,7 +593,7 @@ export function ScrollVideoStage() {
                     <span className="journey-dot" />
                     <span className="journey-hairline" />
                     <span
-                      className="journey-pill inline-flex rounded-[3px] bg-[rgba(6,6,7,0.34)] px-3 py-1.5 text-[0.66rem] uppercase tracking-[0.18em] text-[#f7f2ea] backdrop-blur-[3px]"
+                      className="journey-pill inline-flex whitespace-nowrap rounded-[3px] bg-[rgba(6,6,7,0.34)] px-3 py-1.5 text-[0.66rem] uppercase tracking-[0.18em] text-[#f7f2ea] backdrop-blur-[3px]"
                       style={{ textShadow: "0 1px 8px rgba(6,6,7,0.7)" }}
                     >
                       {hotspot.label}

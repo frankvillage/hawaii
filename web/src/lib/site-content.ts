@@ -420,7 +420,7 @@ export const homeJourney = {
         {
           label: "Aperitivo vista mare",
           href: "/terrazza",
-          x: 58,
+          x: 62,
           y: 20,
           caption: "Daybed e bollicine alla golden hour",
         },

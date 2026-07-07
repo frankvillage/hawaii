@@ -362,6 +362,19 @@ Post-preview feedback (same day, owner watching the live Pages build):
 - Header bar now semi-transparent (0.62 alpha frosted, panel 0.78) and
   the lockup grew again (5rem → 3.5rem condensed).
 
+- REAL-DEVICE mobile scrub fix (owner: still frozen after the unlock):
+  iOS Safari does not paint seeked frames from a progressively-loading
+  source — it needs the data buffered. The stage now fetches the
+  chosen source (desktop/mobile by aspect ratio) into a fully-buffered
+  blob and points the element at it; the <source> pipeline remains the
+  fallback and the touch unlock re-arms on every touch (Low Power Mode
+  rejects non-gesture plays). CSP gained `media-src 'self' blob:`.
+- Mobile hotspot audit (owner: pills clipped/off screen): markers are
+  now anchored ON the dot — the pill grows inward, mirrored past 50% —
+  plus nowrap pills and one anchor nudge (aperitivo 58→62). Automated
+  audit at 390px: 18/18 hotspots fully on screen across all 9 scenes
+  (3 were clipped before).
+
 Verification 2026-07-07: `npm --prefix web run lint` ✓, server build ✓,
 static export build ✓, `npm run test:web:smoke` ✓ (updated 5-soul
 assertion), Playwright visual QA desktop 1440 + mobile 390 (mp4 build →
