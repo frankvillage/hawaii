@@ -33,7 +33,7 @@ export default function MenuPage() {
           ))}
         </div>
 
-        <div className="mt-14 grid gap-12">
+        <div className="mt-16 grid gap-20">
           {venueMenus.map((menu) => (
             <section key={menu.id} id={menu.id} className="scroll-mt-24">
               <div className="max-w-2xl">
@@ -64,11 +64,11 @@ export default function MenuPage() {
               </div>
 
               {menu.photos?.length ? (
-                <div className="mt-8 grid grid-cols-3 gap-3">
+                <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-3">
                   {menu.photos.map((photo) => (
                     <div
                       key={photo.src}
-                      className="relative aspect-[4/3] overflow-hidden rounded-[1.4rem] border border-[#1c2b2e]/10"
+                      className="relative aspect-[16/10] overflow-hidden rounded-[1.4rem] border border-[#1c2b2e]/10 sm:aspect-[4/3]"
                     >
                       <Image
                         src={photo.src}

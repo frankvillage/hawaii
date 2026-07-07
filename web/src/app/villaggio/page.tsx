@@ -102,16 +102,8 @@ export default function VillaggioPage() {
           className="object-cover"
         />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,10,0.72),rgba(8,9,10,0.42)_40%,rgba(8,9,10,0.88))]" />
-        <div className="relative z-10 mx-auto flex min-h-[62svh] max-w-7xl flex-col items-start justify-end px-4 py-14 sm:px-6 lg:px-8">
-          <Image
-            src="/media/hawaii/brand/logo-hawaii-white.png"
-            alt=""
-            aria-hidden
-            width={800}
-            height={377}
-            className="h-16 w-auto sm:h-20"
-          />
-          <h1 className="mt-6 max-w-[16ch] font-serif text-4xl leading-[0.95] text-[#f6efe6] sm:text-6xl">
+        <div className="relative z-10 mx-auto flex min-h-[68svh] max-w-7xl flex-col items-start justify-end px-4 pb-16 pt-36 sm:px-6 lg:px-8">
+          <h1 className="max-w-[16ch] font-serif text-4xl leading-[1.02] text-[#f6efe6] sm:text-6xl">
             Il villaggio sul mare di Pescara.
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-8 text-[#e5e5e0]">
@@ -231,8 +223,8 @@ export default function VillaggioPage() {
                   </div>
                 </div>
                 <div
-                  className={`mt-6 grid gap-3 ${
-                    cucina.photos.length === 1 ? "grid-cols-1" : "grid-cols-3"
+                  className={`mt-8 grid gap-4 sm:gap-3 ${
+                    cucina.photos.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-3"
                   }`}
                 >
                   {cucina.photos.map((photo) => (

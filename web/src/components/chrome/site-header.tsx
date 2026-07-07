@@ -63,7 +63,7 @@ export function SiteHeader() {
         className={
           isImmersive
             ? ""
-            : "border-b border-[#123338]/10 bg-[rgba(250,247,240,0.62)] backdrop-blur-xl"
+            : "border-b border-[#123338]/10 bg-[rgba(250,247,240,0.72)] backdrop-blur-xl"
         }
       >
         <div

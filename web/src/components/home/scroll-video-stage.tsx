@@ -60,6 +60,12 @@ const SCRUB_DAMPING_RATE = 2.4;
    the video fast-forwards, then eases into the stop. */
 const SCRUB_MAX_SPEED = 5;
 
+/* Touch devices scrub a JPEG frame sequence on a canvas instead of seeking a
+   <video>: iOS Safari does not reliably paint programmatic seeks (and Low
+   Power Mode blocks the unlock play), while image scrubbing always works. */
+const FRAME_COUNT = 172;
+const FRAME_FPS = 3;
+
 export function ScrollVideoStage() {
   const wrapperRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -72,6 +78,16 @@ export function ScrollVideoStage() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [sheetHotspot, setSheetHotspot] = useState<JourneyHotspot | null>(null);
   const [videoFailed, setVideoFailed] = useState(false);
+  const [useFrames, setUseFrames] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setUseFrames(window.matchMedia("(pointer: coarse)").matches);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -110,7 +126,7 @@ export function ScrollVideoStage() {
   useEffect(() => {
     const video = videoRef.current;
 
-    if (!video) {
+    if (!video || useFrames) {
       return;
     }
 
@@ -150,7 +166,7 @@ export function ScrollVideoStage() {
       video.removeEventListener("playing", stopAfterUnlock);
       window.removeEventListener("touchstart", unlock);
     };
-  }, []);
+  }, [useFrames]);
 
   /* iOS Safari only paints scrubbed frames reliably when the data is already
      buffered — with plain progressive loading the frame stays frozen on the
@@ -159,17 +175,18 @@ export function ScrollVideoStage() {
   useEffect(() => {
     const video = videoRef.current;
 
-    if (!video) {
+    if (!video || useFrames) {
       return;
     }
 
     let objectUrl: string | null = null;
     let cancelled = false;
+    const controller = new AbortController();
 
     const wantsDesktop = window.matchMedia("(min-aspect-ratio: 3/4)").matches;
     const src = wantsDesktop ? homeJourney.media.src : homeJourney.media.mobileSrc;
 
-    fetch(src, { cache: "force-cache" })
+    fetch(src, { cache: "force-cache", signal: controller.signal })
       .then((response) => (response.ok ? response.blob() : Promise.reject(new Error())))
       .then((blob) => {
         if (cancelled) {
@@ -193,12 +210,13 @@ export function ScrollVideoStage() {
 
     return () => {
       cancelled = true;
+      controller.abort();
 
       if (objectUrl) {
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, []);
+  }, [useFrames]);
 
   /* Backup screens: if the video cannot load (network error, unsupported
      codec, blocked media), the journey falls back to the per-scene hold-frame
@@ -304,7 +322,7 @@ export function ScrollVideoStage() {
   /* Damped scrub: the video eases toward the scroll target every frame, so
      both take-off and stop are soft instead of tracking the finger 1:1. */
   useEffect(() => {
-    if (isReducedMotion || !Number.isFinite(videoDuration) || videoDuration <= 0) {
+    if (isReducedMotion || useFrames || !Number.isFinite(videoDuration) || videoDuration <= 0) {
       return;
     }
 
@@ -342,7 +360,138 @@ export function ScrollVideoStage() {
     frame = window.requestAnimationFrame(follow);
 
     return () => window.cancelAnimationFrame(frame);
-  }, [isReducedMotion, videoDuration]);
+  }, [isReducedMotion, useFrames, videoDuration]);
+
+  /* Frame-sequence scrub for touch devices: preload the JPEG timeline
+     (coarse strides first so the whole journey is covered early), then ease a
+     simulated clock toward the scroll target and paint the nearest loaded
+     frame onto the canvas with an object-cover crop. */
+  useEffect(() => {
+    if (!useFrames || isReducedMotion) {
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+
+    if (!canvas || !ctx) {
+      return;
+    }
+
+    const wantsDesktop = window.matchMedia("(min-aspect-ratio: 3/4)").matches;
+    const prefix = wantsDesktop ? "/media/hawaii/frames/d-" : "/media/hawaii/frames/m-";
+
+    const loaded: (HTMLImageElement | null)[] = new Array(FRAME_COUNT).fill(null);
+    let disposed = false;
+
+    const order: number[] = [];
+    const seen = new Set<number>();
+    for (const stride of [12, 6, 3, 1]) {
+      for (let i = 0; i < FRAME_COUNT; i += stride) {
+        if (!seen.has(i)) {
+          seen.add(i);
+          order.push(i);
+        }
+      }
+    }
+
+    let cursor = 0;
+    let inflight = 0;
+
+    const pump = () => {
+      if (disposed) {
+        return;
+      }
+
+      while (inflight < 4 && cursor < order.length) {
+        const idx = order[cursor];
+        cursor += 1;
+        inflight += 1;
+
+        const img = new window.Image();
+        img.onload = () => {
+          loaded[idx] = img;
+          inflight -= 1;
+          pump();
+        };
+        img.onerror = () => {
+          inflight -= 1;
+          pump();
+        };
+        img.src = `${prefix}${String(idx + 1).padStart(3, "0")}.jpg`;
+      }
+    };
+
+    pump();
+
+    let lastDrawn = -1;
+
+    const resize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(canvas.clientWidth * dpr);
+      canvas.height = Math.round(canvas.clientHeight * dpr);
+      lastDrawn = -1;
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
+
+    const nearestLoaded = (idx: number) => {
+      for (let d = 0; d < FRAME_COUNT; d++) {
+        if (idx - d >= 0 && loaded[idx - d]) {
+          return idx - d;
+        }
+        if (idx + d < FRAME_COUNT && loaded[idx + d]) {
+          return idx + d;
+        }
+      }
+
+      return -1;
+    };
+
+    let simTime = 0;
+    let last = performance.now();
+    let frame = 0;
+
+    const tick = (now: number) => {
+      const dt = Math.min((now - last) / 1000, 0.1);
+      last = now;
+
+      const delta = targetTimeRef.current - simTime;
+      let step = delta * (1 - Math.exp(-dt * SCRUB_DAMPING_RATE));
+      const maxStep = dt * SCRUB_MAX_SPEED;
+      step = clamp(step, -maxStep, maxStep);
+
+      if (Math.abs(step) > 0.001) {
+        simTime += step;
+      }
+
+      const wanted = clamp(Math.round(simTime * FRAME_FPS), 0, FRAME_COUNT - 1);
+      const idx = nearestLoaded(wanted);
+
+      if (idx !== -1 && idx !== lastDrawn) {
+        const img = loaded[idx]!;
+        const cw = canvas.width;
+        const ch = canvas.height;
+        const scale = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
+        const w = img.naturalWidth * scale;
+        const h = img.naturalHeight * scale;
+        ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
+        lastDrawn = idx;
+        canvas.dataset.frame = String(idx);
+      }
+
+      frame = window.requestAnimationFrame(tick);
+    };
+
+    frame = window.requestAnimationFrame(tick);
+
+    return () => {
+      disposed = true;
+      window.removeEventListener("resize", resize);
+      window.cancelAnimationFrame(frame);
+    };
+  }, [useFrames, isReducedMotion]);
 
   const activeScene = useMemo(() => sceneAt(progress), [progress]);
 
@@ -456,6 +605,23 @@ export function ScrollVideoStage() {
             sizes="100vw"
             className="absolute inset-0 object-cover object-center"
           />
+        ) : useFrames ? (
+          <>
+            <Image
+              src={homeJourney.media.poster}
+              alt={homeHero.media.alt}
+              fill
+              priority
+              sizes="100vw"
+              className="absolute inset-0 object-cover object-center"
+            />
+            <canvas
+              ref={canvasRef}
+              data-testid="journey-canvas"
+              aria-label={homeJourney.media.alt}
+              className="absolute inset-0 h-full w-full"
+            />
+          </>
         ) : (
           <video
             ref={videoRef}
@@ -476,7 +642,7 @@ export function ScrollVideoStage() {
           </video>
         )}
 
-        {!isReducedMotion && videoFailed ? (
+        {!isReducedMotion && !useFrames && videoFailed ? (
           <div
             data-testid="journey-fallback"
             aria-hidden="true"
@@ -499,6 +665,9 @@ export function ScrollVideoStage() {
         {/* No boxes: legibility comes from one light veil plus a feathered
             scrim that follows the copy block (left / center / right). */}
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,10,0.16),rgba(8,9,10,0.02)_32%,rgba(8,9,10,0.06)_60%,rgba(8,9,10,0.3))]" />
+        {/* Phones get a firmer bottom veil: copy and CTAs sit low and the
+            bright frames washed the text out. */}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,10,0.3),rgba(8,9,10,0.1)_30%,rgba(8,9,10,0.28)_55%,rgba(8,9,10,0.74))] sm:hidden" />
         <div
           className="absolute inset-0 bg-[radial-gradient(115%_125%_at_0%_100%,rgba(6,6,7,0.55),rgba(6,6,7,0.26)_42%,transparent_68%)] transition-opacity duration-700"
           style={{ opacity: copyAlign === "left" ? 1 : 0 }}
@@ -571,7 +740,7 @@ export function ScrollVideoStage() {
                   style={
                     {
                       left: `${hotspot.x}%`,
-                      top: `${hotspot.y}%`,
+                      "--hotspot-y": `${hotspot.y}%`,
                       "--marker-i": index,
                       /* Anchor the DOT on (x, y): the pill grows inward
                          (mirrored past 62%), so markers near the edges can
@@ -593,7 +762,7 @@ export function ScrollVideoStage() {
                     <span className="journey-dot" />
                     <span className="journey-hairline" />
                     <span
-                      className="journey-pill inline-flex whitespace-nowrap rounded-[3px] bg-[rgba(6,6,7,0.34)] px-3 py-1.5 text-[0.66rem] uppercase tracking-[0.18em] text-[#f7f2ea] backdrop-blur-[3px]"
+                      className="journey-pill inline-flex whitespace-nowrap rounded-[3px] bg-[rgba(6,6,7,0.55)] px-3 py-1.5 text-[0.66rem] uppercase tracking-[0.18em] text-[#f7f2ea] backdrop-blur-[3px]"
                       style={{ textShadow: "0 1px 8px rgba(6,6,7,0.7)" }}
                     >
                       {hotspot.label}

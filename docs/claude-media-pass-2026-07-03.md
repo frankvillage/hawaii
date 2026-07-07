@@ -375,6 +375,27 @@ Post-preview feedback (same day, owner watching the live Pages build):
   audit at 390px: 18/18 hotspots fully on screen across all 9 scenes
   (3 were clipped before).
 
+- DEFINITIVE mobile scrub (owner's screenshot: scene 09/09 overlay on
+  the frozen daytime poster; Low Power Mode active): touch devices now
+  scrub a JPEG frame sequence on a <canvas> — the Apple-product-page
+  technique — instead of seeking a <video> that iOS refuses to paint.
+  172 frames per set at 3 fps (mobile 540px/4.1MB, desktop 960px/5.4MB
+  in public/media/hawaii/frames/), preloaded in coarse-to-fine strides
+  so the whole timeline is covered early; the damped 5×-capped clock
+  drives the nearest loaded frame. Fine-pointer devices keep the
+  buffered-blob <video>. Verified under iPhone emulation: canvas mode
+  active, no video download, frames advance on scroll.
+- Readability (owner's screenshot): firmer bottom veil on phones,
+  hotspot pills darker (0.34 → 0.55 alpha), header glass 0.72, and on
+  phones markers are clamped to the upper 48% of the stage so they can
+  never sit on the scene copy.
+- Spacing pass (owner: "tutto addossato", MUULab included): entity
+  pages get a roomier mobile rhythm (larger section paddings/gaps),
+  galleries and menu photo strips stack full-width on phones instead
+  of three squeezed columns; /villaggio's duplicated in-hero logo
+  (clipped under the fixed bar) removed and its hero given header
+  clearance; menu venue sections spaced wider.
+
 Verification 2026-07-07: `npm --prefix web run lint` ✓, server build ✓,
 static export build ✓, `npm run test:web:smoke` ✓ (updated 5-soul
 assertion), Playwright visual QA desktop 1440 + mobile 390 (mp4 build →

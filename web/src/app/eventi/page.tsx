@@ -62,7 +62,7 @@ export default function EventsPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
         <p className="mx-auto max-w-3xl text-center font-serif text-2xl leading-9 text-[#2c3b3e] sm:text-[1.7rem]">
           {page.intro}
         </p>
@@ -110,11 +110,11 @@ export default function EventsPage() {
         </div>
 
         {page.gallery?.length ? (
-          <div className="mt-14 grid grid-cols-3 gap-3">
+          <div className="mt-16 grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-3">
             {page.gallery.map((photo) => (
               <div
                 key={photo.src}
-                className="relative aspect-[4/5] overflow-hidden rounded-[1.2rem] shadow-[0_16px_40px_rgba(23,32,34,0.12)] sm:aspect-[4/3]"
+                className="relative aspect-[16/10] overflow-hidden rounded-[1.2rem] shadow-[0_16px_40px_rgba(23,32,34,0.12)] sm:aspect-[4/3]"
               >
                 <Image
                   src={photo.src}

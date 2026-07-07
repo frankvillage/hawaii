@@ -52,7 +52,7 @@ export function EntityPageView({ page }: EntityPageProps) {
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,10,0.44),rgba(8,9,10,0.1)_38%,rgba(8,9,10,0.24)_62%,rgba(8,9,10,0.8))]" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_130%_at_0%_100%,rgba(6,6,7,0.62),rgba(6,6,7,0.26)_44%,transparent_70%)]" />
 
-        <div className="relative z-10 mx-auto flex min-h-[82svh] max-w-7xl flex-col justify-end px-4 pb-14 pt-32 sm:px-6 lg:px-8 lg:pb-16">
+        <div className="relative z-10 mx-auto flex min-h-[84svh] max-w-7xl flex-col justify-end px-4 pb-16 pt-36 sm:px-6 lg:px-8 lg:pb-16">
           <div className="max-w-3xl">
             {page.brandLogo ? (
               <Image
@@ -95,18 +95,18 @@ export function EntityPageView({ page }: EntityPageProps) {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
         <p className="mx-auto max-w-3xl text-center font-serif text-2xl leading-9 text-[#2c3b3e] sm:text-[1.7rem]">
           {page.intro}
         </p>
         <span aria-hidden className="mx-auto mt-8 block h-px w-16 bg-[#96703d]/60" />
 
-        <div className="mt-14 grid gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+        <div className="mt-16 grid gap-16 lg:grid-cols-[1.05fr_0.95fr]">
           <div>
             {page.sections.map((section, index) => (
               <article
                 key={section.title}
-                className={index > 0 ? "mt-12 border-t border-[#1c2b2e]/10 pt-12" : ""}
+                className={index > 0 ? "mt-14 border-t border-[#1c2b2e]/10 pt-14" : ""}
               >
                 <p className="text-[0.66rem] uppercase tracking-[0.24em] text-[#96703d]">
                   {String(index + 1).padStart(2, "0")}
@@ -131,11 +131,11 @@ export function EntityPageView({ page }: EntityPageProps) {
             ))}
 
             {page.gallery?.length ? (
-              <div className="mt-12 grid grid-cols-3 gap-3">
+              <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-3">
                 {page.gallery.map((photo) => (
                   <div
                     key={photo.src}
-                    className="relative aspect-[4/5] overflow-hidden rounded-[1.2rem] shadow-[0_16px_40px_rgba(23,32,34,0.12)]"
+                    className="relative aspect-[16/10] overflow-hidden rounded-[1.2rem] shadow-[0_16px_40px_rgba(23,32,34,0.12)] sm:aspect-[4/5]"
                   >
                     <Image
                       src={photo.src}

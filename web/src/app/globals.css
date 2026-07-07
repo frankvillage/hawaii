@@ -191,6 +191,18 @@ button {
   border-radius: 999px;
 }
 
+.journey-marker {
+  top: var(--hotspot-y, 50%);
+}
+
+/* On phones the copy block owns the lower half of the stage: keep markers
+   in the upper band so they never overlap the scene text. */
+@media (max-width: 640px) {
+  .journey-marker {
+    top: min(var(--hotspot-y, 50%), 48%);
+  }
+}
+
 .journey-dot {
   position: relative;
   width: 10px;
