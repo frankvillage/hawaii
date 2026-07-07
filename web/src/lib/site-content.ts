@@ -108,6 +108,8 @@ export type VenueMenu = {
   categories: MenuCategory[];
   action?: Action;
   photos?: MediaAsset[];
+  /* Official venue wordmark, shown above the carte. */
+  logo?: MediaAsset;
 };
 
 export type EventFormat = {
@@ -141,6 +143,8 @@ export type EntityPage = {
   secondaryAction?: Action;
   gradient: string;
   media?: MediaAsset;
+  /* Official venue wordmark, shown above the hero eyebrow. */
+  brandLogo?: MediaAsset;
   sections: PageSection[];
   faqs: FaqItem[];
   schemaType: "LocalBusiness" | "Restaurant" | "SportsActivityLocation" | "EventVenue";
@@ -673,7 +677,11 @@ export const pages: Record<string, EntityPage> = {
   "terrazza": {
     slug: "terrazza",
     navLabel: "Terrazza",
-    eyebrow: "MUULab Riviera",
+    eyebrow: "La sera in terrazza",
+    brandLogo: {
+      src: "/media/hawaii/brand/muulab-riviera-sand.png",
+      alt: "MUULab Riviera",
+    },
     title: "Vista mare, tramonto, cucina creativa e brace.",
     lead: "La terrazza è la trasformazione serale premium di Hawaii.",
     intro:
@@ -1037,6 +1045,10 @@ export const venueMenus: VenueMenu[] = [
   {
     id: "muulab",
     eyebrow: "Terrazza — MUULab Riviera",
+    logo: {
+      src: "/media/hawaii/brand/muulab-riviera-sand.png",
+      alt: "MUULab Riviera",
+    },
     title: "La braceria della terrazza",
     description:
       "Crudi di carne, tagli alla brace e cocktail: MUULab Riviera vive la sera della terrazza, dal tramonto alla cena.",

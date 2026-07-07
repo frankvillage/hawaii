@@ -18,6 +18,15 @@ export function EntityPageView({ page }: EntityPageProps) {
       <section className={`bg-gradient-to-br ${page.gradient}`}>
         <div className="mx-auto grid min-h-[calc(100svh-4.6rem)] max-w-7xl items-end gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1.08fr_0.92fr] lg:px-8 lg:py-16">
           <div className="max-w-3xl">
+            {page.brandLogo ? (
+              <Image
+                src={page.brandLogo.src}
+                alt={page.brandLogo.alt}
+                width={1600}
+                height={607}
+                className="mb-6 h-12 w-auto sm:h-16"
+              />
+            ) : null}
             <p className="text-[0.72rem] uppercase tracking-[0.24em] text-[#f0c889]">
               {page.eyebrow}
             </p>

@@ -37,6 +37,15 @@ export default function MenuPage() {
           {venueMenus.map((menu) => (
             <section key={menu.id} id={menu.id} className="scroll-mt-24">
               <div className="max-w-2xl">
+                {menu.logo ? (
+                  <Image
+                    src={menu.logo.src}
+                    alt={menu.logo.alt}
+                    width={1600}
+                    height={607}
+                    className="mb-5 h-12 w-auto sm:h-14"
+                  />
+                ) : null}
                 <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#d6b887]">
                   {menu.eyebrow}
                 </p>
