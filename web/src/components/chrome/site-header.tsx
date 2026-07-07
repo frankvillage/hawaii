@@ -13,8 +13,7 @@ function clamp01(value: number) {
 
 export function SiteHeader() {
   const [isOpen, setIsOpen] = useState(false);
-  /* 0 = top of page (airy, transparent), 1 = fully condensed ice slab.
-     Quantized so scrolling doesn't storm re-renders. */
+  /* 0 = top of page, 1 = condensed. Quantized to avoid re-render storms. */
   const [condense, setCondense] = useState(0);
   const pathname = usePathname();
 
@@ -50,58 +49,45 @@ export function SiteHeader() {
 
   const t = isOpen ? 1 : condense;
 
-  /* On the immersive homepage the stage wordmark is the only logo: the bar
-     never shows its own. Elsewhere the logo is always on. */
-  const isHome = pathname === "/";
-  const logoOpacity = isHome ? 0 : 1;
-
   return (
-    /* Fixed and fully transparent: the video runs edge-to-edge underneath,
-       and only the individual controls carry their own frosted glass. */
+    /* Fully transparent bar over the content: the centered lockup is the
+       brand anchor (as on the old site); controls carry their own contrast. */
     <header className="fixed inset-x-0 top-0 z-50">
       <div
-        className="mx-auto flex w-full max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8"
-        style={{ height: `${(4.5 - 1.25 * t).toFixed(3)}rem`, transition: "height 120ms linear" }}
+        className="relative mx-auto flex w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"
+        style={{ height: `${(5 - 1.4 * t).toFixed(3)}rem`, transition: "height 120ms linear" }}
       >
+        <button
+          type="button"
+          aria-expanded={isOpen}
+          aria-controls="site-navigation"
+          aria-label="Menu"
+          onClick={() => setIsOpen((open) => !open)}
+          className="inline-flex h-10 w-10 cursor-pointer items-center justify-center text-white/90 transition hover:text-white"
+          style={{ filter: "drop-shadow(0 1px 8px rgba(6,6,7,0.7))" }}
+        >
+          <span className="text-2xl leading-none">{isOpen ? "×" : "≡"}</span>
+        </button>
+
         <Link
           href="/"
           aria-label={`${siteMeta.name} — home`}
-          className="min-w-0"
-          style={{
-            opacity: logoOpacity,
-            pointerEvents: logoOpacity < 0.3 ? "none" : undefined,
-            transform: `translateY(${((1 - logoOpacity) * -4).toFixed(1)}px)`,
-            transition: "opacity 150ms linear, transform 150ms linear",
-          }}
+          className="absolute left-1/2 -translate-x-1/2"
         >
           <Image
-            src="/media/hawaii/brand/logo-hawaii-white.png"
+            src="/media/hawaii/brand/logo-lockup-white.png"
             alt={`${siteMeta.name} — ${siteMeta.payoff}`}
-            width={800}
-            height={377}
+            width={1309}
+            height={721}
             priority
-            className="w-auto"
-            style={{ height: `${(2.4 - 0.6 * t).toFixed(3)}rem` }}
+            className="w-auto drop-shadow-[0_2px_16px_rgba(6,6,7,0.65)]"
+            style={{ height: `${(3.4 - 0.9 * t).toFixed(3)}rem`, transition: "height 120ms linear" }}
           />
         </Link>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-expanded={isOpen}
-            aria-controls="site-navigation"
-            aria-label="Menu"
-            onClick={() => setIsOpen((open) => !open)}
-            className="inline-flex h-10 w-10 cursor-pointer items-center justify-center text-white/90 transition hover:text-white"
-            style={{ filter: "drop-shadow(0 1px 8px rgba(6,6,7,0.7))" }}
-          >
-            <span className="text-2xl leading-none">{isOpen ? "×" : "≡"}</span>
-          </button>
-
-          <Link href="/prenotazioni" className="cta cta-sm">
-            Prenota
-          </Link>
-        </div>
+        <Link href="/prenotazioni" className="cta cta-sm">
+          Prenota
+        </Link>
       </div>
 
       <div
@@ -116,18 +102,18 @@ export function SiteHeader() {
             isOpen ? "bg-[rgba(8,8,9,0.78)] backdrop-blur-2xl backdrop-saturate-150" : ""
           }
         >
-        <nav className="mx-auto grid w-full max-w-7xl gap-1.5 px-4 py-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
-          {[...navigation, { label: "Menu", href: "/menu" }, { label: "Feste Private", href: "/feste-private" }, { label: "Prenotazioni", href: "/prenotazioni" }].map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setIsOpen(false)}
-              className="border-b border-white/10 px-1 py-3 text-[0.72rem] uppercase tracking-[0.16em] text-[#efefea] transition hover:border-[rgba(232,200,158,0.6)] hover:text-[#e8c89e]"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+          <nav className="mx-auto grid w-full max-w-7xl gap-1.5 px-4 py-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
+            {[...navigation, { label: "Menu", href: "/menu" }, { label: "Feste Private", href: "/feste-private" }, { label: "Prenotazioni", href: "/prenotazioni" }].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setIsOpen(false)}
+                className="border-b border-white/10 px-1 py-3 text-[0.72rem] uppercase tracking-[0.16em] text-[#efefea] transition hover:border-[rgba(232,200,158,0.6)] hover:text-[#e8c89e]"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </div>
     </header>

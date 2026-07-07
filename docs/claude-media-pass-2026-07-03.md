@@ -161,6 +161,34 @@ once in globals.css (.cta / .cta-ghost / .cta-sm):
   homepage); no #bf7148 remains; hotspot pills/marker design unchanged
   (they were never orange and follow the overlay handoff)
 
+## Brand lockup, WhatsApp and the WordPress fusion bridge (2026-07-05)
+
+- The official stacked lockup (fish + Hawaii + C. N° 99) was rebuilt in
+  white from LOGHI/logo hawaii.pdf (300dpi raster, white recolor,
+  10 KB) and is now the brand everywhere: centered in the fixed
+  transparent header exactly as on the old site (hamburger left,
+  Prenota right), and in the footer. The journey stage no longer
+  renders its own wordmark (sr-only h1 kept).
+- Floating WhatsApp chat button (as on the WordPress site, the client
+  relies on it) added globally: wa.me link on the beach mobile number
+  (375 5175508 — CONFIRM this is the number behind the WP widget);
+  sits above the soul rail on mobile.
+- /menu now opens as the old site does ("Menù d'estate" + its
+  subtitle) and remains the exploded full carte with prices at the
+  same URL path as hawaiipescara.it/menu.
+- WordPress fusion (owner's dilemma) — implemented the strangler
+  bridge documented by Next.js: next.config `rewrites.fallback`
+  proxies EVERY path this app doesn't serve to the WP origin
+  (env WP_ORIGIN_URL, disabled when unset). Rollout plan: point the
+  public domain at the Next deployment, move WordPress to
+  wp.hawaiipescara.it, set WP_ORIGIN_URL accordingly; WP pages,
+  wp-content and wp-admin keep working at their public URLs through
+  the fallback, while /, /villaggio, /menu and the entity pages are
+  served by the new app. Alternative (no WP move): route paths at the
+  edge (e.g. Cloudflare rules) — same result, config at DNS level.
+  Embedding the scroll app inside WP was rejected (double maintenance,
+  loses the app's routing/optimizations).
+
 ## Known limitations / notes for the audit
 
 - Playwright's bundled Chromium cannot decode H.264, so the smoke test's

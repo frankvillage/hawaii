@@ -9,11 +9,11 @@ export function SiteFooter() {
       <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.2fr_0.9fr_0.9fr] lg:px-8">
         <div className="space-y-4">
           <Image
-            src="/media/hawaii/brand/logo-hawaii-white.png"
+            src="/media/hawaii/brand/logo-lockup-white.png"
             alt={`${siteMeta.name} — ${siteMeta.payoff}`}
-            width={800}
-            height={377}
-            className="h-12 w-auto"
+            width={1309}
+            height={721}
+            className="h-16 w-auto"
           />
           <h2 className="max-w-md font-serif text-3xl text-[#f4ede4]">
             Urban Village sul mare, dalla mattina alla notte.

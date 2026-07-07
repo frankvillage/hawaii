@@ -305,28 +305,9 @@ export function ScrollVideoStage() {
           style={{ opacity: copyAlign === "right" ? 1 : 0 }}
         />
 
-        <div className="relative z-10 flex h-full flex-col justify-between px-4 pb-24 pt-16 sm:px-6 md:pb-6 lg:px-8 lg:pb-8">
-          <div className="flex items-start justify-between gap-4">
-            <div
-              className="max-w-[16rem] sm:max-w-xl"
-              style={{
-                transform: "translate3d(calc(var(--pointer-x) * -0.26), calc(var(--pointer-y) * -0.26), 0)",
-              }}
-            >
-              <p className="hidden text-[0.68rem] uppercase tracking-[0.28em] text-[#e8c89e] sm:block">
-                {homeHero.eyebrow}
-              </p>
-              <Image
-                src="/media/hawaii/brand/logo-hawaii-white.png"
-                alt=""
-                aria-hidden
-                width={800}
-                height={377}
-                priority
-                className="h-10 w-auto drop-shadow-[0_2px_24px_rgba(8,9,10,0.6)] sm:mt-3 sm:h-20 lg:h-24"
-              />
-              <h1 className="sr-only">Hawaii Pescara — Urban Village</h1>
-            </div>
+        <div className="relative z-10 flex h-full flex-col justify-between px-4 pb-24 pt-24 sm:px-6 md:pb-6 lg:px-8 lg:pb-8">
+          <div className="flex items-start justify-end gap-4">
+            <h1 className="sr-only">Hawaii Pescara — Urban Village</h1>
 
             <div
               data-testid="scene-marker"

@@ -13,13 +13,13 @@ export default function MenuPage() {
   return (
     <main className="bg-[#0b0c0d]">
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <p className="text-[0.72rem] uppercase tracking-[0.24em] text-[#d6b887]">Menu</p>
-        <h1 className="mt-5 max-w-[10ch] font-serif text-5xl leading-[0.9] text-[#f4ede4] sm:text-6xl">
-          Tutta l&apos;offerta, in un solo sguardo.
+        <p className="text-[0.72rem] uppercase tracking-[0.24em] text-[#d6b887]">Il Menu</p>
+        <h1 className="mt-5 max-w-[12ch] font-serif text-5xl leading-[0.9] text-[#f4ede4] sm:text-6xl">
+          Menù d&apos;estate.
         </h1>
         <p className="mt-6 max-w-3xl text-lg leading-8 text-[#cfcfca]">
-          Ristorante mare, terrazza, cocktail e carta vini: ogni proposta resta
-          leggibile e subito collegata alla prenotazione.
+          La cura per la materia prima, la semplicità e la bontà di piatti
+          studiati per sapere di mare.
         </p>
         <div className="mt-10 grid gap-4 lg:grid-cols-2">
           {menuHighlights.map((item) => (

@@ -3,6 +3,7 @@ import { Archivo, Prata } from "next/font/google";
 
 import { SiteFooter } from "@/components/chrome/site-footer";
 import { SiteHeader } from "@/components/chrome/site-header";
+import { WhatsAppButton } from "@/components/chrome/whatsapp-button";
 import { CookieBanner } from "@/components/legal/cookie-banner";
 import { localBusinessSchema } from "@/lib/seo";
 import "./globals.css";
@@ -47,6 +48,7 @@ export default function RootLayout({
         <SiteHeader />
         <div className="flex-1">{children}</div>
         <SiteFooter />
+        <WhatsAppButton />
         <CookieBanner />
       </body>
     </html>
