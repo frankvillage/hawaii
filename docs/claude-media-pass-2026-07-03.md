@@ -246,6 +246,10 @@ per il deploy") plus the GitHub Pages preview pipeline.
   locally by serving `out/` under `/hawaii`: zero failed requests on
   /, /menu, /villaggio. On Pages the inquiry forms show their error
   state (phones/WhatsApp remain); the WP fusion bridge is inactive.
+  One-time setup: the Actions token cannot create the Pages site
+  ("Resource not accessible by integration"), so the repo owner must
+  enable it once in Settings → Pages → Source: "GitHub Actions",
+  then re-run the workflow. First run's build stage passed on CI.
 
 Verification 2026-07-07: `npm --prefix web run lint` ✓, server build ✓,
 static export build ✓, `npm run test:web:smoke` ✓ (updated 5-soul
