@@ -1,7 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { chromium } = require("playwright");
+const { chromium, devices } = require("playwright");
 
 const baseUrl = process.env.WEB_BASE_URL || "http://127.0.0.1:3000";
 
@@ -14,7 +14,7 @@ async function readTextContents(page, selector) {
 async function main() {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
-  const mobilePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const mobilePage = await browser.newPage({ ...devices["iPhone 13"] });
 
   try {
     await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
@@ -76,11 +76,24 @@ async function main() {
       const video = node;
       return Math.round(video.currentTime * 100) / 100;
     });
+    await page.waitForTimeout(2200);
+    const introVideoTime = await page
+      .locator('[data-testid="journey-video"]')
+      .evaluate((node) => Math.round(node.currentTime * 100) / 100);
+    assert.ok(
+      introVideoTime > initialVideoTime + 0.4,
+      "The opening frame should hold for one second, then advance to the first journey checkpoint",
+    );
+    assert.equal(
+      await page.locator('[data-testid="hero-stage"]').getAttribute("data-settled"),
+      "true",
+      "The intro should stop cleanly at its first checkpoint",
+    );
     const scrollToJourneyBeach = () =>
       page.evaluate(() => {
         const stage = document.querySelector('[data-testid="hero-stage"]');
         const scrollable = stage.offsetHeight - window.innerHeight;
-        window.scrollTo({ top: scrollable * 0.3, behavior: "auto" });
+        window.scrollTo({ top: scrollable * (3 / 8), behavior: "auto" });
       });
     await scrollToJourneyBeach();
     await page.waitForTimeout(350);
@@ -102,6 +115,38 @@ async function main() {
       beachCta || "",
       /widget\.spiagge\.it/,
       "The beach scene should surface the real umbrella booking CTA",
+    );
+
+    await page.evaluate(() => {
+      const stage = document.querySelector('[data-testid="hero-stage"]');
+      const scrollable = stage.offsetHeight - window.innerHeight;
+      window.scrollTo({ top: scrollable, behavior: "auto" });
+    });
+    await page.waitForTimeout(1000);
+    assert.equal(
+      (await page.locator('[data-testid="scene-eyebrow"]').textContent())?.trim(),
+      "Eventi",
+      "The last rail stop should select the Events checkpoint",
+    );
+
+    await page.locator('[data-soul-link][href="#bar"]').click();
+    await page.waitForTimeout(1200);
+    assert.equal(
+      (await page.locator('[data-testid="scene-eyebrow"]').textContent())?.trim(),
+      "Cocktail bar",
+      "A rail click should select the requested checkpoint without replaying every prior scene",
+    );
+    const barCheckpointTime = await page
+      .locator('[data-testid="journey-video"]')
+      .evaluate((node) => Number(node.currentTime));
+    assert.ok(
+      Math.abs(barCheckpointTime - 9.3) < 3,
+      "A rail click should land near the selected scene checkpoint within a short transition",
+    );
+    assert.equal(
+      await page.locator('[data-testid="hero-stage"]').getAttribute("data-settled"),
+      "true",
+      "A direct rail jump should settle instead of leaving overlays in their transition state",
     );
 
     const popupTrigger = page.locator('[data-testid="menu-popup-trigger"]');
@@ -128,7 +173,39 @@ async function main() {
     await menuPopup.waitFor({ state: "detached", timeout: 2500 });
 
     await mobilePage.goto(baseUrl, { waitUntil: "domcontentloaded" });
-    const mobileMenuButton = mobilePage.getByRole("button", { name: /menu/i });
+    const mobileCanvas = mobilePage.locator('[data-testid="journey-canvas"]');
+    await mobileCanvas.waitFor({ state: "visible", timeout: 2500 });
+    await mobilePage.waitForFunction(
+      () => {
+        const stage = document.querySelector('[data-testid="hero-stage"]');
+        return stage?.dataset.settled === "true" && Number(stage.dataset.targetTime) > 3;
+      },
+      undefined,
+      { timeout: 4500 },
+    );
+    const introCanvasFrame = await mobileCanvas.evaluate((node) => Number(node.dataset.frame));
+    await mobilePage.evaluate(() => {
+      window.scrollTo({ top: window.innerHeight, behavior: "auto" });
+    });
+    await mobilePage.waitForFunction(
+      () => {
+        const stage = document.querySelector('[data-testid="hero-stage"]');
+        return stage?.dataset.sceneId === "bar" && stage.dataset.settled === "true";
+      },
+      undefined,
+      { timeout: 3500 },
+    );
+    const barCanvasFrame = await mobileCanvas.evaluate((node) => Number(node.dataset.frame));
+    assert.ok(
+      barCanvasFrame > introCanvasFrame,
+      "The mobile canvas should advance from the intro checkpoint to Bar",
+    );
+    assert.equal(
+      (await mobilePage.locator('[data-testid="scene-eyebrow"]').textContent())?.trim(),
+      "Cocktail bar",
+      "One mobile swipe-sized step should advance the journey to Bar",
+    );
+    const mobileMenuButton = mobilePage.getByRole("button", { name: "Menu", exact: true });
     await mobileMenuButton.waitFor({ state: "visible", timeout: 2500 });
     await mobileMenuButton.click();
     await mobilePage

@@ -20,6 +20,14 @@ html {
   scroll-behavior: smooth;
 }
 
+html.journey-snap-root {
+  scroll-snap-type: y mandatory;
+}
+
+html.journey-snap-root footer {
+  scroll-snap-align: start;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -199,7 +207,17 @@ button {
    in the upper band so they never overlap the scene text. */
 @media (max-width: 640px) {
   .journey-marker {
-    top: min(var(--hotspot-y, 50%), 48%);
+    top: min(var(--hotspot-y, 50%), 40%);
+  }
+
+  .journey-hairline {
+    width: 20px;
+  }
+
+  .journey-pill {
+    max-width: 42vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
@@ -320,6 +338,10 @@ button {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  html.journey-snap-root {
+    scroll-snap-type: none;
   }
 
   .journey-stage video,

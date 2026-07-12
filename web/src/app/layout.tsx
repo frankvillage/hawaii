@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Jost } from "next/font/google";
+import localFont from "next/font/local";
 
 import { SiteFooter } from "@/components/chrome/site-footer";
 import { SiteHeader } from "@/components/chrome/site-header";
@@ -10,16 +10,35 @@ import "./globals.css";
 
 /* Same pairing as the live WordPress site (theme "patiotime"):
    Cormorant Garamond + Jost, for stylistic continuity across the merge. */
-const uiSans = Jost({
+const uiSans = localFont({
   variable: "--font-ui-sans",
-  subsets: ["latin"],
+  display: "swap",
+  fallback: ["Arial", "sans-serif"],
+  src: [
+    {
+      path: "./fonts/jost-latin-variable.woff2",
+      style: "normal",
+      weight: "100 900",
+    },
+  ],
 });
 
-const editorialSerif = Cormorant_Garamond({
+const editorialSerif = localFont({
   variable: "--font-editorial-serif",
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  fallback: ["Times New Roman", "serif"],
+  src: [
+    {
+      path: "./fonts/cormorant-garamond-latin-variable.woff2",
+      style: "normal",
+      weight: "400 700",
+    },
+    {
+      path: "./fonts/cormorant-garamond-latin-italic-variable.woff2",
+      style: "italic",
+      weight: "400 700",
+    },
+  ],
 });
 
 export const metadata: Metadata = {

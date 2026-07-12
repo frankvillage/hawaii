@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   homeHero,
@@ -11,28 +11,17 @@ import {
   routeCaptions,
   type JourneyHotspot,
 } from "@/lib/site-content";
+import {
+  checkpointTime,
+  JOURNEY_NAVIGATE_EVENT,
+  type NavigationSource,
+  sceneIndexFromProgress,
+  sceneProgressForIndex,
+  transitionKind,
+} from "@/lib/journey-playback";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
-}
-
-/* Soft hold: the middle 40% of each scene advances the video only slightly,
-   so the frame settles while titles and markers come in (design handoff §4). */
-function plateau(f: number) {
-  if (f < 0.3) {
-    return (f / 0.3) * 0.46;
-  }
-  if (f < 0.7) {
-    return 0.46 + ((f - 0.3) / 0.4) * 0.08;
-  }
-  return 0.54 + ((f - 0.7) / 0.3) * 0.46;
-}
-
-function sceneAt(progress: number) {
-  return (
-    homeJourney.scenes.find((scene) => progress >= scene.start && progress < scene.end) ??
-    homeJourney.scenes[homeJourney.scenes.length - 1]
-  );
 }
 
 function captionFor(hotspot: JourneyHotspot) {
@@ -51,35 +40,64 @@ const fallbackStills = Array.from(
   ]),
 );
 
-/* How quickly the video chases the scroll target (per second). Lower is
-   softer: ~0.63 of the remaining distance is covered each 1/RATE seconds. */
-const SCRUB_DAMPING_RATE = 2.4;
-
-/* Ceiling on the chase speed, as a multiple of realtime playback. Without it
-   a hard flick teleports across the footage and reads as a jump cut; with it
-   the video fast-forwards, then eases into the stop. */
-const SCRUB_MAX_SPEED = 5;
-
-/* Touch devices scrub a JPEG frame sequence on a canvas instead of seeking a
-   <video>: iOS Safari does not reliably paint programmatic seeks (and Low
-   Power Mode blocks the unlock play), while image scrubbing always works. */
+/* Touch devices use a checkpoint-driven JPEG canvas because paused video seeks
+   are not painted reliably by iOS Safari. Frames are loaded per segment. */
 const FRAME_COUNT = 172;
 const FRAME_FPS = 3;
+const FRAME_FALLBACK_DAMPING = 7;
+const FRAME_FALLBACK_MAX_SPEED = 18;
+const INTRO_DELAY_MS = 1000;
+
+type MediaRequest = {
+  id: number;
+  index: number;
+  source: NavigationSource;
+};
+
+type JourneyNavigateDetail = {
+  index: number;
+  anchor?: string;
+};
 
 export function ScrollVideoStage() {
   const wrapperRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const targetTimeRef = useRef(0);
+  const activeSceneIndexRef = useRef(0);
+  const requestIdRef = useRef(0);
+  const railTargetIndexRef = useRef<number | null>(null);
+  const transitionKindRef = useRef<ReturnType<typeof transitionKind>>("intro");
 
   const [isReducedMotion, setIsReducedMotion] = useState(false);
   const [videoDuration, setVideoDuration] = useState(homeJourney.media.duration);
-  const [progress, setProgress] = useState(0);
+  const [activeSceneIndex, setActiveSceneIndex] = useState(0);
+  const [mediaRequest, setMediaRequest] = useState<MediaRequest | null>(null);
+  const [isMediaTransitioning, setIsMediaTransitioning] = useState(false);
+  const [jumpCover, setJumpCover] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [sheetHotspot, setSheetHotspot] = useState<JourneyHotspot | null>(null);
   const [videoFailed, setVideoFailed] = useState(false);
   const [useFrames, setUseFrames] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const requestScene = useCallback((index: number, source: NavigationSource) => {
+    const nextIndex = clamp(index, 0, homeJourney.scenes.length - 1);
+    const previousIndex = activeSceneIndexRef.current;
+    const nextTransitionKind = transitionKind(previousIndex, nextIndex, source);
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    transitionKindRef.current = nextTransitionKind;
+    activeSceneIndexRef.current = nextIndex;
+    setActiveSceneIndex(nextIndex);
+    setIsMediaTransitioning(!reduceMotion);
+    setJumpCover(!reduceMotion && nextTransitionKind === "jump");
+    setMediaRequest({
+      id: ++requestIdRef.current,
+      index: nextIndex,
+      source,
+    });
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -136,85 +154,13 @@ export function ScrollVideoStage() {
       }
     };
 
-    /* iOS/Safari never paints seeked frames until the video has been
-       "unlocked" by a play. Muted + playsInline allows a programmatic play,
-       which we stop immediately; the first touch is the fallback trigger. */
-    const stopAfterUnlock = () => {
-      video.pause();
-
-      try {
-        video.currentTime = targetTimeRef.current;
-      } catch {
-        // Seek can be rejected while metadata is still settling.
-      }
-    };
-
-    const unlock = () => {
-      video.play().catch(() => {});
-    };
-
     video.addEventListener("loadedmetadata", syncDuration);
-    video.addEventListener("playing", stopAfterUnlock);
-    /* Not `once`: the source may be swapped for the buffered blob below, and
-       Low Power Mode rejects non-gesture plays — every touch re-tries. */
-    window.addEventListener("touchstart", unlock, { passive: true });
-    unlock();
+    video.addEventListener("durationchange", syncDuration);
     syncDuration();
 
     return () => {
       video.removeEventListener("loadedmetadata", syncDuration);
-      video.removeEventListener("playing", stopAfterUnlock);
-      window.removeEventListener("touchstart", unlock);
-    };
-  }, [useFrames]);
-
-  /* iOS Safari only paints scrubbed frames reliably when the data is already
-     buffered — with plain progressive loading the frame stays frozen on the
-     poster. Stream the chosen source into a fully-buffered blob and point the
-     element at it; the <source> pipeline stays as the fallback. */
-  useEffect(() => {
-    const video = videoRef.current;
-
-    if (!video || useFrames) {
-      return;
-    }
-
-    let objectUrl: string | null = null;
-    let cancelled = false;
-    const controller = new AbortController();
-
-    const wantsDesktop = window.matchMedia("(min-aspect-ratio: 3/4)").matches;
-    const src = wantsDesktop ? homeJourney.media.src : homeJourney.media.mobileSrc;
-
-    fetch(src, { cache: "force-cache", signal: controller.signal })
-      .then((response) => (response.ok ? response.blob() : Promise.reject(new Error())))
-      .then((blob) => {
-        if (cancelled) {
-          return;
-        }
-
-        objectUrl = URL.createObjectURL(blob);
-        video.src = objectUrl;
-        video.load();
-        video.play().catch(() => {});
-
-        try {
-          video.currentTime = targetTimeRef.current;
-        } catch {
-          // The follower will land the seek once metadata settles.
-        }
-      })
-      .catch(() => {
-        // Keep progressive <source> playback; the stills cover total failure.
-      });
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
+      video.removeEventListener("durationchange", syncDuration);
     };
   }, [useFrames]);
 
@@ -259,12 +205,34 @@ export function ScrollVideoStage() {
       window.clearTimeout(probeTimer);
       window.clearTimeout(stallTimer);
     };
-  }, []);
+  }, [useFrames]);
+
+  useEffect(() => {
+    if (isReducedMotion) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      if (activeSceneIndexRef.current === 0) {
+        requestScene(0, "intro");
+      }
+    }, INTRO_DELAY_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [isReducedMotion, requestScene]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+
+    if (!isReducedMotion) {
+      root.classList.add("journey-snap-root");
+    }
+
+    return () => root.classList.remove("journey-snap-root");
+  }, [isReducedMotion]);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
-    const video = videoRef.current;
-
     if (!wrapper) {
       return;
     }
@@ -277,23 +245,17 @@ export function ScrollVideoStage() {
       const rect = wrapper.getBoundingClientRect();
       const scrollable = Math.max(wrapper.offsetHeight - window.innerHeight, 1);
       const nextProgress = clamp(-rect.top / scrollable, 0, 1);
+      const nextIndex = sceneIndexFromProgress(nextProgress, homeJourney.scenes.length);
 
       wrapper.style.setProperty("--journey-progress", nextProgress.toFixed(4));
 
-      setProgress((current) => (Math.abs(current - nextProgress) > 0.0012 ? nextProgress : current));
-
-      if (isReducedMotion || !video || !Number.isFinite(videoDuration) || videoDuration <= 0) {
-        return;
+      if (nextIndex !== activeSceneIndexRef.current) {
+        if (railTargetIndexRef.current === nextIndex) {
+          railTargetIndexRef.current = null;
+        } else {
+          requestScene(nextIndex, "scroll");
+        }
       }
-
-      const scene = sceneAt(nextProgress);
-      const span = Math.max(scene.end - scene.start, 0.001);
-      const sceneFraction = clamp((nextProgress - scene.start) / span, 0, 1);
-      const mappedProgress = scene.start + plateau(sceneFraction) * span;
-
-      /* Only move the target here: the damped follower below owns the seeks,
-         so the footage glides after the scroll instead of snapping with it. */
-      targetTimeRef.current = clamp(mappedProgress * videoDuration, 0, videoDuration);
     };
 
     const requestUpdate = () => {
@@ -317,12 +279,108 @@ export function ScrollVideoStage() {
         window.cancelAnimationFrame(frame);
       }
     };
-  }, [isReducedMotion, videoDuration]);
+  }, [requestScene]);
 
-  /* Damped scrub: the video eases toward the scroll target every frame, so
-     both take-off and stop are soft instead of tracking the finger 1:1. */
   useEffect(() => {
-    if (isReducedMotion || useFrames || !Number.isFinite(videoDuration) || videoDuration <= 0) {
+    const navigate = (event: Event) => {
+      const detail = (event as CustomEvent<JourneyNavigateDetail>).detail;
+      const wrapper = wrapperRef.current;
+
+      if (!wrapper || !detail || !Number.isFinite(detail.index)) {
+        return;
+      }
+
+      const nextIndex = clamp(detail.index, 0, homeJourney.scenes.length - 1);
+      const rect = wrapper.getBoundingClientRect();
+      const wrapperTop = window.scrollY + rect.top;
+      const scrollable = Math.max(wrapper.offsetHeight - window.innerHeight, 1);
+      const nextTop =
+        wrapperTop +
+        sceneProgressForIndex(nextIndex, homeJourney.scenes.length) * scrollable;
+      const root = document.documentElement;
+      const previousScrollBehavior = root.style.scrollBehavior;
+
+      railTargetIndexRef.current = nextIndex;
+      requestScene(nextIndex, "rail");
+      root.style.scrollBehavior = "auto";
+      window.scrollTo({ top: nextTop, behavior: "auto" });
+
+      if (detail.anchor) {
+        window.history.replaceState(null, "", `#${detail.anchor}`);
+      }
+
+      window.requestAnimationFrame(() => {
+        root.style.scrollBehavior = previousScrollBehavior;
+        railTargetIndexRef.current = null;
+      });
+    };
+
+    window.addEventListener(JOURNEY_NAVIGATE_EVENT, navigate);
+
+    return () => window.removeEventListener(JOURNEY_NAVIGATE_EVENT, navigate);
+  }, [requestScene]);
+
+  useEffect(() => {
+    if (!mediaRequest || isReducedMotion || !Number.isFinite(videoDuration) || videoDuration <= 0) {
+      return;
+    }
+
+    const scene = homeJourney.scenes[mediaRequest.index];
+    const target = checkpointTime(scene, videoDuration);
+    const kind = transitionKindRef.current;
+
+    targetTimeRef.current = target;
+
+    if (kind !== "jump") {
+      return;
+    }
+
+    if (useFrames) {
+      return;
+    }
+
+    const video = videoRef.current;
+
+    if (!video) {
+      return;
+    }
+
+    let settled = false;
+    const settle = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      setJumpCover(false);
+      setIsMediaTransitioning(false);
+    };
+    const timer = window.setTimeout(settle, 700);
+
+    video.pause();
+    video.addEventListener("seeked", settle, { once: true });
+
+    try {
+      const fastVideo = video as HTMLVideoElement & { fastSeek?: (time: number) => void };
+      if (typeof fastVideo.fastSeek === "function") {
+        fastVideo.fastSeek(target);
+      } else {
+        video.currentTime = target;
+      }
+    } catch {
+      settle();
+    }
+
+    return () => {
+      window.clearTimeout(timer);
+      video.removeEventListener("seeked", settle);
+    };
+  }, [isReducedMotion, mediaRequest, useFrames, videoDuration]);
+
+  /* Desktop transitions chase one scene checkpoint, then stop. Rail jumps are
+     handled above with one direct seek instead of replaying the whole route. */
+  useEffect(() => {
+    if (isReducedMotion || useFrames || !mediaRequest) {
       return;
     }
 
@@ -335,17 +393,24 @@ export function ScrollVideoStage() {
 
       const video = videoRef.current;
 
-      /* Wait for the previous seek to land before issuing the next one:
-         stacking seeks while the decoder is busy is what reads as stutter. */
-      if (video && !video.seeking) {
+      if (video && !video.seeking && transitionKindRef.current !== "jump") {
         const current = video.currentTime;
         const delta = targetTimeRef.current - current;
-        let step = delta * (1 - Math.exp(-dt * SCRUB_DAMPING_RATE));
+        const damping = transitionKindRef.current === "intro" ? 4.8 : 8;
+        const maxSpeed = transitionKindRef.current === "intro" ? 4 : 18;
+        let step = delta * (1 - Math.exp(-dt * damping));
 
-        const maxStep = dt * SCRUB_MAX_SPEED;
+        const maxStep = dt * maxSpeed;
         step = clamp(step, -maxStep, maxStep);
 
-        if (Math.abs(step) > 0.012) {
+        if (Math.abs(delta) <= 0.12 || Math.abs(step) <= 0.012) {
+          try {
+            video.currentTime = targetTimeRef.current;
+          } catch {
+            // Metadata can still be settling on the first frame.
+          }
+          setIsMediaTransitioning(false);
+        } else if (Math.abs(step) > 0.012) {
           try {
             video.currentTime = current + step;
           } catch {
@@ -360,12 +425,10 @@ export function ScrollVideoStage() {
     frame = window.requestAnimationFrame(follow);
 
     return () => window.cancelAnimationFrame(frame);
-  }, [isReducedMotion, useFrames, videoDuration]);
+  }, [isReducedMotion, mediaRequest, useFrames]);
 
-  /* Frame-sequence scrub for touch devices: preload the JPEG timeline
-     (coarse strides first so the whole journey is covered early), then ease a
-     simulated clock toward the scroll target and paint the nearest loaded
-     frame onto the canvas with an object-cover crop. */
+  /* Touch fallback: load only the opening segment, checkpoint frames and the
+     segment currently requested. This avoids retaining 172 decoded images. */
   useEffect(() => {
     if (!useFrames || isReducedMotion) {
       return;
@@ -379,49 +442,79 @@ export function ScrollVideoStage() {
     }
 
     const wantsDesktop = window.matchMedia("(min-aspect-ratio: 3/4)").matches;
-    const prefix = wantsDesktop ? "/media/hawaii/frames/d-" : "/media/hawaii/frames/m-";
-
-    const loaded: (HTMLImageElement | null)[] = new Array(FRAME_COUNT).fill(null);
-    let disposed = false;
-
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+    const prefix = `${basePath}/media/hawaii/frames/${wantsDesktop ? "d" : "m"}-`;
+    const checkpointFrames = homeJourney.scenes.map((scene) =>
+      clamp(Math.round(checkpointTime(scene, videoDuration) * FRAME_FPS), 0, FRAME_COUNT - 1),
+    );
+    const checkpointSet = new Set(checkpointFrames);
+    const loaded = new Map<number, HTMLImageElement>();
+    const queued = new Set<number>();
     const order: number[] = [];
-    const seen = new Set<number>();
-    for (const stride of [12, 6, 3, 1]) {
-      for (let i = 0; i < FRAME_COUNT; i += stride) {
-        if (!seen.has(i)) {
-          seen.add(i);
-          order.push(i);
-        }
-      }
-    }
-
-    let cursor = 0;
+    let disposed = false;
     let inflight = 0;
+    let errorCount = 0;
+
+    const enqueue = (idx: number, priority = false) => {
+      const safeIndex = clamp(idx, 0, FRAME_COUNT - 1);
+
+      if (loaded.has(safeIndex) || queued.has(safeIndex)) {
+        return;
+      }
+
+      queued.add(safeIndex);
+      if (priority) {
+        order.unshift(safeIndex);
+      } else {
+        order.push(safeIndex);
+      }
+    };
+
+    const enqueuePath = (from: number, to: number, prioritizeTarget = true) => {
+      const direction = to >= from ? 1 : -1;
+
+      if (prioritizeTarget) {
+        enqueue(to, true);
+      }
+      for (let idx = from; idx !== to; idx += direction) {
+        enqueue(idx);
+      }
+      enqueue(to);
+    };
 
     const pump = () => {
       if (disposed) {
         return;
       }
 
-      while (inflight < 4 && cursor < order.length) {
-        const idx = order[cursor];
-        cursor += 1;
+      while (inflight < 4 && order.length > 0) {
+        const idx = order.shift()!;
         inflight += 1;
 
         const img = new window.Image();
         img.onload = () => {
-          loaded[idx] = img;
+          loaded.set(idx, img);
+          queued.delete(idx);
           inflight -= 1;
+          errorCount = 0;
           pump();
         };
         img.onerror = () => {
+          queued.delete(idx);
           inflight -= 1;
+          errorCount += 1;
+          if (errorCount >= 4 || idx === clamp(Math.round(targetTimeRef.current * FRAME_FPS), 0, FRAME_COUNT - 1)) {
+            setVideoFailed(true);
+          }
           pump();
         };
         img.src = `${prefix}${String(idx + 1).padStart(3, "0")}.jpg`;
       }
     };
 
+    enqueue(0);
+    enqueuePath(1, checkpointFrames[0], false);
+    checkpointFrames.slice(1).forEach((idx) => enqueue(idx));
     pump();
 
     let lastDrawn = -1;
@@ -438,10 +531,10 @@ export function ScrollVideoStage() {
 
     const nearestLoaded = (idx: number) => {
       for (let d = 0; d < FRAME_COUNT; d++) {
-        if (idx - d >= 0 && loaded[idx - d]) {
+        if (idx - d >= 0 && loaded.has(idx - d)) {
           return idx - d;
         }
-        if (idx + d < FRAME_COUNT && loaded[idx + d]) {
+        if (idx + d < FRAME_COUNT && loaded.has(idx + d)) {
           return idx + d;
         }
       }
@@ -452,25 +545,44 @@ export function ScrollVideoStage() {
     let simTime = 0;
     let last = performance.now();
     let frame = 0;
+    let scheduledTarget = checkpointFrames[0];
+    let settledTarget = -1;
 
     const tick = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.1);
       last = now;
 
-      const delta = targetTimeRef.current - simTime;
-      let step = delta * (1 - Math.exp(-dt * SCRUB_DAMPING_RATE));
-      const maxStep = dt * SCRUB_MAX_SPEED;
-      step = clamp(step, -maxStep, maxStep);
+      const targetFrame = clamp(
+        Math.round(targetTimeRef.current * FRAME_FPS),
+        0,
+        FRAME_COUNT - 1,
+      );
 
-      if (Math.abs(step) > 0.001) {
-        simTime += step;
+      if (targetFrame !== scheduledTarget) {
+        enqueuePath(clamp(Math.round(simTime * FRAME_FPS), 0, FRAME_COUNT - 1), targetFrame);
+        scheduledTarget = targetFrame;
+        settledTarget = -1;
+        pump();
+      }
+
+      const delta = targetTimeRef.current - simTime;
+      if (transitionKindRef.current === "jump") {
+        simTime = targetTimeRef.current;
+      } else {
+        let step = delta * (1 - Math.exp(-dt * FRAME_FALLBACK_DAMPING));
+        const maxStep = dt * FRAME_FALLBACK_MAX_SPEED;
+        step = clamp(step, -maxStep, maxStep);
+
+        if (Math.abs(step) > 0.001) {
+          simTime += step;
+        }
       }
 
       const wanted = clamp(Math.round(simTime * FRAME_FPS), 0, FRAME_COUNT - 1);
       const idx = nearestLoaded(wanted);
 
       if (idx !== -1 && idx !== lastDrawn) {
-        const img = loaded[idx]!;
+        const img = loaded.get(idx)!;
         const cw = canvas.width;
         const ch = canvas.height;
         const scale = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
@@ -479,6 +591,21 @@ export function ScrollVideoStage() {
         ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
         lastDrawn = idx;
         canvas.dataset.frame = String(idx);
+      }
+
+      if (idx === targetFrame && Math.abs(targetTimeRef.current - simTime) <= 0.04 && settledTarget !== targetFrame) {
+        settledTarget = targetFrame;
+        setVideoFailed(false);
+        setJumpCover(false);
+        setIsMediaTransitioning(false);
+
+        if (loaded.size > 48) {
+          loaded.forEach((_image, loadedIndex) => {
+            if (!checkpointSet.has(loadedIndex) && Math.abs(loadedIndex - targetFrame) > 18) {
+              loaded.delete(loadedIndex);
+            }
+          });
+        }
       }
 
       frame = window.requestAnimationFrame(tick);
@@ -491,32 +618,12 @@ export function ScrollVideoStage() {
       window.removeEventListener("resize", resize);
       window.cancelAnimationFrame(frame);
     };
-  }, [useFrames, isReducedMotion]);
+  }, [useFrames, isReducedMotion, videoDuration]);
 
-  const activeScene = useMemo(() => sceneAt(progress), [progress]);
-
-  const activeSceneIndex = useMemo(
-    () => homeJourney.scenes.findIndex((scene) => scene.id === activeScene.id),
-    [activeScene.id],
-  );
-
-  const sceneFraction = clamp(
-    (progress - activeScene.start) / Math.max(activeScene.end - activeScene.start, 0.001),
-    0,
-    1,
-  );
-
-  /* Settle envelope: overlays fade in as the scene holds, release as it scrolls
-     on. The copy block gets a floor on the first scene so the first paint is
-     complete; hotspots always follow the raw envelope so markers only appear
-     once the footage has actually reached the held frame — never over the
-     distant aerial that opens a scene. */
-  const rawSettle = isReducedMotion
-    ? 1
-    : clamp((0.5 - Math.abs(sceneFraction - 0.5)) / 0.28, 0, 1);
-
-  const overlaySettle =
-    !isReducedMotion && activeSceneIndex === 0 && sceneFraction < 0.5 ? 1 : rawSettle;
+  const activeScene = homeJourney.scenes[activeSceneIndex] ?? homeJourney.scenes[0];
+  const sceneFraction = isMediaTransitioning ? 0.35 : 1;
+  const rawSettle = isMediaTransitioning ? 0.3 : 1;
+  const overlaySettle = activeSceneIndex === 0 && !mediaRequest ? 1 : rawSettle;
 
   const overlaysInteractive = overlaySettle > 0.18;
   const hotspotsInteractive = rawSettle > 0.18;
@@ -586,6 +693,14 @@ export function ScrollVideoStage() {
     <section
       ref={wrapperRef}
       data-testid="hero-stage"
+      data-scene-id={activeScene.id}
+      data-media-mode={isReducedMotion ? "poster" : useFrames ? "frames" : "video"}
+      data-media-state={videoFailed ? "fallback" : isMediaTransitioning ? "moving" : "settled"}
+      data-nav-source={mediaRequest?.source ?? "initial"}
+      data-target-time={
+        mediaRequest ? checkpointTime(activeScene, videoDuration).toFixed(3) : "0.000"
+      }
+      data-settled={String(!isMediaTransitioning)}
       className="relative bg-[#070808]"
       aria-label="Hawaii Urban Village journey"
     >
@@ -629,7 +744,7 @@ export function ScrollVideoStage() {
             className="absolute inset-0 h-full w-full object-cover"
             muted
             playsInline
-            preload="auto"
+            preload="metadata"
             poster={homeJourney.media.poster}
             aria-label={homeJourney.media.alt}
           >
@@ -642,7 +757,18 @@ export function ScrollVideoStage() {
           </video>
         )}
 
-        {!isReducedMotion && !useFrames && videoFailed ? (
+        {!isReducedMotion && jumpCover ? (
+          <Image
+            key={`jump-${activeStill}`}
+            src={activeStill}
+            alt=""
+            fill
+            sizes="100vw"
+            className="pointer-events-none absolute inset-0 object-cover object-center transition-opacity duration-300"
+          />
+        ) : null}
+
+        {!isReducedMotion && videoFailed ? (
           <div
             data-testid="journey-fallback"
             aria-hidden="true"
@@ -859,20 +985,16 @@ export function ScrollVideoStage() {
         </div>
       </div>
 
-      {/* Scene anchors are laid out on the same scale as the scroll progress so
-          the soul rail and #anchor navigation stay in sync with the footage. */}
-      <div aria-hidden="true" className="pointer-events-none relative z-0 h-[800svh]">
+      {/* The track overlaps the sticky stage: nine equal snap points produce
+          eight viewport-sized moves from the first scene to the last. */}
+      <div aria-hidden="true" className="pointer-events-none relative z-0 -mt-[100svh]">
         {homeJourney.scenes.map((scene) => (
           <section
             key={scene.id}
             id={scene.anchor}
             data-chapter
             data-soul={scene.soul}
-            className="absolute inset-x-0"
-            style={{
-              top: `${Math.max(scene.start * 800 - 60, 0).toFixed(1)}svh`,
-              height: `${((scene.end - scene.start) * 800).toFixed(1)}svh`,
-            }}
+            className="h-[100svh] [scroll-snap-align:start] [scroll-snap-stop:always]"
           >
             <div className="sr-only">
               <h2>{scene.title}</h2>

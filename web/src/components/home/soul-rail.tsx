@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { JOURNEY_NAVIGATE_EVENT, sceneIndexFromProgress } from "@/lib/journey-playback";
 import { homeJourney, soulNavigation } from "@/lib/site-content";
 
 type SoulLabel = (typeof soulNavigation)[number]["label"];
@@ -33,9 +33,8 @@ export function SoulRail() {
       const scrollable = Math.max(stage.offsetHeight - window.innerHeight, 1);
       const progress = clamp(-rect.top / scrollable, 0, 1);
 
-      const scene =
-        homeJourney.scenes.find((s) => progress >= s.start && progress < s.end) ??
-        homeJourney.scenes[homeJourney.scenes.length - 1];
+      const sceneIndex = sceneIndexFromProgress(progress, homeJourney.scenes.length);
+      const scene = homeJourney.scenes[sceneIndex];
 
       const next: SoulLabel = scene.soul;
 
@@ -69,23 +68,32 @@ export function SoulRail() {
     >
       {/* Light glass backing keeps the stops readable over bright footage. */}
       <nav
-        className="pointer-events-auto rounded-full border border-white/10 bg-[rgba(10,11,12,0.34)] px-2 py-1 backdrop-blur-md md:rounded-[1.4rem] md:px-2 md:py-3"
+        aria-label="Momenti della giornata"
+        className="pointer-events-auto touch-pan-y rounded-full border border-white/10 bg-[rgba(10,11,12,0.34)] px-2 py-1 backdrop-blur-md md:rounded-[1.4rem] md:px-2 md:py-3"
         style={{ filter: "drop-shadow(0 1px 10px rgba(6,6,7,0.45))" }}
       >
         {/* Nine stops: on phones each stop is a dot and only the active one
             expands its label; the md+ rail shows every label vertically. */}
         <ul className="flex items-center gap-0.5 md:flex-col md:items-end md:gap-1">
-          {soulNavigation.map((item) => {
+          {soulNavigation.map((item, index) => {
             const isActive = activeSoul === item.label;
 
             return (
               <li key={item.label}>
-                <Link
+                <a
                   data-soul-link
                   href={item.href}
                   aria-label={item.label}
-                  aria-current={isActive ? "true" : undefined}
-                  className={`flex items-center justify-center gap-1.5 rounded-full px-1.5 py-2 text-[0.6rem] uppercase tracking-[0.14em] transition md:min-w-[8rem] md:justify-end md:gap-2 md:px-4 md:text-[0.68rem] md:tracking-[0.22em] ${
+                  aria-current={isActive ? "location" : undefined}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    window.dispatchEvent(
+                      new CustomEvent(JOURNEY_NAVIGATE_EVENT, {
+                        detail: { index, anchor: item.href.slice(1) },
+                      }),
+                    );
+                  }}
+                  className={`flex min-h-6 min-w-6 items-center justify-center gap-1.5 rounded-full px-1.5 py-2 text-[0.6rem] uppercase tracking-[0.14em] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8c89e] md:min-w-[8rem] md:justify-end md:gap-2 md:px-4 md:text-[0.68rem] md:tracking-[0.22em] ${
                     isActive ? "text-[#e8c89e]" : "text-[#dadad5] hover:text-white"
                   }`}
                 >
@@ -100,7 +108,7 @@ export function SoulRail() {
                         : "bg-white/20"
                     }`}
                   />
-                </Link>
+                </a>
               </li>
             );
           })}
