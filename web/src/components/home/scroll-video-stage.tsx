@@ -17,6 +17,7 @@ import {
   type NavigationSource,
   sceneIndexFromProgress,
   sceneProgressForIndex,
+  shouldUseJourneyFrames,
   transitionKind,
 } from "@/lib/journey-playback";
 
@@ -100,11 +101,30 @@ export function ScrollVideoStage() {
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setUseFrames(window.matchMedia("(pointer: coarse)").matches);
-    }, 0);
+    const coarsePointer = window.matchMedia("(pointer: coarse)");
+    const hoverNone = window.matchMedia("(hover: none)");
 
-    return () => window.clearTimeout(timer);
+    const syncRenderer = () => {
+      setUseFrames(
+        shouldUseJourneyFrames({
+          viewportWidth: window.innerWidth,
+          coarsePointer: coarsePointer.matches,
+          hoverNone: hoverNone.matches,
+          maxTouchPoints: window.navigator.maxTouchPoints ?? 0,
+        }),
+      );
+    };
+
+    syncRenderer();
+    coarsePointer.addEventListener("change", syncRenderer);
+    hoverNone.addEventListener("change", syncRenderer);
+    window.addEventListener("resize", syncRenderer);
+
+    return () => {
+      coarsePointer.removeEventListener("change", syncRenderer);
+      hoverNone.removeEventListener("change", syncRenderer);
+      window.removeEventListener("resize", syncRenderer);
+    };
   }, []);
 
   useEffect(() => {
