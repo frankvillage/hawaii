@@ -15,6 +15,10 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   const mobilePage = await browser.newPage({ ...devices["iPhone 13"] });
+  const reducedMobilePage = await browser.newPage({
+    ...devices["iPhone 13"],
+    reducedMotion: "reduce",
+  });
 
   try {
     await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
@@ -205,6 +209,38 @@ async function main() {
       "Cocktail bar",
       "One mobile swipe-sized step should advance the journey to Bar",
     );
+
+    await reducedMobilePage.goto(baseUrl, { waitUntil: "domcontentloaded" });
+    const reducedCanvas = reducedMobilePage.locator('[data-testid="journey-canvas"]');
+    await reducedMobilePage.waitForFunction(
+      () =>
+        document.querySelector('[data-testid="hero-stage"]')?.dataset.mediaMode === "frames",
+      undefined,
+      { timeout: 3500 },
+    );
+    assert.equal(
+      await reducedCanvas.count(),
+      1,
+      "Reduced-motion mobile should still render journey checkpoints instead of freezing on the poster",
+    );
+    await reducedMobilePage.evaluate(() => {
+      window.scrollTo({ top: window.innerHeight, behavior: "auto" });
+    });
+    await reducedMobilePage.waitForFunction(
+      () => {
+        const stage = document.querySelector('[data-testid="hero-stage"]');
+        const canvas = document.querySelector('[data-testid="journey-canvas"]');
+        return stage?.dataset.sceneId === "bar" && Number(canvas?.dataset.frame) > 0;
+      },
+      undefined,
+      { timeout: 3500 },
+    );
+    assert.equal(
+      (await reducedMobilePage.locator('[data-testid="scene-eyebrow"]').textContent())?.trim(),
+      "Cocktail bar",
+      "Reduced-motion mobile should keep visuals synchronized with the active scene",
+    );
+
     const mobileMenuButton = mobilePage.getByRole("button", { name: "Menu", exact: true });
     await mobileMenuButton.waitFor({ state: "visible", timeout: 2500 });
     await mobileMenuButton.click();

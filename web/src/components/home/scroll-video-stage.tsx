@@ -341,7 +341,7 @@ export function ScrollVideoStage() {
   }, [requestScene]);
 
   useEffect(() => {
-    if (!mediaRequest || isReducedMotion || !Number.isFinite(videoDuration) || videoDuration <= 0) {
+    if (!mediaRequest || !Number.isFinite(videoDuration) || videoDuration <= 0) {
       return;
     }
 
@@ -450,7 +450,7 @@ export function ScrollVideoStage() {
   /* Touch fallback: load only the opening segment, checkpoint frames and the
      segment currently requested. This avoids retaining 172 decoded images. */
   useEffect(() => {
-    if (!useFrames || isReducedMotion) {
+    if (!useFrames) {
       return;
     }
 
@@ -579,14 +579,18 @@ export function ScrollVideoStage() {
       );
 
       if (targetFrame !== scheduledTarget) {
-        enqueuePath(clamp(Math.round(simTime * FRAME_FPS), 0, FRAME_COUNT - 1), targetFrame);
+        if (isReducedMotion) {
+          enqueue(targetFrame, true);
+        } else {
+          enqueuePath(clamp(Math.round(simTime * FRAME_FPS), 0, FRAME_COUNT - 1), targetFrame);
+        }
         scheduledTarget = targetFrame;
         settledTarget = -1;
         pump();
       }
 
       const delta = targetTimeRef.current - simTime;
-      if (transitionKindRef.current === "jump") {
+      if (isReducedMotion || transitionKindRef.current === "jump") {
         simTime = targetTimeRef.current;
       } else {
         let step = delta * (1 - Math.exp(-dt * FRAME_FALLBACK_DAMPING));
@@ -714,7 +718,7 @@ export function ScrollVideoStage() {
       ref={wrapperRef}
       data-testid="hero-stage"
       data-scene-id={activeScene.id}
-      data-media-mode={isReducedMotion ? "poster" : useFrames ? "frames" : "video"}
+      data-media-mode={useFrames ? "frames" : isReducedMotion ? "stills" : "video"}
       data-media-state={videoFailed ? "fallback" : isMediaTransitioning ? "moving" : "settled"}
       data-nav-source={mediaRequest?.source ?? "initial"}
       data-target-time={
@@ -731,16 +735,7 @@ export function ScrollVideoStage() {
         onMouseMove={handlePointerMove}
         onMouseLeave={resetPointer}
       >
-        {isReducedMotion ? (
-          <Image
-            src={homeJourney.media.poster}
-            alt={homeHero.media.alt}
-            fill
-            priority
-            sizes="100vw"
-            className="absolute inset-0 object-cover object-center"
-          />
-        ) : useFrames ? (
+        {useFrames ? (
           <>
             <Image
               src={homeJourney.media.poster}
@@ -757,6 +752,16 @@ export function ScrollVideoStage() {
               className="absolute inset-0 h-full w-full"
             />
           </>
+        ) : isReducedMotion ? (
+          <Image
+            key={activeStill}
+            src={activeStill}
+            alt={homeHero.media.alt}
+            fill
+            priority
+            sizes="100vw"
+            className="absolute inset-0 object-cover object-center"
+          />
         ) : (
           <video
             ref={videoRef}
