@@ -35,8 +35,8 @@ assert.doesNotMatch(
 );
 assert.match(
   stage,
-  /preload="metadata"/,
-  "The journey video should avoid full eager video preload on first paint",
+  /preload="auto"/,
+  "The segmented journey should buffer ahead so mobile playback does not stall between checkpoints",
 );
 
 console.log("web static regression checks passed");

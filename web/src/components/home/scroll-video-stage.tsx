@@ -17,7 +17,6 @@ import {
   type NavigationSource,
   sceneIndexFromProgress,
   sceneProgressForIndex,
-  shouldUseJourneyFrames,
   transitionKind,
 } from "@/lib/journey-playback";
 
@@ -41,8 +40,7 @@ const fallbackStills = Array.from(
   ]),
 );
 
-/* Touch devices use a checkpoint-driven JPEG canvas because paused video seeks
-   are not painted reliably by iOS Safari. Frames are loaded per segment. */
+/* JPEG frames are decoded only after a verified media failure. */
 const FRAME_COUNT = 172;
 const FRAME_FPS = 3;
 const FRAME_FALLBACK_DAMPING = 7;
@@ -98,33 +96,6 @@ export function ScrollVideoStage() {
       index: nextIndex,
       source,
     });
-  }, []);
-
-  useEffect(() => {
-    const coarsePointer = window.matchMedia("(pointer: coarse)");
-    const hoverNone = window.matchMedia("(hover: none)");
-
-    const syncRenderer = () => {
-      setUseFrames(
-        shouldUseJourneyFrames({
-          viewportWidth: window.innerWidth,
-          coarsePointer: coarsePointer.matches,
-          hoverNone: hoverNone.matches,
-          maxTouchPoints: window.navigator.maxTouchPoints ?? 0,
-        }),
-      );
-    };
-
-    syncRenderer();
-    coarsePointer.addEventListener("change", syncRenderer);
-    hoverNone.addEventListener("change", syncRenderer);
-    window.addEventListener("resize", syncRenderer);
-
-    return () => {
-      coarsePointer.removeEventListener("change", syncRenderer);
-      hoverNone.removeEventListener("change", syncRenderer);
-      window.removeEventListener("resize", syncRenderer);
-    };
   }, []);
 
   useEffect(() => {
@@ -194,7 +165,10 @@ export function ScrollVideoStage() {
       return;
     }
 
-    const markFailed = () => setVideoFailed(true);
+    const markFailed = () => {
+      setVideoFailed(true);
+      setUseFrames(true);
+    };
     const markRecovered = () => setVideoFailed(false);
 
     /* When every <source> is rejected, the error fires on the last <source>,
@@ -208,13 +182,13 @@ export function ScrollVideoStage() {
     /* The error may have fired before hydration attached these listeners. */
     const probeTimer = window.setTimeout(() => {
       if (video.error || video.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
-        setVideoFailed(true);
+        markFailed();
       }
     }, 0);
 
     const stallTimer = window.setTimeout(() => {
       if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-        setVideoFailed(true);
+        markFailed();
       }
     }, 8000);
 
@@ -340,112 +314,168 @@ export function ScrollVideoStage() {
     return () => window.removeEventListener(JOURNEY_NAVIGATE_EVENT, navigate);
   }, [requestScene]);
 
+  /* Each scroll step plays the MP4 normally until the requested checkpoint.
+     Only direct/backward jumps seek; no animation frame repeatedly rewrites
+     currentTime, which would freeze iOS video after the first decoded frames. */
   useEffect(() => {
-    if (!mediaRequest || !Number.isFinite(videoDuration) || videoDuration <= 0) {
+    if (
+      !mediaRequest ||
+      !Number.isFinite(videoDuration) ||
+      videoDuration <= 0
+    ) {
       return;
     }
 
-    const scene = homeJourney.scenes[mediaRequest.index];
-    const target = checkpointTime(scene, videoDuration);
-    const kind = transitionKindRef.current;
-
+    const target = checkpointTime(homeJourney.scenes[mediaRequest.index], videoDuration);
     targetTimeRef.current = target;
 
-    if (kind !== "jump") {
-      return;
-    }
-
-    if (useFrames) {
+    if (isReducedMotion || useFrames) {
       return;
     }
 
     const video = videoRef.current;
-
     if (!video) {
       return;
     }
 
+    const kind = transitionKindRef.current;
+    const shouldSeek = kind === "jump" || target < video.currentTime - 0.08;
+    let cancelled = false;
     let settled = false;
+    let confirmingFrame = false;
+    let playAttemptInFlight = false;
+    let monitoringPlayback = false;
+    let frame = 0;
+    let settleTimer = 0;
+    let seekListener: (() => void) | null = null;
+
     const settle = () => {
-      if (settled) {
+      if (cancelled || settled) {
         return;
       }
 
       settled = true;
+      video.pause();
+      video.playbackRate = 1;
       setJumpCover(false);
+      setVideoFailed(false);
       setIsMediaTransitioning(false);
     };
-    const timer = window.setTimeout(settle, 700);
 
-    video.pause();
-    video.addEventListener("seeked", settle, { once: true });
-
-    try {
-      const fastVideo = video as HTMLVideoElement & { fastSeek?: (time: number) => void };
-      if (typeof fastVideo.fastSeek === "function") {
-        fastVideo.fastSeek(target);
-      } else {
-        video.currentTime = target;
+    const confirmDecodedFrame = () => {
+      if (cancelled || settled || confirmingFrame) {
+        return;
       }
-    } catch {
-      settle();
+
+      confirmingFrame = true;
+      let decodedConfirmationStarted = false;
+
+      const confirm = () => {
+        if (cancelled || settled || decodedConfirmationStarted) {
+          return;
+        }
+
+        decodedConfirmationStarted = true;
+        const frameVideo = video as HTMLVideoElement & {
+          requestVideoFrameCallback?: (callback: () => void) => number;
+        };
+
+        if (typeof frameVideo.requestVideoFrameCallback === "function") {
+          frameVideo.requestVideoFrameCallback(settle);
+          settleTimer = window.setTimeout(settle, 250);
+        } else {
+          settle();
+        }
+      };
+
+      if (Math.abs(video.currentTime - target) <= 0.04 && !video.seeking) {
+        confirm();
+        return;
+      }
+
+      seekListener = confirm;
+      video.addEventListener("seeked", seekListener, { once: true });
+      try {
+        video.currentTime = target;
+      } catch {
+        video.removeEventListener("seeked", seekListener);
+        seekListener = null;
+        settle();
+      }
+      settleTimer = window.setTimeout(confirm, 650);
+    };
+
+    const monitorPlayback = () => {
+      if (cancelled) {
+        return;
+      }
+
+      if (video.currentTime >= target - 0.08) {
+        monitoringPlayback = false;
+        video.pause();
+        confirmDecodedFrame();
+        return;
+      }
+
+      frame = window.requestAnimationFrame(monitorPlayback);
+    };
+
+    const playSegment = async () => {
+      if (playAttemptInFlight || monitoringPlayback || settled) {
+        return;
+      }
+
+      const distance = target - video.currentTime;
+      if (distance <= 0.08) {
+        confirmDecodedFrame();
+        return;
+      }
+
+      const desiredDuration = kind === "intro" ? 1.05 : 2.4;
+      video.playbackRate = clamp(distance / desiredDuration, 1, 3.5);
+      playAttemptInFlight = true;
+      try {
+        await video.play();
+        if (!cancelled) {
+          monitoringPlayback = true;
+          frame = window.requestAnimationFrame(monitorPlayback);
+        }
+      } catch {
+        // Muted inline playback is retried by the first user gesture below.
+      } finally {
+        playAttemptInFlight = false;
+      }
+    };
+
+    if (shouldSeek) {
+      video.pause();
+      confirmDecodedFrame();
+    } else {
+      void playSegment();
     }
+
+    const retryFromGesture = () => {
+      if (!cancelled && video.paused && video.currentTime < target - 0.08) {
+        void playSegment();
+      }
+    };
+
+    window.addEventListener("pointerdown", retryFromGesture, { passive: true });
+    window.addEventListener("touchstart", retryFromGesture, { passive: true });
 
     return () => {
-      window.clearTimeout(timer);
-      video.removeEventListener("seeked", settle);
+      cancelled = true;
+      video.pause();
+      video.playbackRate = 1;
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(settleTimer);
+      if (seekListener) {
+        video.removeEventListener("seeked", seekListener);
+      }
+      window.removeEventListener("pointerdown", retryFromGesture);
+      window.removeEventListener("touchstart", retryFromGesture);
     };
   }, [isReducedMotion, mediaRequest, useFrames, videoDuration]);
-
-  /* Desktop transitions chase one scene checkpoint, then stop. Rail jumps are
-     handled above with one direct seek instead of replaying the whole route. */
-  useEffect(() => {
-    if (isReducedMotion || useFrames || !mediaRequest) {
-      return;
-    }
-
-    let frame = 0;
-    let last = performance.now();
-
-    const follow = (now: number) => {
-      const dt = Math.min((now - last) / 1000, 0.1);
-      last = now;
-
-      const video = videoRef.current;
-
-      if (video && !video.seeking && transitionKindRef.current !== "jump") {
-        const current = video.currentTime;
-        const delta = targetTimeRef.current - current;
-        const damping = transitionKindRef.current === "intro" ? 4.8 : 8;
-        const maxSpeed = transitionKindRef.current === "intro" ? 4 : 18;
-        let step = delta * (1 - Math.exp(-dt * damping));
-
-        const maxStep = dt * maxSpeed;
-        step = clamp(step, -maxStep, maxStep);
-
-        if (Math.abs(delta) <= 0.12 || Math.abs(step) <= 0.012) {
-          try {
-            video.currentTime = targetTimeRef.current;
-          } catch {
-            // Metadata can still be settling on the first frame.
-          }
-          setIsMediaTransitioning(false);
-        } else if (Math.abs(step) > 0.012) {
-          try {
-            video.currentTime = current + step;
-          } catch {
-            // Safari can occasionally reject seeks while metadata is settling.
-          }
-        }
-      }
-
-      frame = window.requestAnimationFrame(follow);
-    };
-
-    frame = window.requestAnimationFrame(follow);
-
-    return () => window.cancelAnimationFrame(frame);
-  }, [isReducedMotion, mediaRequest, useFrames]);
 
   /* Touch fallback: load only the opening segment, checkpoint frames and the
      segment currently requested. This avoids retaining 172 decoded images. */
@@ -769,7 +799,7 @@ export function ScrollVideoStage() {
             className="absolute inset-0 h-full w-full object-cover"
             muted
             playsInline
-            preload="metadata"
+            preload="auto"
             poster={homeJourney.media.poster}
             aria-label={homeJourney.media.alt}
           >

@@ -7,27 +7,8 @@ type SceneRange = {
   end: number;
 };
 
-type JourneyRendererSignals = {
-  viewportWidth: number;
-  coarsePointer: boolean;
-  hoverNone: boolean;
-  maxTouchPoints: number;
-};
-
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
-}
-
-export function shouldUseJourneyFrames({
-  viewportWidth,
-  coarsePointer,
-  hoverNone,
-  maxTouchPoints,
-}: JourneyRendererSignals) {
-  const isNarrowViewport = Number.isFinite(viewportWidth) && viewportWidth < 768;
-  const hasTouchInput = Number.isFinite(maxTouchPoints) && maxTouchPoints > 0;
-
-  return isNarrowViewport || coarsePointer || hoverNone || hasTouchInput;
 }
 
 export function checkpointProgress(scene: SceneRange) {

@@ -6,40 +6,8 @@ import {
   JOURNEY_NAVIGATE_EVENT,
   sceneIndexFromProgress,
   sceneProgressForIndex,
-  shouldUseJourneyFrames,
   transitionKind,
 } from "../web/src/lib/journey-playback.ts";
-
-assert.equal(
-  shouldUseJourneyFrames({
-    viewportWidth: 390,
-    coarsePointer: false,
-    hoverNone: false,
-    maxTouchPoints: 0,
-  }),
-  true,
-  "A narrow mobile viewport must use frame rendering even when pointer media queries are wrong",
-);
-assert.equal(
-  shouldUseJourneyFrames({
-    viewportWidth: 1366,
-    coarsePointer: true,
-    hoverNone: true,
-    maxTouchPoints: 1,
-  }),
-  true,
-  "Touch-capable devices should not depend on paused-video seeking",
-);
-assert.equal(
-  shouldUseJourneyFrames({
-    viewportWidth: 1366,
-    coarsePointer: false,
-    hoverNone: false,
-    maxTouchPoints: 0,
-  }),
-  false,
-  "A conventional desktop should keep the video renderer",
-);
 
 assert.equal(JOURNEY_NAVIGATE_EVENT, "hawaii:journey-navigate");
 assert.equal(checkpointProgress({ start: 0.125, end: 0.2 }), 0.1625);
