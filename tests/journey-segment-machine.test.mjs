@@ -625,6 +625,43 @@ test("a second hide during reconcile preserves the original resume metadata", ()
   assert.equal(resumed.pendingTargetIndex, 4);
 });
 
+test("motion pause during reconcile seeks the original resume target", () => {
+  const playing = reduceJourneyMachine(
+    createJourneyMachineState({ currentIndex: 1 }),
+    { type: "REQUEST", index: 2, source: "scroll" },
+  );
+  const hidden = reduceJourneyMachine(playing, {
+    type: "VISIBILITY_HIDDEN",
+  });
+  const reconciling = reduceJourneyMachine(hidden, {
+    type: "VISIBILITY_VISIBLE",
+  });
+  assert.equal(reconciling.segmentTargetIndex, 1);
+  assert.equal(reconciling.resumeTargetIndex, 2);
+
+  const motionPaused = reduceJourneyMachine(reconciling, {
+    type: "MOTION_CHANGED",
+    enabled: false,
+  });
+  assert.equal(motionPaused.status, "suspended");
+  assert.equal(motionPaused.suspendReason, "motion");
+  assert.equal(motionPaused.motionEnabled, false);
+  assert.equal(motionPaused.segmentTargetIndex, 2);
+  assert.equal(motionPaused.pendingTargetIndex, null);
+  assert.equal(motionPaused.seekAttempt, "primary");
+  assert.equal(motionPaused.requestId, reconciling.requestId + 1);
+
+  const confirmed = reduceJourneyMachine(motionPaused, {
+    type: "CHECKPOINT_FRAME_CONFIRMED",
+    index: 2,
+    requestId: motionPaused.requestId,
+  });
+  assert.equal(confirmed.status, "suspended");
+  assert.equal(confirmed.currentIndex, 2);
+  assert.equal(confirmed.seekAttempt, null);
+  assert.equal(confirmed.requestId, motionPaused.requestId + 1);
+});
+
 for (const resumeEvent of ["VISIBILITY_VISIBLE", "PAGE_SHOWN"]) {
   test(`${resumeEvent} reconciles the active checkpoint before completion`, () => {
     const queued = reduceJourneyMachine(

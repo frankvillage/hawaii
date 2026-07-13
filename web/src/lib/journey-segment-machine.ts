@@ -614,7 +614,12 @@ export function reduceJourneyMachine(
         };
       }
 
+      const reconciliationTarget =
+        state.status === "seeking" && state.resumeStatus !== null
+          ? state.resumeTargetIndex
+          : null;
       const targetIndex =
+        reconciliationTarget ??
         state.pendingTargetIndex ??
         state.segmentTargetIndex ??
         state.currentIndex;
