@@ -376,10 +376,6 @@ function retryInterruptedOperation(
         ? "stalled"
         : "system_paused";
 
-  if (state.retryCount >= 1) {
-    return enterFallback(state, reason);
-  }
-
   const resumeStatus =
     state.status === "buffering"
       ? state.resumeStatus
@@ -391,6 +387,10 @@ function retryInterruptedOperation(
 
   if (resumeStatus === null) {
     return state;
+  }
+
+  if (state.retryCount >= 1) {
+    return enterFallback(state, reason);
   }
 
   return {
@@ -499,11 +499,11 @@ export function reduceJourneyMachine(
       if (isStaleRequest(state, event)) {
         return state;
       }
-      if (state.retryCount >= 1) {
-        return enterFallback(state, "play_rejected");
-      }
       if (state.status !== "playing") {
         return state;
+      }
+      if (state.retryCount >= 1) {
+        return enterFallback(state, "play_rejected");
       }
       return {
         ...state,

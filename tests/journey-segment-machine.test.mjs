@@ -389,6 +389,47 @@ test("a second buffering interruption after retry enters fallback", () => {
   assert.equal(fallback.fallbackReason, "stalled");
 });
 
+function createRetriedCheckpointPause() {
+  const playing = reduceJourneyMachine(
+    createJourneyMachineState({ currentIndex: 0 }),
+    { type: "REQUEST", index: 1, source: "scroll" },
+  );
+  const buffering = reduceJourneyMachine(playing, {
+    type: "WAITING",
+    requestId: playing.requestId,
+  });
+  const resumed = reduceJourneyMachine(buffering, {
+    type: "RETRY_SUCCEEDED",
+    requestId: buffering.requestId,
+  });
+
+  return reduceJourneyMachine(resumed, {
+    type: "CHECKPOINT_REACHED",
+    index: 1,
+    requestId: resumed.requestId,
+  });
+}
+
+for (const eventType of [
+  "WAITING",
+  "STALLED",
+  "SYSTEM_PAUSED",
+  "PLAY_REJECTED",
+]) {
+  test(`${eventType} is ignored at a checkpoint after retry`, () => {
+    const checkpointPaused = createRetriedCheckpointPause();
+    assert.equal(checkpointPaused.status, "checkpoint_paused");
+    assert.equal(checkpointPaused.retryCount, 1);
+
+    const unchanged = reduceJourneyMachine(checkpointPaused, {
+      type: eventType,
+      requestId: checkpointPaused.requestId,
+    });
+
+    assert.strictEqual(unchanged, checkpointPaused);
+  });
+}
+
 test("a Safari or system pause uses the same single retry budget", () => {
   const playing = reduceJourneyMachine(
     createJourneyMachineState({ currentIndex: 2 }),

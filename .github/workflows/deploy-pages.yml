@@ -39,6 +39,9 @@ jobs:
         working-directory: web
         run: npm ci
 
+      - name: Test journey units
+        run: npm run test:web:journey
+
       # Route handlers (POST) cannot ship in a static export.
       - name: Drop server-only API routes
         run: rm -rf web/src/app/api
