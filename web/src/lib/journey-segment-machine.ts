@@ -39,7 +39,7 @@ type JourneyRequestScopedEventType =
 type JourneyRequestScopedEvent = {
   [Type in JourneyRequestScopedEventType]: {
     type: Type;
-    requestId?: number;
+    requestId: number;
   };
 }[JourneyRequestScopedEventType];
 
@@ -66,12 +66,12 @@ export type JourneyMachineEvent =
   | {
       type: "CHECKPOINT_REACHED";
       index: number;
-      requestId?: number;
+      requestId: number;
     }
   | {
       type: "CHECKPOINT_FRAME_CONFIRMED";
       index: number;
-      requestId?: number;
+      requestId: number;
     }
   | {
       type: "MOTION_CHANGED";
@@ -108,9 +108,9 @@ export function createJourneyMachineState({
 
 function isStaleRequest(
   state: JourneyMachineState,
-  event: { requestId?: number },
+  event: { requestId: number },
 ) {
-  return event.requestId !== undefined && event.requestId !== state.requestId;
+  return event.requestId !== state.requestId;
 }
 
 function startSeek(
@@ -138,6 +138,7 @@ function enterFallback(
   return {
     ...state,
     status: "fallback",
+    requestId: state.requestId + 1,
     seekAttempt: null,
     resumeStatus: null,
     suspendReason: null,
@@ -154,10 +155,6 @@ function requestCheckpoint(
     return state;
   }
 
-  if (!state.motionEnabled) {
-    return startSeek(state, index);
-  }
-
   if (state.status === "fallback") {
     return {
       ...state,
@@ -167,10 +164,17 @@ function requestCheckpoint(
     };
   }
 
+  if (!state.motionEnabled) {
+    return startSeek(state, index);
+  }
+
+  if (state.status === "seeking") {
+    return startSeek(state, index);
+  }
+
   if (
     source === "scroll" &&
-    (state.status === "playing" || state.status === "checkpoint_paused") &&
-    index >= state.currentIndex
+    (state.status === "playing" || state.status === "checkpoint_paused")
   ) {
     return {
       ...state,
@@ -211,11 +215,22 @@ function confirmCheckpoint(
     return state;
   }
 
+  if (state.status === "fallback") {
+    return {
+      ...state,
+      currentIndex: index,
+      segmentTargetIndex: null,
+      pendingTargetIndex: null,
+      requestId: state.requestId + 1,
+    };
+  }
+
   if (state.status === "suspended") {
     return {
       ...state,
       currentIndex: index,
       segmentTargetIndex: index,
+      requestId: state.requestId + 1,
       retryCount: 0,
       seekAttempt: null,
       resumeStatus: null,
@@ -223,22 +238,7 @@ function confirmCheckpoint(
     };
   }
 
-  if (state.status === "seeking") {
-    return {
-      ...state,
-      status: "idle",
-      currentIndex: index,
-      segmentTargetIndex: null,
-      pendingTargetIndex: null,
-      retryCount: 0,
-      seekAttempt: null,
-      resumeStatus: null,
-      suspendReason: null,
-      fallbackReason: null,
-    };
-  }
-
-  if (state.status !== "checkpoint_paused") {
+  if (state.status !== "checkpoint_paused" && state.status !== "seeking") {
     return state;
   }
 
@@ -266,12 +266,27 @@ function confirmCheckpoint(
     };
   }
 
+  if (
+    state.pendingTargetIndex !== null &&
+    state.pendingTargetIndex < index
+  ) {
+    return startSeek(
+      {
+        ...state,
+        currentIndex: index,
+        pendingTargetIndex: null,
+      },
+      state.pendingTargetIndex,
+    );
+  }
+
   return {
     ...state,
     status: "idle",
     currentIndex: index,
     segmentTargetIndex: null,
     pendingTargetIndex: null,
+    requestId: state.requestId + 1,
     retryCount: 0,
     seekAttempt: null,
     resumeStatus: null,
@@ -284,7 +299,7 @@ function retryInterruptedOperation(
   state: JourneyMachineState,
   event: {
     type: "WAITING" | "STALLED" | "SYSTEM_PAUSED";
-    requestId?: number;
+    requestId: number;
   },
 ): JourneyMachineState {
   if (isStaleRequest(state, event)) {
@@ -364,8 +379,11 @@ function resumeFromVisibility(
 
   return {
     ...state,
-    status: state.resumeStatus ?? "idle",
+    status: "seeking",
+    segmentTargetIndex: state.segmentTargetIndex ?? state.currentIndex,
     requestId: state.requestId + 1,
+    retryCount: 0,
+    seekAttempt: "primary",
     resumeStatus: null,
     suspendReason: null,
   };
@@ -433,6 +451,7 @@ export function reduceJourneyMachine(
       return {
         ...state,
         status: state.resumeStatus ?? "playing",
+        requestId: state.requestId + 1,
         resumeStatus: null,
       };
 
@@ -452,6 +471,7 @@ export function reduceJourneyMachine(
       return {
         ...state,
         status: state.resumeStatus,
+        requestId: state.requestId + 1,
         resumeStatus: null,
       };
 
@@ -490,6 +510,14 @@ export function reduceJourneyMachine(
     case "MOTION_CHANGED": {
       if (event.enabled === state.motionEnabled) {
         return state;
+      }
+
+      if (state.status === "fallback") {
+        return {
+          ...state,
+          requestId: state.requestId + 1,
+          motionEnabled: event.enabled,
+        };
       }
 
       if (event.enabled) {

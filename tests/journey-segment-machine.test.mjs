@@ -80,15 +80,69 @@ test("checkpoint confirmation returns idle when no farther target is pending", (
   const reached = reduceJourneyMachine(playing, {
     type: "CHECKPOINT_REACHED",
     index: 1,
+    requestId: playing.requestId,
   });
   const confirmed = reduceJourneyMachine(reached, {
     type: "CHECKPOINT_FRAME_CONFIRMED",
     index: 1,
+    requestId: reached.requestId,
   });
 
   assert.equal(confirmed.status, "idle");
   assert.equal(confirmed.currentIndex, 1);
   assert.equal(confirmed.segmentTargetIndex, null);
+  assert.equal(confirmed.requestId, reached.requestId + 1);
+
+  const lateTimeout = reduceJourneyMachine(confirmed, {
+    type: "METADATA_TIMEOUT",
+    requestId: reached.requestId,
+  });
+  assert.strictEqual(lateTimeout, confirmed);
+});
+
+test("backward scroll waits for the active checkpoint frame before seeking", () => {
+  const playing = reduceJourneyMachine(
+    createJourneyMachineState({ currentIndex: 2 }),
+    { type: "REQUEST", index: 3, source: "scroll" },
+  );
+  const queuedWhilePlaying = reduceJourneyMachine(playing, {
+    type: "REQUEST",
+    index: 1,
+    source: "scroll",
+  });
+
+  assert.equal(queuedWhilePlaying.status, "playing");
+  assert.equal(queuedWhilePlaying.segmentTargetIndex, 3);
+  assert.equal(queuedWhilePlaying.pendingTargetIndex, 1);
+  assert.equal(queuedWhilePlaying.requestId, playing.requestId);
+
+  const reached = reduceJourneyMachine(queuedWhilePlaying, {
+    type: "CHECKPOINT_REACHED",
+    index: 3,
+    requestId: queuedWhilePlaying.requestId,
+  });
+  const queuedWhilePaused = reduceJourneyMachine(reached, {
+    type: "REQUEST",
+    index: 0,
+    source: "scroll",
+  });
+
+  assert.equal(queuedWhilePaused.status, "checkpoint_paused");
+  assert.equal(queuedWhilePaused.segmentTargetIndex, 3);
+  assert.equal(queuedWhilePaused.pendingTargetIndex, 0);
+  assert.equal(queuedWhilePaused.requestId, reached.requestId);
+
+  const confirmed = reduceJourneyMachine(queuedWhilePaused, {
+    type: "CHECKPOINT_FRAME_CONFIRMED",
+    index: 3,
+    requestId: queuedWhilePaused.requestId,
+  });
+
+  assert.equal(confirmed.currentIndex, 3);
+  assert.equal(confirmed.status, "seeking");
+  assert.equal(confirmed.segmentTargetIndex, 0);
+  assert.equal(confirmed.pendingTargetIndex, null);
+  assert.equal(confirmed.requestId, queuedWhilePaused.requestId + 1);
 });
 
 test("backward scroll starts a new seek request", () => {
@@ -122,6 +176,37 @@ test("a distant Rail request seeks directly with a new request ID", () => {
   assert.equal(seeking.segmentTargetIndex, 6);
   assert.equal(seeking.pendingTargetIndex, null);
   assert.equal(seeking.requestId, playing.requestId + 1);
+});
+
+test("every request during seeking replaces it even when forward or current", () => {
+  const firstSeek = reduceJourneyMachine(
+    createJourneyMachineState({ currentIndex: 2 }),
+    { type: "REQUEST", index: 0, source: "rail" },
+  );
+  const forwardReplacement = reduceJourneyMachine(firstSeek, {
+    type: "REQUEST",
+    index: 5,
+    source: "scroll",
+  });
+
+  assert.equal(forwardReplacement.status, "seeking");
+  assert.equal(forwardReplacement.segmentTargetIndex, 5);
+  assert.equal(forwardReplacement.requestId, firstSeek.requestId + 1);
+
+  const currentReplacement = reduceJourneyMachine(forwardReplacement, {
+    type: "REQUEST",
+    index: 2,
+    source: "scroll",
+  });
+
+  assert.equal(currentReplacement.status, "seeking");
+  assert.equal(currentReplacement.segmentTargetIndex, 2);
+  assert.equal(
+    currentReplacement.requestId,
+    forwardReplacement.requestId + 1,
+  );
+  assert.equal(currentReplacement.retryCount, 0);
+  assert.equal(currentReplacement.seekAttempt, "primary");
 });
 
 test("stale request events cannot mutate the active operation", () => {
@@ -223,6 +308,7 @@ test("play rejection allows one unlock retry and falls back on the second reject
   });
   assert.equal(retried.status, "playing");
   assert.equal(retried.retryCount, 1);
+  assert.equal(retried.requestId, unlocking.requestId + 1);
 
   const fallback = reduceJourneyMachine(retried, {
     type: "PLAY_REJECTED",
@@ -269,6 +355,7 @@ test("a second buffering interruption after retry enters fallback", () => {
 
   assert.equal(resumed.status, "playing");
   assert.equal(resumed.retryCount, 1);
+  assert.equal(resumed.requestId, buffering.requestId + 1);
 
   const fallback = reduceJourneyMachine(resumed, {
     type: "STALLED",
@@ -345,29 +432,41 @@ test("a new request cancels a retry and ignores its stale failure", () => {
   assert.strictEqual(stale, replacement);
 });
 
-test("visibility suspension preserves and resumes the active operation", () => {
-  const playing = reduceJourneyMachine(
-    createJourneyMachineState({ currentIndex: 1 }),
-    { type: "REQUEST", index: 2, source: "scroll" },
-  );
+for (const resumeEvent of ["VISIBILITY_VISIBLE", "PAGE_SHOWN"]) {
+  test(`${resumeEvent} reconciles the active checkpoint before completion`, () => {
+    const playing = reduceJourneyMachine(
+      createJourneyMachineState({ currentIndex: 1 }),
+      { type: "REQUEST", index: 2, source: "scroll" },
+    );
 
-  const hidden = reduceJourneyMachine(playing, {
-    type: "VISIBILITY_HIDDEN",
-  });
-  assert.equal(hidden.status, "suspended");
-  assert.equal(hidden.suspendReason, "visibility");
-  assert.equal(hidden.resumeStatus, "playing");
-  assert.equal(hidden.segmentTargetIndex, 2);
-  assert.equal(hidden.requestId, playing.requestId + 1);
+    const hidden = reduceJourneyMachine(playing, {
+      type: "VISIBILITY_HIDDEN",
+    });
+    assert.equal(hidden.status, "suspended");
+    assert.equal(hidden.suspendReason, "visibility");
+    assert.equal(hidden.resumeStatus, "playing");
+    assert.equal(hidden.segmentTargetIndex, 2);
+    assert.equal(hidden.requestId, playing.requestId + 1);
 
-  const visible = reduceJourneyMachine(hidden, {
-    type: "VISIBILITY_VISIBLE",
+    const reconciling = reduceJourneyMachine(hidden, {
+      type: resumeEvent,
+    });
+    assert.equal(reconciling.status, "seeking");
+    assert.equal(reconciling.segmentTargetIndex, 2);
+    assert.equal(reconciling.seekAttempt, "primary");
+    assert.equal(reconciling.suspendReason, null);
+    assert.equal(reconciling.requestId, hidden.requestId + 1);
+
+    const confirmed = reduceJourneyMachine(reconciling, {
+      type: "CHECKPOINT_FRAME_CONFIRMED",
+      index: 2,
+      requestId: reconciling.requestId,
+    });
+    assert.equal(confirmed.status, "idle");
+    assert.equal(confirmed.currentIndex, 2);
+    assert.equal(confirmed.requestId, reconciling.requestId + 1);
   });
-  assert.equal(visible.status, "playing");
-  assert.equal(visible.segmentTargetIndex, 2);
-  assert.equal(visible.suspendReason, null);
-  assert.equal(visible.requestId, hidden.requestId + 1);
-});
+}
 
 test("pageshow does not resume playback while motion remains disabled", () => {
   const suspended = createJourneyMachineState({
@@ -385,4 +484,52 @@ test("pageshow does not resume playback while motion remains disabled", () => {
   assert.equal(pageShown.status, "suspended");
   assert.equal(pageShown.motionEnabled, false);
   assert.equal(pageShown.segmentTargetIndex, 4);
+});
+
+test("fallback persists across motion changes and confirms canonical navigation", () => {
+  const playing = reduceJourneyMachine(
+    createJourneyMachineState({ currentIndex: 0 }),
+    { type: "REQUEST", index: 1, source: "scroll" },
+  );
+  const fallback = reduceJourneyMachine(playing, {
+    type: "METADATA_TIMEOUT",
+    requestId: playing.requestId,
+  });
+
+  const motionDisabled = reduceJourneyMachine(fallback, {
+    type: "MOTION_CHANGED",
+    enabled: false,
+  });
+  assert.equal(motionDisabled.status, "fallback");
+  assert.equal(motionDisabled.fallbackReason, "metadata_timeout");
+  assert.equal(motionDisabled.motionEnabled, false);
+
+  const requested = reduceJourneyMachine(motionDisabled, {
+    type: "REQUEST",
+    index: 4,
+    source: "scroll",
+  });
+  assert.equal(requested.status, "fallback");
+  assert.equal(requested.currentIndex, 0);
+  assert.equal(requested.segmentTargetIndex, 4);
+  assert.equal(requested.requestId, motionDisabled.requestId + 1);
+
+  const confirmed = reduceJourneyMachine(requested, {
+    type: "CHECKPOINT_FRAME_CONFIRMED",
+    index: 4,
+    requestId: requested.requestId,
+  });
+  assert.equal(confirmed.status, "fallback");
+  assert.equal(confirmed.currentIndex, 4);
+  assert.equal(confirmed.segmentTargetIndex, null);
+  assert.equal(confirmed.fallbackReason, "metadata_timeout");
+  assert.equal(confirmed.requestId, requested.requestId + 1);
+
+  const motionEnabled = reduceJourneyMachine(confirmed, {
+    type: "MOTION_CHANGED",
+    enabled: true,
+  });
+  assert.equal(motionEnabled.status, "fallback");
+  assert.equal(motionEnabled.fallbackReason, "metadata_timeout");
+  assert.equal(motionEnabled.motionEnabled, true);
 });
