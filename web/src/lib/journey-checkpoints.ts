@@ -33,12 +33,31 @@ export function createJourneyCheckpointManifest(
   let previousTime = Number.NEGATIVE_INFINITY;
 
   return scenes.map((scene, index) => {
+    if (!Number.isFinite(scene.start) || scene.start < 0 || scene.start > 1) {
+      throw new RangeError(
+        `Scene "${scene.id}" start must be finite and between 0 and 1`,
+      );
+    }
+
+    if (!Number.isFinite(scene.end) || scene.end < 0 || scene.end > 1) {
+      throw new RangeError(
+        `Scene "${scene.id}" end must be finite and between 0 and 1`,
+      );
+    }
+
+    if (scene.start > scene.end) {
+      throw new RangeError(
+        `Scene "${scene.id}" start must be less than or equal to end`,
+      );
+    }
+
     if (ids.has(scene.id)) {
       throw new Error(`Duplicate checkpoint ID: ${scene.id}`);
     }
     ids.add(scene.id);
 
-    const time = ((scene.start + scene.end) / 2) * duration;
+    const midpoint = scene.start + (scene.end - scene.start) / 2;
+    const time = midpoint * duration;
 
     if (!Number.isFinite(time) || time < 0 || time > duration) {
       throw new RangeError(
@@ -51,9 +70,9 @@ export function createJourneyCheckpointManifest(
     }
 
     const fallbackFrame = Math.round(time * fps);
-    if (!Number.isFinite(fallbackFrame) || fallbackFrame < 0) {
+    if (!Number.isSafeInteger(fallbackFrame) || fallbackFrame < 0) {
       throw new RangeError(
-        `Fallback frame for "${scene.id}" must be finite and non-negative`,
+        `Fallback frame for "${scene.id}" must be a non-negative safe integer`,
       );
     }
 

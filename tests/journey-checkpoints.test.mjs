@@ -58,26 +58,41 @@ assert.throws(
   "Checkpoint times must increase strictly",
 );
 
-assert.throws(
-  () =>
-    createJourneyCheckpointManifest(
-      [{ ...validScenes[0], start: -0.4, end: -0.2 }],
-      10,
-      24,
-    ),
-  /within.*duration/i,
-  "Checkpoint times cannot be negative",
-);
+for (const start of [-0.1, Number.NaN]) {
+  assert.throws(
+    () =>
+      createJourneyCheckpointManifest(
+        [{ ...validScenes[0], start }],
+        10,
+        24,
+      ),
+    /start.*finite.*between 0 and 1/i,
+    "Scene starts must be finite normalized values",
+  );
+}
+
+for (const end of [1.1, Number.POSITIVE_INFINITY]) {
+  assert.throws(
+    () =>
+      createJourneyCheckpointManifest(
+        [{ ...validScenes[0], end }],
+        10,
+        24,
+      ),
+    /end.*finite.*between 0 and 1/i,
+    "Scene ends must be finite normalized values",
+  );
+}
 
 assert.throws(
   () =>
     createJourneyCheckpointManifest(
-      [{ ...validScenes[0], start: 1.1, end: 1.3 }],
+      [{ ...validScenes[0], start: 0.8, end: 0.2 }],
       10,
       24,
     ),
-  /within.*duration/i,
-  "Checkpoint times cannot exceed the media duration",
+  /start.*less than or equal to.*end/i,
+  "Scene ranges cannot be inverted",
 );
 
 for (const duration of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
@@ -93,5 +108,16 @@ for (const fps of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
     /fps.*finite.*greater than 0/i,
   );
 }
+
+assert.throws(
+  () =>
+    createJourneyCheckpointManifest(
+      [{ ...validScenes[0], start: 1, end: 1 }],
+      Number.MAX_SAFE_INTEGER,
+      2,
+    ),
+  /fallback frame.*safe integer/i,
+  "Fallback frames must remain exactly representable",
+);
 
 console.log("journey checkpoint manifest checks passed");
