@@ -172,6 +172,24 @@ function requestCheckpoint(
     };
   }
 
+  if (source === "rail") {
+    if (state.status === "suspended" && state.suspendReason === "visibility") {
+      return {
+        ...state,
+        segmentTargetIndex: state.currentIndex,
+        pendingTargetIndex: null,
+        requestId: state.requestId + 1,
+        retryCount: 0,
+        seekAttempt: null,
+        resumeStatus: "seeking",
+        resumeTargetIndex: index,
+        resumeSeekAttempt: "primary",
+      };
+    }
+
+    return startSeek(state, index);
+  }
+
   if (
     state.status === "unlocking" ||
     state.status === "buffering" ||
@@ -205,7 +223,7 @@ function requestCheckpoint(
     return state;
   }
 
-  if (source === "rail" || index < state.currentIndex) {
+  if (index < state.currentIndex) {
     return startSeek(state, index);
   }
 
@@ -395,6 +413,15 @@ function suspendForVisibility(
     !state.motionEnabled
   ) {
     return state;
+  }
+
+  if (state.status === "seeking" && state.resumeStatus !== null) {
+    return {
+      ...state,
+      status: "suspended",
+      requestId: state.requestId + 1,
+      suspendReason: "visibility",
+    };
   }
 
   const resumeStatus =
