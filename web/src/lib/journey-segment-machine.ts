@@ -53,6 +53,8 @@ export type JourneyMachineState = {
   motionEnabled: boolean;
   seekAttempt: JourneySeekAttempt;
   resumeStatus: JourneyResumeStatus | null;
+  resumeTargetIndex: number | null;
+  resumeSeekAttempt: JourneySeekAttempt;
   suspendReason: "motion" | "visibility" | null;
   fallbackReason: JourneyFallbackReason | null;
 };
@@ -101,6 +103,8 @@ export function createJourneyMachineState({
     motionEnabled,
     seekAttempt: null,
     resumeStatus: null,
+    resumeTargetIndex: null,
+    resumeSeekAttempt: null,
     suspendReason: motionEnabled ? null : "motion",
     fallbackReason: null,
   };
@@ -126,6 +130,8 @@ function startSeek(
     retryCount: 0,
     seekAttempt: "primary",
     resumeStatus: null,
+    resumeTargetIndex: null,
+    resumeSeekAttempt: null,
     suspendReason: state.motionEnabled ? null : "motion",
     fallbackReason: null,
   };
@@ -141,6 +147,8 @@ function enterFallback(
     requestId: state.requestId + 1,
     seekAttempt: null,
     resumeStatus: null,
+    resumeTargetIndex: null,
+    resumeSeekAttempt: null,
     suspendReason: null,
     fallbackReason,
   };
@@ -161,6 +169,17 @@ function requestCheckpoint(
       segmentTargetIndex: index,
       pendingTargetIndex: null,
       requestId: state.requestId + 1,
+    };
+  }
+
+  if (
+    state.status === "unlocking" ||
+    state.status === "buffering" ||
+    (state.status === "suspended" && state.suspendReason === "visibility")
+  ) {
+    return {
+      ...state,
+      pendingTargetIndex: index,
     };
   }
 
@@ -202,6 +221,8 @@ function requestCheckpoint(
     retryCount: 0,
     seekAttempt: null,
     resumeStatus: null,
+    resumeTargetIndex: null,
+    resumeSeekAttempt: null,
     suspendReason: null,
     fallbackReason: null,
   };
@@ -234,7 +255,27 @@ function confirmCheckpoint(
       retryCount: 0,
       seekAttempt: null,
       resumeStatus: null,
+      resumeTargetIndex: null,
+      resumeSeekAttempt: null,
       fallbackReason: null,
+    };
+  }
+
+  if (state.status === "seeking" && state.resumeStatus !== null) {
+    return {
+      ...state,
+      status: state.resumeStatus,
+      currentIndex: index,
+      segmentTargetIndex: state.resumeTargetIndex,
+      requestId: state.requestId + 1,
+      seekAttempt:
+        state.resumeStatus === "seeking"
+          ? state.resumeSeekAttempt ?? "primary"
+          : null,
+      resumeStatus: null,
+      resumeTargetIndex: null,
+      resumeSeekAttempt: null,
+      suspendReason: null,
     };
   }
 
@@ -261,6 +302,8 @@ function confirmCheckpoint(
       retryCount: 0,
       seekAttempt: null,
       resumeStatus: null,
+      resumeTargetIndex: null,
+      resumeSeekAttempt: null,
       suspendReason: null,
       fallbackReason: null,
     };
@@ -290,6 +333,8 @@ function confirmCheckpoint(
     retryCount: 0,
     seekAttempt: null,
     resumeStatus: null,
+    resumeTargetIndex: null,
+    resumeSeekAttempt: null,
     suspendReason: null,
     fallbackReason: null,
   };
@@ -362,6 +407,8 @@ function suspendForVisibility(
     status: "suspended",
     requestId: state.requestId + 1,
     resumeStatus,
+    resumeTargetIndex: state.segmentTargetIndex,
+    resumeSeekAttempt: state.seekAttempt,
     suspendReason: "visibility",
   };
 }
@@ -380,11 +427,9 @@ function resumeFromVisibility(
   return {
     ...state,
     status: "seeking",
-    segmentTargetIndex: state.segmentTargetIndex ?? state.currentIndex,
+    segmentTargetIndex: state.currentIndex,
     requestId: state.requestId + 1,
-    retryCount: 0,
     seekAttempt: "primary",
-    resumeStatus: null,
     suspendReason: null,
   };
 }
@@ -453,6 +498,8 @@ export function reduceJourneyMachine(
         status: state.resumeStatus ?? "playing",
         requestId: state.requestId + 1,
         resumeStatus: null,
+        resumeTargetIndex: null,
+        resumeSeekAttempt: null,
       };
 
     case "WAITING":
@@ -473,6 +520,8 @@ export function reduceJourneyMachine(
         status: state.resumeStatus,
         requestId: state.requestId + 1,
         resumeStatus: null,
+        resumeTargetIndex: null,
+        resumeSeekAttempt: null,
       };
 
     case "SEEK_PRIMARY_FAILED":
@@ -531,6 +580,8 @@ export function reduceJourneyMachine(
           motionEnabled: true,
           seekAttempt: null,
           resumeStatus: null,
+          resumeTargetIndex: null,
+          resumeSeekAttempt: null,
           suspendReason: null,
           fallbackReason: null,
         };
@@ -551,6 +602,8 @@ export function reduceJourneyMachine(
         motionEnabled: false,
         seekAttempt: targetIndex === state.currentIndex ? null : "primary",
         resumeStatus: null,
+        resumeTargetIndex: null,
+        resumeSeekAttempt: null,
         suspendReason: "motion",
         fallbackReason: null,
       };

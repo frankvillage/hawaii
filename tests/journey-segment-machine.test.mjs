@@ -302,13 +302,25 @@ test("play rejection allows one unlock retry and falls back on the second reject
   assert.equal(unlocking.retryCount, 1);
   assert.equal(unlocking.requestId, playing.requestId + 1);
 
-  const retried = reduceJourneyMachine(unlocking, {
+  const queuedUnlock = reduceJourneyMachine(unlocking, {
+    type: "REQUEST",
+    index: 4,
+    source: "rail",
+  });
+  assert.equal(queuedUnlock.status, "unlocking");
+  assert.equal(queuedUnlock.segmentTargetIndex, 1);
+  assert.equal(queuedUnlock.pendingTargetIndex, 4);
+  assert.equal(queuedUnlock.retryCount, 1);
+  assert.equal(queuedUnlock.requestId, unlocking.requestId);
+
+  const retried = reduceJourneyMachine(queuedUnlock, {
     type: "UNLOCK_CONFIRMED",
-    requestId: unlocking.requestId,
+    requestId: queuedUnlock.requestId,
   });
   assert.equal(retried.status, "playing");
   assert.equal(retried.retryCount, 1);
-  assert.equal(retried.requestId, unlocking.requestId + 1);
+  assert.equal(retried.pendingTargetIndex, 4);
+  assert.equal(retried.requestId, queuedUnlock.requestId + 1);
 
   const fallback = reduceJourneyMachine(retried, {
     type: "PLAY_REJECTED",
@@ -406,7 +418,7 @@ test("seek retries once with an exact assignment before verified fallback", () =
   assert.equal(fallback.fallbackReason, "seek_exact_failed");
 });
 
-test("a new request cancels a retry and ignores its stale failure", () => {
+test("repeated requests during buffering preserve the single retry budget", () => {
   const playing = reduceJourneyMachine(
     createJourneyMachineState({ currentIndex: 0 }),
     { type: "REQUEST", index: 1, source: "scroll" },
@@ -415,29 +427,78 @@ test("a new request cancels a retry and ignores its stale failure", () => {
     type: "WAITING",
     requestId: playing.requestId,
   });
-  const replacement = reduceJourneyMachine(retrying, {
+  const firstQueued = reduceJourneyMachine(retrying, {
+    type: "REQUEST",
+    index: 3,
+    source: "scroll",
+  });
+  const latestQueued = reduceJourneyMachine(firstQueued, {
     type: "REQUEST",
     index: 5,
     source: "rail",
   });
 
-  assert.equal(replacement.status, "seeking");
-  assert.equal(replacement.retryCount, 0);
-  assert.equal(replacement.requestId, retrying.requestId + 1);
+  assert.equal(latestQueued.status, "buffering");
+  assert.equal(latestQueued.segmentTargetIndex, 1);
+  assert.equal(latestQueued.pendingTargetIndex, 5);
+  assert.equal(latestQueued.retryCount, 1);
+  assert.equal(latestQueued.requestId, retrying.requestId);
 
-  const stale = reduceJourneyMachine(replacement, {
-    type: "STALLED",
-    requestId: retrying.requestId,
+  const resumed = reduceJourneyMachine(latestQueued, {
+    type: "RETRY_SUCCEEDED",
+    requestId: latestQueued.requestId,
   });
-  assert.strictEqual(stale, replacement);
+  assert.equal(resumed.status, "playing");
+  assert.equal(resumed.segmentTargetIndex, 1);
+  assert.equal(resumed.pendingTargetIndex, 5);
+  assert.equal(resumed.retryCount, 1);
+
+  const fallback = reduceJourneyMachine(resumed, {
+    type: "STALLED",
+    requestId: resumed.requestId,
+  });
+  assert.equal(fallback.status, "fallback");
+  assert.equal(fallback.fallbackReason, "stalled");
+});
+
+test("requests while visibility-suspended only update the pending target", () => {
+  const playing = reduceJourneyMachine(
+    createJourneyMachineState({ currentIndex: 1 }),
+    { type: "REQUEST", index: 2, source: "scroll" },
+  );
+  const hidden = reduceJourneyMachine(playing, {
+    type: "VISIBILITY_HIDDEN",
+  });
+
+  const requested = reduceJourneyMachine(hidden, {
+    type: "REQUEST",
+    index: 4,
+    source: "rail",
+  });
+
+  assert.equal(requested.status, "suspended");
+  assert.equal(requested.suspendReason, "visibility");
+  assert.equal(requested.segmentTargetIndex, 2);
+  assert.equal(requested.pendingTargetIndex, 4);
+  assert.equal(requested.retryCount, hidden.retryCount);
+  assert.equal(requested.requestId, hidden.requestId);
 });
 
 for (const resumeEvent of ["VISIBILITY_VISIBLE", "PAGE_SHOWN"]) {
   test(`${resumeEvent} reconciles the active checkpoint before completion`, () => {
-    const playing = reduceJourneyMachine(
+    const queued = reduceJourneyMachine(
       createJourneyMachineState({ currentIndex: 1 }),
-      { type: "REQUEST", index: 2, source: "scroll" },
+      { type: "REQUEST", index: 4, source: "scroll" },
     );
+    const buffering = reduceJourneyMachine(queued, {
+      type: "WAITING",
+      requestId: queued.requestId,
+    });
+    const playing = reduceJourneyMachine(buffering, {
+      type: "RETRY_SUCCEEDED",
+      requestId: buffering.requestId,
+    });
+    assert.equal(playing.retryCount, 1);
 
     const hidden = reduceJourneyMachine(playing, {
       type: "VISIBILITY_HIDDEN",
@@ -446,24 +507,34 @@ for (const resumeEvent of ["VISIBILITY_VISIBLE", "PAGE_SHOWN"]) {
     assert.equal(hidden.suspendReason, "visibility");
     assert.equal(hidden.resumeStatus, "playing");
     assert.equal(hidden.segmentTargetIndex, 2);
+    assert.equal(hidden.pendingTargetIndex, 4);
     assert.equal(hidden.requestId, playing.requestId + 1);
 
     const reconciling = reduceJourneyMachine(hidden, {
       type: resumeEvent,
     });
     assert.equal(reconciling.status, "seeking");
-    assert.equal(reconciling.segmentTargetIndex, 2);
+    assert.equal(reconciling.segmentTargetIndex, 1);
+    assert.equal(reconciling.resumeStatus, "playing");
+    assert.equal(reconciling.resumeTargetIndex, 2);
+    assert.equal(reconciling.pendingTargetIndex, 4);
+    assert.equal(reconciling.retryCount, hidden.retryCount);
     assert.equal(reconciling.seekAttempt, "primary");
     assert.equal(reconciling.suspendReason, null);
     assert.equal(reconciling.requestId, hidden.requestId + 1);
 
     const confirmed = reduceJourneyMachine(reconciling, {
       type: "CHECKPOINT_FRAME_CONFIRMED",
-      index: 2,
+      index: 1,
       requestId: reconciling.requestId,
     });
-    assert.equal(confirmed.status, "idle");
-    assert.equal(confirmed.currentIndex, 2);
+    assert.equal(confirmed.status, "playing");
+    assert.equal(confirmed.currentIndex, 1);
+    assert.equal(confirmed.segmentTargetIndex, 2);
+    assert.equal(confirmed.pendingTargetIndex, 4);
+    assert.equal(confirmed.retryCount, reconciling.retryCount);
+    assert.equal(confirmed.resumeStatus, null);
+    assert.equal(confirmed.resumeTargetIndex, null);
     assert.equal(confirmed.requestId, reconciling.requestId + 1);
   });
 }
