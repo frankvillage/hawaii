@@ -186,6 +186,91 @@ test("forward playback pauses and confirms a decoded checkpoint frame", async ()
   );
 });
 
+test("failed paused-frame confirmation retries an exact verified seek", async () => {
+  let frameCount = 0;
+  const media = createMedia({
+    play: () => Promise.resolve(),
+    waitForDecodedFrame() {
+      frameCount += 1;
+      if (frameCount === 1) {
+        media.setCurrentTime(4);
+        return Promise.resolve(4);
+      }
+      if (frameCount === 2) {
+        return Promise.resolve(4.5);
+      }
+      return Promise.resolve(media.currentTime());
+    },
+  });
+  media.setCurrentTime(2);
+  const controller = createJourneySegmentController({
+    clock: createClock(),
+    fps: 25,
+    media,
+    scenes: shortScenes,
+  });
+  await controller.initialize();
+
+  await controller.request(1, "scroll");
+
+  assert.deepEqual(
+    media.calls.filter(([name]) => name === "seekExact"),
+    [["seekExact", 4]],
+  );
+  assert.equal(controller.state().status, "idle");
+  assert.equal(controller.state().currentIndex, 1);
+  assert.equal(controller.state().fallbackReason, null);
+});
+
+test("paused-frame watchdog retries exact then falls back without getting stuck", async () => {
+  const clock = createClock();
+  const confirmationFrame = deferred();
+  const exactFrame = deferred();
+  let frameCount = 0;
+  const media = createMedia({
+    play: () => Promise.resolve(),
+    waitForDecodedFrame() {
+      frameCount += 1;
+      if (frameCount === 1) {
+        media.setCurrentTime(4);
+        return Promise.resolve(4);
+      }
+      return frameCount === 2 ? confirmationFrame.promise : exactFrame.promise;
+    },
+  });
+  media.setCurrentTime(2);
+  const controller = createJourneySegmentController({
+    clock,
+    fps: 25,
+    media,
+    scenes: shortScenes,
+  });
+  await controller.initialize();
+  const playback = controller.request(1, "scroll");
+  for (let turn = 0; turn < 4; turn += 1) {
+    await Promise.resolve();
+  }
+  assert.equal(controller.state().status, "checkpoint_paused");
+
+  clock.fireTimeout(800);
+  await Promise.resolve();
+
+  assert.deepEqual(
+    media.calls.filter(([name]) => name === "seekExact"),
+    [["seekExact", 4]],
+  );
+  assert.equal(controller.state().status, "checkpoint_paused");
+
+  clock.fireTimeout(800);
+  await Promise.resolve();
+
+  assert.equal(controller.state().status, "fallback");
+  assert.deepEqual(media.calls.at(-1), ["unload"]);
+  confirmationFrame.resolve(4);
+  exactFrame.resolve(4);
+  await playback;
+});
+
 test("long forward gaps use verified pre-roll without exceeding 1.25x", async () => {
   let decodedFrames = 0;
   const media = createMedia({
@@ -314,6 +399,32 @@ test("successful unlock resumes the rejected segment", async () => {
   assert.equal(controller.state().status, "idle");
   assert.equal(controller.state().currentIndex, 1);
   assert.equal(media.calls.some(([name]) => name === "unload"), false);
+});
+
+test("rejected unlock consumes the retry budget and enters fallback", async () => {
+  let playAttempts = 0;
+  const media = createMedia({
+    play() {
+      playAttempts += 1;
+      return Promise.reject(new Error("NotAllowedError"));
+    },
+  });
+  media.setCurrentTime(2);
+  const controller = createJourneySegmentController({
+    clock: createClock(),
+    fps: 25,
+    media,
+    scenes: shortScenes,
+  });
+  await controller.initialize();
+  await controller.request(1, "scroll");
+
+  await controller.unlock();
+
+  assert.equal(playAttempts, 2);
+  assert.equal(controller.state().status, "fallback");
+  assert.equal(controller.state().fallbackReason, "play_rejected");
+  assert.deepEqual(media.calls.at(-1), ["unload"]);
 });
 
 test("second play rejection after unlock enters fallback", async () => {
@@ -448,6 +559,41 @@ test("seek enters fallback only after primary and exact verification fail", asyn
   assert.equal(controller.state().status, "fallback");
   assert.equal(controller.state().fallbackReason, "seek_exact_failed");
   assert.deepEqual(media.calls.at(-1), ["unload"]);
+});
+
+test("primary seek watchdog retries with exact assignment", async () => {
+  const clock = createClock();
+  const frames = [deferred(), deferred()];
+  let frameIndex = 0;
+  const media = createMedia({
+    waitForDecodedFrame: () => frames[frameIndex++].promise,
+  });
+  media.setCurrentTime(4);
+  const controller = createJourneySegmentController({
+    clock,
+    fps: 25,
+    initialIndex: 1,
+    media,
+    scenes: shortScenes,
+  });
+  await controller.initialize();
+  const primarySeek = controller.request(0, "rail");
+  await Promise.resolve();
+
+  clock.fireTimeout(800);
+  await Promise.resolve();
+
+  assert.equal(controller.state().status, "seeking");
+  assert.equal(controller.state().seekAttempt, "exact");
+  assert.deepEqual(
+    media.calls.filter(
+      ([name]) => name === "fastSeek" || name === "seekExact",
+    ).map(([name]) => name),
+    ["fastSeek", "seekExact"],
+  );
+  frames[1].resolve(2);
+  frames[0].resolve(2);
+  await primarySeek;
 });
 
 test("waiting stalled and system pause retry once before fallback", async () => {
@@ -638,6 +784,69 @@ test("visibility resume verifies the active checkpoint before playback", async (
   assert.equal(controller.state().fallbackReason, null);
   hiddenFrame.resolve(4);
   await hiddenOperation;
+});
+
+test("visibility restores a paused checkpoint before its pending target", async () => {
+  const interruptedConfirmation = deferred();
+  let frameCount = 0;
+  let playCount = 0;
+  const sequentialScenes = [
+    { id: "intro", start: 0.05, end: 0.15, still: "/intro.jpg" },
+    { id: "beach", start: 0.15, end: 0.25, still: "/beach.jpg" },
+    { id: "bar", start: 0.25, end: 0.35, still: "/bar.jpg" },
+  ];
+  const media = createMedia({
+    play() {
+      playCount += 1;
+      return Promise.resolve();
+    },
+    waitForDecodedFrame() {
+      frameCount += 1;
+      if (frameCount === 1) {
+        media.setCurrentTime(4);
+        return Promise.resolve(4);
+      }
+      if (frameCount === 2) {
+        return interruptedConfirmation.promise;
+      }
+      if (frameCount >= 5) {
+        media.setCurrentTime(6);
+      }
+      return Promise.resolve(media.currentTime());
+    },
+  });
+  media.setCurrentTime(2);
+  const controller = createJourneySegmentController({
+    clock: createClock(),
+    fps: 25,
+    media,
+    scenes: sequentialScenes,
+  });
+  await controller.initialize();
+  const interruptedPlayback = controller.request(1, "scroll");
+  await controller.request(2, "scroll");
+  for (let turn = 0; turn < 4; turn += 1) {
+    await Promise.resolve();
+  }
+  assert.equal(controller.state().status, "checkpoint_paused");
+
+  await controller.visibilityHidden();
+  await controller.visibilityVisible();
+
+  assert.deepEqual(
+    media.calls.filter(
+      ([name]) => name === "fastSeek" || name === "seekExact",
+    ),
+    [
+      ["fastSeek", 2],
+      ["seekExact", 4],
+    ],
+  );
+  assert.equal(playCount, 2);
+  assert.equal(controller.state().status, "idle");
+  assert.equal(controller.state().currentIndex, 2);
+  interruptedConfirmation.resolve(4);
+  await interruptedPlayback;
 });
 
 test("failed pre-roll verification retries exact before fallback", async () => {

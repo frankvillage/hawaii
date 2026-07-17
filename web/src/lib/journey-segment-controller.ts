@@ -90,7 +90,10 @@ export function createJourneySegmentController({
     media.pause();
   }
 
-  function beginOperation(requestId: number) {
+  function beginOperation(
+    requestId: number,
+    onTimeout?: (operation: ActiveOperation) => void,
+  ) {
     cancelOperation();
     const operation: ActiveOperation = {
       abortController: new AbortController(),
@@ -100,7 +103,11 @@ export function createJourneySegmentController({
     activeOperation = operation;
     operation.timeoutId = clock.timeout(() => {
       if (isActive(operation)) {
-        void interrupt("WAITING");
+        if (onTimeout) {
+          onTimeout(operation);
+        } else {
+          void interrupt("WAITING");
+        }
       }
     }, OPERATION_TIMEOUT_MS);
     return operation;
@@ -135,7 +142,17 @@ export function createJourneySegmentController({
       throw new Error("Journey controller must be initialized before playback");
     }
 
-    const operation = beginOperation(requestId);
+    const operation = beginOperation(requestId, (timedOutOperation) => {
+      if (state.status === "checkpoint_paused") {
+        void retryCheckpointConfirmation(
+          timedOutOperation,
+          targetIndex,
+          requestId,
+        );
+      } else {
+        void interrupt("WAITING");
+      }
+    });
     const targetTime = checkpoints[targetIndex].time;
     let gap = Math.max(0, targetTime - media.currentTime());
     if (source !== "intro" && gap > PRE_ROLL_THRESHOLD_SECONDS) {
@@ -227,11 +244,13 @@ export function createJourneySegmentController({
       requestId,
     });
     const confirmedTime = await waitForFrame(operation);
+    if (confirmedTime === null || !isActive(operation)) {
+      return;
+    }
     if (
-      confirmedTime === null ||
-      !isActive(operation) ||
       Math.abs(confirmedTime - targetTime) > CHECKPOINT_TOLERANCE_SECONDS
     ) {
+      await retryCheckpointConfirmation(operation, targetIndex, requestId);
       return;
     }
 
@@ -244,6 +263,67 @@ export function createJourneySegmentController({
     await reconcileOperation();
   }
 
+  async function retryCheckpointConfirmation(
+    operation: ActiveOperation,
+    targetIndex: number,
+    requestId: number,
+  ) {
+    if (!isActive(operation)) {
+      return;
+    }
+    cancelOperation();
+    await confirmCheckpointExactly(targetIndex, requestId);
+  }
+
+  async function confirmCheckpointExactly(
+    targetIndex: number,
+    requestId: number,
+  ) {
+    if (checkpoints === null) {
+      throw new Error("Journey controller must be initialized before seeking");
+    }
+    const operation = beginOperation(requestId, (timedOutOperation) => {
+      failCheckpointConfirmation(timedOutOperation, requestId);
+    });
+    const targetTime = checkpoints[targetIndex].time;
+    media.seekExact(targetTime);
+    const decodedTime = await waitForFrame(operation);
+    if (decodedTime === null || !isActive(operation)) {
+      return;
+    }
+    if (
+      media.readyState() < 2 ||
+      Math.abs(decodedTime - targetTime) > CHECKPOINT_TOLERANCE_SECONDS
+    ) {
+      failCheckpointConfirmation(operation, requestId);
+      return;
+    }
+
+    releaseOperation(operation);
+    state = reduceJourneyMachine(state, {
+      type: "CHECKPOINT_FRAME_CONFIRMED",
+      index: targetIndex,
+      requestId,
+    });
+    await reconcileOperation();
+  }
+
+  function failCheckpointConfirmation(
+    operation: ActiveOperation,
+    requestId: number,
+  ) {
+    if (!isActive(operation)) {
+      return;
+    }
+    cancelOperation();
+    state = reduceJourneyMachine(state, {
+      type: "METADATA_TIMEOUT",
+      requestId,
+    });
+    media.pause();
+    media.unload();
+  }
+
   async function seekToCheckpoint(
     targetIndex: number,
     requestId: number,
@@ -253,7 +333,14 @@ export function createJourneySegmentController({
       throw new Error("Journey controller must be initialized before seeking");
     }
 
-    const operation = beginOperation(requestId);
+    const operation = beginOperation(requestId, (timedOutOperation) => {
+      void failSeek(
+        timedOutOperation,
+        targetIndex,
+        requestId,
+        attempt,
+      );
+    });
     const targetTime = checkpoints[targetIndex].time;
     if (attempt === "primary" && media.fastSeek) {
       media.fastSeek(targetTime);
@@ -280,19 +367,7 @@ export function createJourneySegmentController({
       media.readyState() < 2 ||
       Math.abs(decodedTime - targetTime) > CHECKPOINT_TOLERANCE_SECONDS
     ) {
-      releaseOperation(operation);
-      const eventType =
-        attempt === "primary" ? "SEEK_PRIMARY_FAILED" : "SEEK_EXACT_FAILED";
-      state = reduceJourneyMachine(state, {
-        type: eventType,
-        requestId,
-      });
-      if (state.status === "fallback") {
-        media.pause();
-        media.unload();
-        return;
-      }
-      await seekToCheckpoint(targetIndex, state.requestId, "exact");
+      await failSeek(operation, targetIndex, requestId, attempt);
       return;
     }
 
@@ -305,7 +380,40 @@ export function createJourneySegmentController({
     await reconcileOperation();
   }
 
+  async function failSeek(
+    operation: ActiveOperation,
+    targetIndex: number,
+    requestId: number,
+    attempt: "primary" | "exact",
+  ) {
+    if (!isActive(operation)) {
+      return;
+    }
+    cancelOperation();
+    const eventType =
+      attempt === "primary" ? "SEEK_PRIMARY_FAILED" : "SEEK_EXACT_FAILED";
+    state = reduceJourneyMachine(state, {
+      type: eventType,
+      requestId,
+    });
+    if (state.status === "fallback") {
+      media.pause();
+      media.unload();
+      return;
+    }
+    await seekToCheckpoint(targetIndex, state.requestId, "exact");
+  }
+
   function reconcileOperation(): Promise<void> {
+    if (
+      state.status === "checkpoint_paused" &&
+      state.segmentTargetIndex !== null
+    ) {
+      return confirmCheckpointExactly(
+        state.segmentTargetIndex,
+        state.requestId,
+      );
+    }
     if (state.status === "playing" && state.segmentTargetIndex !== null) {
       return playToCheckpoint(
         state.segmentTargetIndex,
@@ -449,7 +557,20 @@ export function createJourneySegmentController({
       try {
         await media.play();
       } catch {
+        if (!isActive(operation)) {
+          return;
+        }
         releaseOperation(operation);
+        state = reduceJourneyMachine(state, {
+          type: "UNLOCK_CONFIRMED",
+          requestId,
+        });
+        state = reduceJourneyMachine(state, {
+          type: "PLAY_REJECTED",
+          requestId: state.requestId,
+        });
+        media.pause();
+        media.unload();
         return;
       }
       if (!isActive(operation)) {
