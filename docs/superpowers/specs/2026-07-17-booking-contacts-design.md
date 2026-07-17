@@ -37,16 +37,34 @@ Replace the provisional contact and booking paths with the official channels sup
 
 Two new first-party routes host the full-height TheFork experiences. Entity pages link to the corresponding internal route rather than embedding third-party UI inside their editorial content.
 
+The canonical content model exposes separate keyed records, never one shared restaurant object:
+
+```ts
+type BookingVenue = {
+  id: "hawaii" | "muulab";
+  name: string;
+  whatsappUrl: string;
+  phoneDisplay: string;
+  phoneHref: string;
+  theForkUrl: string;
+  internalBookingPath: string;
+};
+```
+
+Every restaurant CTA and structured-data builder receives a venue key explicitly.
+
 ## Booking Page Behavior
 
 Each TheFork route contains:
 
 - concise venue identity and telephone/WhatsApp alternatives;
-- a full-width, minimum `800px`-high iframe;
-- `allow="payment *"`, descriptive `title`, lazy loading and restrictive referrer policy;
-- a visible external fallback link if the embed is blocked by browser privacy tools or TheFork protection.
+- a consent placeholder on first visit instead of an immediately loaded third-party frame;
+- an explicit `Carica il modulo TheFork` control that records TheFork-specific consent before mounting the iframe;
+- a full-width iframe with `height: max(800px, calc(100svh - 7rem))`;
+- the vendor-provided `allow="payment *"`, a descriptive `title`, lazy loading and `referrerPolicy="strict-origin-when-cross-origin"`;
+- an always-visible styled external button targeting the exact TheFork URL for that venue, because cross-origin blocking cannot be detected reliably.
 
-The embed must not be rendered before the booking route is opened, keeping the homepage and entity pages light.
+The embed must not be rendered before the booking route is opened and the visitor explicitly enables TheFork, keeping the homepage and entity pages light and avoiding non-essential third-party requests before consent. Rejecting the global cookie banner must leave the iframe unmounted; the user may still follow the explicit external link.
 
 ## Content Rules
 
@@ -63,20 +81,24 @@ The embed must not be rendered before the booking route is opened, keeping the h
 - Keep `frame-ancestors 'none'`, existing secure headers and `rel="noopener noreferrer"` on external links.
 - Do not inject the owner-provided inline style or third-party script. Recreate the button with the existing design system.
 - No personal data passes through Hawaii forms during a TheFork booking; the iframe remains a separate third-party context.
-- Privacy/cookie copy should identify TheFork as an external booking service if the embed introduces cookies or local storage.
+- The privacy and cookie pages identify TheFork unconditionally as an external booking provider and explain the network-data transfer caused by loading its iframe.
+- The iframe is consent-gated unless a documented audit proves that all of its storage is strictly necessary. The initial implementation assumes consent is required.
+- `allow="payment *"` is retained only because it is part of the owner-supplied official widget contract. Tests pin the value so it can be narrowed later if TheFork confirms support for `payment 'src'` or an explicit origin.
 
 ## SEO and Discoverability
 
 - Add both booking routes to the sitemap with descriptive metadata.
-- Update Restaurant structured data with the canonical telephone and reservation URL for each venue.
+- Update each Restaurant entity with its venue-specific `telephone`, `acceptsReservations: true` and a `ReserveAction` whose target is the corresponding internal canonical booking route.
 - Keep booking pages indexable but concise; entity pages remain the primary organic landing pages.
 - Internal links use explicit labels such as `Prenota Hawaii su TheFork` and `Prenota MUULab su TheFork`.
 
 ## Testing
 
 - Static tests assert every canonical number and URL and reject the replaced contacts.
-- Component/browser tests verify the two iframe sources, titles, fallback links and `allow="payment *"`.
-- Smoke tests verify that Hawaii and MUULab CTAs do not cross-link.
+- Static tests verify the Wansport registration/login copy, the generic `https://wansport.com` destination and the absence of any invented venue-specific Wansport path.
+- Component/browser tests verify that no TheFork request occurs before explicit consent, then verify the exact iframe source, title, `allow="payment *"`, referrer policy and full-height style.
+- Component/browser tests verify an always-visible fallback button with `target="_blank"` and `rel="noopener noreferrer"` for the correct venue.
+- Smoke tests verify that Hawaii and MUULab CTAs, AI-assisted phone labels and structured data do not cross-link.
 - Build verification checks CSP, sitemap and static-export compatibility.
 
 ## Reversibility
