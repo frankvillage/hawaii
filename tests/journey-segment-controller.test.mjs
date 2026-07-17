@@ -53,6 +53,11 @@ function createClock() {
       timers.delete(entry[0]);
       entry[1].callback();
     },
+    timeoutIds(ms) {
+      return [...timers.entries()]
+        .filter(([, timer]) => timer.ms === ms)
+        .map(([id]) => id);
+    },
   };
 }
 
@@ -348,6 +353,54 @@ test("intro may play from zero without pre-roll", async () => {
   assert.equal(controller.state().currentIndex, 0);
 });
 
+test("a scroll target queued during intro uses pre-roll semantics", async () => {
+  const introFrame = deferred();
+  let frameCount = 0;
+  let playCount = 0;
+  const media = createMedia({
+    play() {
+      playCount += 1;
+      return Promise.resolve();
+    },
+    waitForDecodedFrame() {
+      frameCount += 1;
+      if (frameCount === 1) {
+        return introFrame.promise;
+      }
+      if (frameCount === 2) {
+        return Promise.resolve(2);
+      }
+      if (frameCount >= 4) {
+        media.setCurrentTime(6);
+      }
+      return Promise.resolve(media.currentTime());
+    },
+  });
+  const controller = createJourneySegmentController({
+    clock: createClock(),
+    fps: 25,
+    initialIndex: -1,
+    media,
+    scenes,
+  });
+  await controller.initialize();
+  const intro = controller.request(0, "intro");
+  await Promise.resolve();
+  await controller.request(1, "scroll");
+
+  media.setCurrentTime(2);
+  introFrame.resolve(2);
+  await intro;
+
+  assert.equal(playCount, 2);
+  assert.equal(
+    media.calls.filter(([name]) => name === "fastSeek").length,
+    1,
+  );
+  assert.equal(controller.state().status, "idle");
+  assert.equal(controller.state().currentIndex, 1);
+});
+
 test("first play rejection waits for an unlock retry without fallback", async () => {
   const media = createMedia({
     play: () => Promise.reject(new Error("NotAllowedError")),
@@ -526,6 +579,39 @@ test("backward seek retries exact assignment after primary verification fails", 
     ],
   );
   assert.equal(media.calls.some(([name]) => name === "play"), false);
+  assert.equal(controller.state().status, "idle");
+  assert.equal(controller.state().currentIndex, 0);
+  assert.equal(controller.state().fallbackReason, null);
+});
+
+test("rejected primary seek frame requires a finite exact retry", async () => {
+  let frameAttempt = 0;
+  const media = createMedia({
+    waitForDecodedFrame() {
+      frameAttempt += 1;
+      return frameAttempt === 1
+        ? Promise.reject(new Error("decode failed"))
+        : Promise.resolve(media.currentTime());
+    },
+  });
+  media.setCurrentTime(4);
+  const controller = createJourneySegmentController({
+    clock: createClock(),
+    fps: 25,
+    initialIndex: 1,
+    media,
+    scenes: shortScenes,
+  });
+  await controller.initialize();
+
+  await controller.request(0, "rail");
+
+  assert.deepEqual(
+    media.calls.filter(
+      ([name]) => name === "fastSeek" || name === "seekExact",
+    ).map(([name]) => name),
+    ["fastSeek", "seekExact"],
+  );
   assert.equal(controller.state().status, "idle");
   assert.equal(controller.state().currentIndex, 0);
   assert.equal(controller.state().fallbackReason, null);
@@ -912,4 +998,46 @@ test("failed pre-roll verification retries exact before fallback", async () => {
   assert.equal(failingMedia.calls.some(([name]) => name === "play"), false);
   assert.equal(failingController.state().status, "fallback");
   assert.deepEqual(failingMedia.calls.at(-1), ["unload"]);
+});
+
+test("pre-roll exact retry gets a fresh operation watchdog", async () => {
+  const clock = createClock();
+  const primaryFrame = deferred();
+  const exactFrame = deferred();
+  const signals = [];
+  let frameCount = 0;
+  const media = createMedia({
+    play: () => Promise.resolve(),
+    waitForDecodedFrame(signal) {
+      signals.push(signal);
+      frameCount += 1;
+      return frameCount === 1 ? primaryFrame.promise : exactFrame.promise;
+    },
+  });
+  media.setCurrentTime(2);
+  const controller = createJourneySegmentController({
+    clock,
+    fps: 25,
+    media,
+    scenes,
+  });
+  await controller.initialize();
+  const playback = controller.request(1, "scroll");
+  await Promise.resolve();
+  const [primaryTimer] = clock.timeoutIds(800);
+
+  primaryFrame.resolve(4.2);
+  for (let turn = 0; turn < 4; turn += 1) {
+    await Promise.resolve();
+  }
+
+  const [exactTimer] = clock.timeoutIds(800);
+  assert.notEqual(exactTimer, primaryTimer);
+  assert.equal(clock.timeoutIds(800).length, 1);
+  assert.notStrictEqual(signals[1], signals[0]);
+  assert.equal(signals[0].aborted, true);
+
+  await controller.stalled();
+  exactFrame.resolve(3.75);
+  await playback;
 });

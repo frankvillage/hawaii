@@ -71,6 +71,7 @@ export function createJourneySegmentController({
   });
   let activeOperation: ActiveOperation | null = null;
   let activeSource: "intro" | "scroll" | "rail" = "scroll";
+  let queuedSource: "intro" | "scroll" | "rail" | null = null;
 
   function isActive(operation: ActiveOperation) {
     return (
@@ -142,7 +143,7 @@ export function createJourneySegmentController({
       throw new Error("Journey controller must be initialized before playback");
     }
 
-    const operation = beginOperation(requestId, (timedOutOperation) => {
+    const handlePlaybackTimeout = (timedOutOperation: ActiveOperation) => {
       if (state.status === "checkpoint_paused") {
         void retryCheckpointConfirmation(
           timedOutOperation,
@@ -152,7 +153,8 @@ export function createJourneySegmentController({
       } else {
         void interrupt("WAITING");
       }
-    });
+    };
+    let operation = beginOperation(requestId, handlePlaybackTimeout);
     const targetTime = checkpoints[targetIndex].time;
     let gap = Math.max(0, targetTime - media.currentTime());
     if (source !== "intro" && gap > PRE_ROLL_THRESHOLD_SECONDS) {
@@ -173,8 +175,8 @@ export function createJourneySegmentController({
           type: "WAITING",
           requestId,
         });
+        cancelOperation();
         if (state.status === "fallback") {
-          releaseOperation(operation);
           media.pause();
           media.unload();
           return;
@@ -185,7 +187,7 @@ export function createJourneySegmentController({
           requestId: retryRequestId,
         });
         requestId = state.requestId;
-        operation.requestId = requestId;
+        operation = beginOperation(requestId, handlePlaybackTimeout);
         media.seekExact(preRollTime);
         decodedTime = await waitForFrame(operation);
         if (decodedTime === null || !isActive(operation)) {
@@ -199,7 +201,7 @@ export function createJourneySegmentController({
             type: "WAITING",
             requestId,
           });
-          releaseOperation(operation);
+          cancelOperation();
           if (state.status === "fallback") {
             media.pause();
             media.unload();
@@ -365,6 +367,7 @@ export function createJourneySegmentController({
 
     if (
       media.readyState() < 2 ||
+      !Number.isFinite(decodedTime) ||
       Math.abs(decodedTime - targetTime) > CHECKPOINT_TOLERANCE_SECONDS
     ) {
       await failSeek(operation, targetIndex, requestId, attempt);
@@ -415,10 +418,13 @@ export function createJourneySegmentController({
       );
     }
     if (state.status === "playing" && state.segmentTargetIndex !== null) {
+      const source = queuedSource ?? activeSource;
+      queuedSource = null;
+      activeSource = source;
       return playToCheckpoint(
         state.segmentTargetIndex,
         state.requestId,
-        activeSource,
+        source,
       );
     }
     if (
@@ -517,7 +523,14 @@ export function createJourneySegmentController({
     request(index: number, source: "intro" | "scroll" | "rail") {
       const previousRequestId = state.requestId;
       state = reduceJourneyMachine(state, { type: "REQUEST", index, source });
+      if (
+        state.requestId === previousRequestId &&
+        state.pendingTargetIndex !== null
+      ) {
+        queuedSource = source;
+      }
       if (state.requestId !== previousRequestId) {
+        queuedSource = null;
         cancelOperation();
       }
       if (
