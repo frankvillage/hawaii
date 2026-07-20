@@ -88,9 +88,15 @@ function decodedFrame(
   signal: AbortSignal,
   seeking: boolean,
 ) {
+  // WebKit may not deliver rVFC while paused after an explicit seek. The
+  // `seeked` event is the browser's decoded-frame boundary for that path.
+  if (seeking) {
+    return fallbackFrame(video, signal, true);
+  }
+
   const frameVideo = video as FrameVideo;
   if (!frameVideo.requestVideoFrameCallback) {
-    return fallbackFrame(video, signal, seeking);
+    return fallbackFrame(video, signal, false);
   }
   return new Promise<number>((resolve, reject) => {
     const id = frameVideo.requestVideoFrameCallback!((_now, metadata) => {

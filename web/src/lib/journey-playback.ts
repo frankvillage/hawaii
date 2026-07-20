@@ -1,4 +1,5 @@
 export const JOURNEY_NAVIGATE_EVENT = "hawaii:journey-navigate";
+export const JOURNEY_CONFIRMED_EVENT = "hawaii:journey-confirmed";
 
 export type NavigationSource = "intro" | "scroll" | "rail";
 

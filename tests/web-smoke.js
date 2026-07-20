@@ -223,7 +223,11 @@ async function main() {
     await menuPopup.waitFor({ state: "visible", timeout: 2500 });
     const popupText = (await menuPopup.textContent()) || "";
     assert.match(popupText, /€/, "The popup should show real scene dishes with prices");
-    assert.match(popupText, /Spiaggia/, "The popup should expose the beach booking entry");
+    assert.match(
+      popupText,
+      /Prenota spiaggia/i,
+      "The popup should expose the beach booking entry",
+    );
     await page.keyboard.press("Escape");
     await menuPopup.waitFor({ state: "detached", timeout: 2500 });
 

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   checkpointProgress,
   checkpointTime,
+  JOURNEY_CONFIRMED_EVENT,
   JOURNEY_NAVIGATE_EVENT,
   sceneIndexFromProgress,
   sceneProgressForIndex,
@@ -10,6 +11,7 @@ import {
 } from "../web/src/lib/journey-playback.ts";
 
 assert.equal(JOURNEY_NAVIGATE_EVENT, "hawaii:journey-navigate");
+assert.equal(JOURNEY_CONFIRMED_EVENT, "hawaii:journey-confirmed");
 assert.equal(checkpointProgress({ start: 0.125, end: 0.2 }), 0.1625);
 assert.equal(checkpointTime({ start: 0.125, end: 0.2 }, 57.2), 9.295);
 assert.equal(checkpointTime({ start: Number.NaN, end: Number.NaN }, 57.2), 0);

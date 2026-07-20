@@ -2,63 +2,27 @@
 
 import { useEffect, useState } from "react";
 
-import { JOURNEY_NAVIGATE_EVENT, sceneIndexFromProgress } from "@/lib/journey-playback";
-import { homeJourney, soulNavigation } from "@/lib/site-content";
-
-type SoulLabel = (typeof soulNavigation)[number]["label"];
+import { JOURNEY_CONFIRMED_EVENT, JOURNEY_NAVIGATE_EVENT } from "@/lib/journey-playback";
+import { soulNavigation } from "@/lib/site-content";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
 export function SoulRail() {
-  /* null = no sector on screen yet (arrival aerial, transitions). */
-  const [activeSoul, setActiveSoul] = useState<SoulLabel | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
-  /* The rail follows the journey's active scene, so a soul lights up exactly
-     while its sector is in frame — same progress math as the video stage. */
+  /* The rail follows the frame confirmed by the player, never raw scroll. */
   useEffect(() => {
-    const stage = document.querySelector<HTMLElement>('[data-testid="hero-stage"]');
-
-    if (!stage) {
-      return;
-    }
-
-    let frame = 0;
-
-    const sync = () => {
-      frame = 0;
-
-      const rect = stage.getBoundingClientRect();
-      const scrollable = Math.max(stage.offsetHeight - window.innerHeight, 1);
-      const progress = clamp(-rect.top / scrollable, 0, 1);
-
-      const sceneIndex = sceneIndexFromProgress(progress, homeJourney.scenes.length);
-      const scene = homeJourney.scenes[sceneIndex];
-
-      const next: SoulLabel = scene.soul;
-
-      setActiveSoul((current) => (current === next ? current : next));
-    };
-
-    const requestSync = () => {
-      if (!frame) {
-        frame = window.requestAnimationFrame(sync);
+    const confirm = (event: Event) => {
+      const index = Number((event as CustomEvent<{ index?: number }>).detail?.index);
+      if (Number.isFinite(index)) {
+        setActiveIndex(clamp(index, 0, soulNavigation.length - 1));
       }
     };
 
-    sync();
-    window.addEventListener("scroll", requestSync, { passive: true });
-    window.addEventListener("resize", requestSync);
-
-    return () => {
-      window.removeEventListener("scroll", requestSync);
-      window.removeEventListener("resize", requestSync);
-
-      if (frame) {
-        window.cancelAnimationFrame(frame);
-      }
-    };
+    window.addEventListener(JOURNEY_CONFIRMED_EVENT, confirm);
+    return () => window.removeEventListener(JOURNEY_CONFIRMED_EVENT, confirm);
   }, []);
 
   return (
@@ -76,12 +40,13 @@ export function SoulRail() {
             expands its label; the md+ rail shows every label vertically. */}
         <ul className="flex items-center gap-0.5 md:flex-col md:items-end md:gap-1">
           {soulNavigation.map((item, index) => {
-            const isActive = activeSoul === item.label;
+            const isActive = activeIndex === index;
 
             return (
               <li key={item.label}>
                 <a
                   data-soul-link
+                  data-journey-confirmed={isActive}
                   href={item.href}
                   aria-label={item.label}
                   aria-current={isActive ? "location" : undefined}

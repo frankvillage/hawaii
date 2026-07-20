@@ -38,7 +38,7 @@ async function expectVenueRestaurantSchema(browser, venue, otherVenue) {
     const restaurant = schemas.find(
       (schema) =>
         schema["@type"] === "Restaurant" &&
-        schema.url === `${baseUrl}${venue.entityPath}`,
+        schema.url === `https://www.hawaiipescara.it${venue.entityPath}`,
     );
 
     assert.ok(restaurant, `${venue.entityPath} should expose its Restaurant schema`);

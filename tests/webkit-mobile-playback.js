@@ -13,20 +13,42 @@ async function videoState(page) {
 }
 
 async function waitForSettledScene(page, sceneId, timeout = 9000) {
-  await page.waitForFunction(
-    (expectedScene) => {
+  try {
+    await page.waitForFunction(
+      (expectedScene) => {
+        const stage = document.querySelector('[data-testid="hero-stage"]');
+        const video = document.querySelector('[data-testid="journey-video"]');
+        return (
+          stage?.dataset.confirmedSceneId === expectedScene &&
+          stage.dataset.playbackState === "settled" &&
+          video?.paused === true &&
+          Math.abs(video.currentTime - Number(stage.dataset.targetTime)) <= 0.16
+        );
+      },
+      sceneId,
+      { timeout },
+    );
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => {
       const stage = document.querySelector('[data-testid="hero-stage"]');
       const video = document.querySelector('[data-testid="journey-video"]');
-      return (
-        stage?.dataset.confirmedSceneId === expectedScene &&
-        stage.dataset.playbackState === "settled" &&
-        video?.paused === true &&
-        Math.abs(video.currentTime - Number(stage.dataset.targetTime)) <= 0.16
-      );
-    },
-    sceneId,
-    { timeout },
-  );
+      return {
+        stage: stage instanceof HTMLElement ? { ...stage.dataset } : null,
+        video: video instanceof HTMLVideoElement
+          ? {
+              currentTime: video.currentTime,
+              duration: video.duration,
+              paused: video.paused,
+              readyState: video.readyState,
+              networkState: video.networkState,
+              error: video.error?.code ?? null,
+            }
+          : null,
+      };
+    });
+    console.error(`Journey diagnostic: ${JSON.stringify(diagnostic)}`);
+    throw error;
+  }
 }
 
 async function main() {
@@ -51,10 +73,14 @@ async function main() {
       0,
       "Healthy WebKit playback must use the real MP4",
     );
+    const mobileHotspotState = await page.locator(".journey-marker").evaluateAll((markers) => ({
+      viewportWidth: window.innerWidth,
+      displays: markers.map((marker) => getComputedStyle(marker).display),
+    }));
     assert.equal(
-      await page.locator(".journey-marker:visible").count(),
+      mobileHotspotState.displays.filter((display) => display !== "none").length,
       0,
-      "Mobile must not expose visible journey hotspots",
+      `Mobile must not expose visible journey hotspots: ${JSON.stringify(mobileHotspotState)}`,
     );
 
     await waitForSettledScene(page, "arrivo");

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useJourneyClipPlayer } from "@/components/home/use-journey-clip-player";
 import { createJourneyCheckpointManifest } from "@/lib/journey-checkpoints";
 import {
+  JOURNEY_CONFIRMED_EVENT,
   JOURNEY_NAVIGATE_EVENT,
   type NavigationSource,
   sceneIndexFromProgress,
@@ -62,7 +63,6 @@ export function ScrollVideoStage() {
   const [sheetHotspot, setSheetHotspot] = useState<JourneyHotspot | null>(null);
   const {
     videoRef,
-    confirmedIndexRef,
     requestedIndexRef,
     state,
     selectedStill,
@@ -78,29 +78,6 @@ export function ScrollVideoStage() {
       : state.status === "idle"
         ? "settled"
         : "moving";
-
-  const syncSoulRail = useCallback((index: number) => {
-    document.querySelectorAll<HTMLAnchorElement>("[data-soul-link]").forEach((link, linkIndex) => {
-      const isConfirmed = linkIndex === index;
-      const label = link.children.item(0) as HTMLElement | null;
-      const dot = link.children.item(1) as HTMLElement | null;
-
-      link.dataset.journeyConfirmed = String(isConfirmed);
-      if (isConfirmed) {
-        link.setAttribute("aria-current", "location");
-      } else {
-        link.removeAttribute("aria-current");
-      }
-      link.classList.toggle("text-[#e8c89e]", isConfirmed);
-      link.classList.toggle("text-[#dadad5]", !isConfirmed);
-      link.classList.toggle("hover:text-white", !isConfirmed);
-      label?.classList.toggle("sr-only", !isConfirmed);
-      label?.classList.toggle("md:not-sr-only", !isConfirmed);
-      dot?.classList.toggle("bg-[#e8c89e]", isConfirmed);
-      dot?.classList.toggle("shadow-[0_0_10px_rgba(232,200,158,0.8)]", isConfirmed);
-      dot?.classList.toggle("bg-white/20", !isConfirmed);
-    });
-  }, []);
 
   const requestScene = useCallback(
     (index: number, source: NavigationSource) => {
@@ -138,8 +115,12 @@ export function ScrollVideoStage() {
   }, [motionPreferenceReady, requestScene]);
 
   useEffect(() => {
-    syncSoulRail(state.confirmedIndex);
-  });
+    window.dispatchEvent(
+      new CustomEvent(JOURNEY_CONFIRMED_EVENT, {
+        detail: { index: state.confirmedIndex },
+      }),
+    );
+  }, [state.confirmedIndex]);
 
   useEffect(() => {
     if (!isPanelOpen && !sheetHotspot) {
@@ -193,7 +174,6 @@ export function ScrollVideoStage() {
           void requestScene(nextIndex, "scroll");
         }
       }
-      syncSoulRail(confirmedIndexRef.current);
     };
 
     const requestUpdate = () => {
@@ -210,7 +190,7 @@ export function ScrollVideoStage() {
       window.removeEventListener("resize", requestUpdate);
       if (frame) window.cancelAnimationFrame(frame);
     };
-  }, [confirmedIndexRef, requestScene, requestedIndexRef, syncSoulRail]);
+  }, [requestScene, requestedIndexRef]);
 
   useEffect(() => {
     const navigate = (event: Event) => {
@@ -232,7 +212,6 @@ export function ScrollVideoStage() {
 
       railTargetIndexRef.current = nextIndex;
       void requestScene(nextIndex, "rail");
-      syncSoulRail(confirmedIndexRef.current);
       root.style.scrollBehavior = "auto";
       window.scrollTo({ top: nextTop, behavior: "auto" });
 
@@ -243,13 +222,12 @@ export function ScrollVideoStage() {
       window.requestAnimationFrame(() => {
         root.style.scrollBehavior = previousScrollBehavior;
         railTargetIndexRef.current = null;
-        syncSoulRail(confirmedIndexRef.current);
       });
     };
 
     window.addEventListener(JOURNEY_NAVIGATE_EVENT, navigate);
     return () => window.removeEventListener(JOURNEY_NAVIGATE_EVENT, navigate);
-  }, [confirmedIndexRef, requestScene, syncSoulRail]);
+  }, [requestScene]);
 
   const confirmedIndex = state.confirmedIndex;
   const activeScene = homeJourney.scenes[confirmedIndex] ?? homeJourney.scenes[0];
@@ -336,6 +314,7 @@ export function ScrollVideoStage() {
       data-media-mode={state.mediaMode}
       data-media-state={playbackState}
       data-playback-state={playbackState}
+      data-fallback-reason={state.fallbackReason ?? ""}
       data-nav-source={navigationSource}
       data-target-time={state.targetTime.toFixed(3)}
       data-settled={String(playbackState === "settled")}
