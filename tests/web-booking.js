@@ -9,6 +9,10 @@ if (!baseUrl) {
   throw new Error("WEB_BASE_URL is required");
 }
 
+const basePath = new URL(baseUrl).pathname.replace(/\/+$/, "");
+const normalizePath = (value) => (value || "").replace(/\/+$/, "");
+const internalPath = (value) => `${basePath}${value}`;
+
 const venues = [
   {
     path: "/prenotazioni/ristorante",
@@ -191,8 +195,8 @@ async function expectPropagatedBookingLinks(browser) {
       .getByRole("link", { name: "Prenota Hawaii su TheFork", exact: true })
       .first();
     assert.equal(
-      await restaurantCta.getAttribute("href"),
-      "/prenotazioni/ristorante",
+      normalizePath(await restaurantCta.getAttribute("href")),
+      internalPath("/prenotazioni/ristorante"),
     );
   });
 
@@ -200,7 +204,10 @@ async function expectPropagatedBookingLinks(browser) {
     const muulabCta = page
       .getByRole("link", { name: "Prenota MUULab su TheFork", exact: true })
       .first();
-    assert.equal(await muulabCta.getAttribute("href"), "/prenotazioni/muulab");
+    assert.equal(
+      normalizePath(await muulabCta.getAttribute("href")),
+      internalPath("/prenotazioni/muulab"),
+    );
   });
 
   await expectPageLinks(browser, "/beach", async (page) => {

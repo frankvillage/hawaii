@@ -1,10 +1,3 @@
-# GitHub Pages preview of the Hawaii Urban Village experience.
-#
-# Pages serves plain static files, so this builds the STATIC_EXPORT variant of
-# the Next.js app (see web/next.config.ts): no API routes (the inquiry forms
-# degrade to their error state with the phone/WhatsApp contacts still
-# available), no CSP headers, no WordPress fallback rewrites. The production
-# deploy on a real host keeps all of those.
 name: Deploy GitHub Pages preview
 
 on:
@@ -24,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,16 +26,28 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
 
-      - name: Install dependencies
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install web dependencies
         working-directory: web
         run: npm ci
 
-      - name: Test journey units
-        run: npm run test:web:journey
+      - name: Verify source and types
+        run: |
+          npm run test:web:journey
+          npm run test:web:booking
+          npm run test:web:static
+          ./web/node_modules/.bin/tsc --noEmit -p web/tsconfig.json
+          npm --prefix web run lint -- --max-warnings=0
 
-      # Route handlers (POST) cannot ship in a static export.
+      - name: Install browser engines
+        run: npx playwright install --with-deps chromium webkit
+
       - name: Drop server-only API routes
         run: rm -rf web/src/app/api
 
@@ -51,18 +56,25 @@ jobs:
         env:
           STATIC_EXPORT: "1"
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+          NODE_OPTIONS: --max-old-space-size=2048
         run: npm run build
 
-      # Root-absolute media URLs ("/media/...") live in content strings that
-      # Next's basePath does not rewrite (plain <video>/<source> srcs and
-      # unoptimized <Image> srcs), so prefix them in the exported files.
-      - name: Prefix media URLs with the base path
+      - name: Prefix root media URLs
         run: |
           find web/out -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.txt' \) -print0 |
             xargs -0 sed -i \
               -e 's|"/media/|"/${{ github.event.repository.name }}/media/|g' \
               -e "s|'/media/|'/${{ github.event.repository.name }}/media/|g" \
               -e 's|(/media/|(/${{ github.event.repository.name }}/media/|g'
+
+      - name: Stage and test exact Pages artifact
+        env:
+          PAGES_BASE_PATH: /${{ github.event.repository.name }}
+        run: |
+          rm -rf pages-preview
+          mkdir -p pages-preview/${{ github.event.repository.name }}
+          cp -a web/out/. pages-preview/${{ github.event.repository.name }}/
+          npm run test:web:production
 
       - uses: actions/configure-pages@v5
         with:
@@ -73,7 +85,7 @@ jobs:
           path: web/out
 
   deploy:
-    needs: build
+    needs: verify
     runs-on: ubuntu-latest
     environment:
       name: github-pages

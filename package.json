@@ -12,6 +12,7 @@
     "test:web:journey": "node --no-warnings --experimental-strip-types --test tests/journey-playback.test.mjs tests/journey-clip-plan.test.mjs tests/journey-clip-player.test.mjs tests/journey-segment-machine.test.mjs",
     "test:web:static": "node tests/web-static.js",
     "test:web:smoke": "node tests/web-smoke.js",
+    "test:web:production": "node tests/run-web-production.js pages-preview",
     "build:presentation": "node presentation/src/hawaii_pescara_2026_presentation.js",
     "render:presentation": "python3 presentation/render_slides.py presentation/output/hawaii-pescara-2026-proposta.pptx --output_dir presentation/rendered",
     "test:presentation": "python3 presentation/slides_test.py presentation/output/hawaii-pescara-2026-proposta.pptx",

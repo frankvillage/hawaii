@@ -14,6 +14,15 @@ function readSourceTree(directory) {
 }
 
 const productionSources = readSourceTree(path.join(root, "web", "src")).join("\n");
+const pagesWorkflow = fs.readFileSync(
+  path.join(root, ".github", "workflows", "deploy-pages.yml"),
+  "utf8",
+);
+const productionRunner = fs.readFileSync(
+  path.join(root, "tests", "run-web-production.js"),
+  "utf8",
+);
+const verifyJob = pagesWorkflow.match(/\n  verify:\n([\s\S]*?)\n  deploy:/)?.[1] || "";
 const layoutPath = path.join(root, "web", "src", "app", "layout.tsx");
 const stagePath = path.join(
   root,
@@ -115,6 +124,22 @@ assert.doesNotMatch(
   /(?:from|import\()\s*["'][^"']*journey-segment-(?:controller|machine)/,
   "Production must not import the superseded journey controller or reducer",
 );
+assert.match(verifyJob, /npm run test:web:journey/);
+assert.match(verifyJob, /npm run test:web:static/);
+assert.match(verifyJob, /tsc --noEmit/);
+assert.match(verifyJob, /lint -- --max-warnings=0/);
+assert.match(verifyJob, /playwright install --with-deps chromium webkit/);
+assert.match(verifyJob, /STATIC_EXPORT:\s*["']1["']/);
+assert.match(verifyJob, /NEXT_PUBLIC_BASE_PATH:\s*\/\$\{\{ github\.event\.repository\.name \}\}/);
+assert.match(verifyJob, /NODE_OPTIONS:\s*--max-old-space-size=2048/);
+assert.match(verifyJob, /rm -rf pages-preview/);
+assert.match(verifyJob, /cp -a web\/out\/\. pages-preview\/\$\{\{ github\.event\.repository\.name \}\}\//);
+assert.match(verifyJob, /npm run test:web:production/);
+assert.match(verifyJob, /actions\/upload-pages-artifact@v3[\s\S]*path:\s*web\/out/);
+assert.match(pagesWorkflow, /needs:\s*verify/);
+assert.match(productionRunner, /server\.listen\(0, "127\.0\.0\.1"/);
+assert.match(productionRunner, /tests\/web-smoke\.js/);
+assert.match(productionRunner, /tests\/webkit-mobile-playback\.js/);
 assert.match(
   theFork,
   /hawaii-thefork-consent-v1/,
