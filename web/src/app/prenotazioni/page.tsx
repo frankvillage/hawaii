@@ -1,8 +1,42 @@
 import Link from "next/link";
 
 import { BookingInquiryForm } from "@/components/forms/booking-inquiry-form";
+import { beachBookingUrl, bookingVenues } from "@/lib/booking-config";
 import { buildMetadata } from "@/lib/seo";
-import { bookingOptions } from "@/lib/site-content";
+
+const bookingDestinations = [
+  {
+    label: "Prenota Hawaii su TheFork",
+    description: "Ristorante sul mare, con prenotazione dedicata e assistenza diretta.",
+    href: bookingVenues.hawaii.internalBookingPath,
+  },
+  {
+    label: "Prenota MUULab su TheFork",
+    description: "Terrazza, brace e tramonto con il canale dedicato MUULab Riviera.",
+    href: bookingVenues.muulab.internalBookingPath,
+  },
+  {
+    label: "Prenota spiaggia",
+    description: "Palma, ombrellone e servizi beach sul portale Spiagge.it.",
+    href: beachBookingUrl,
+    external: true,
+  },
+  {
+    label: "Prenota sport",
+    description: "Padel, outdoor gym e attività sul mare dalla pagina Sport.",
+    href: "/sport",
+  },
+  {
+    label: "Richiedi una serata o un evento",
+    description: "Raccontaci il format, la data e il numero di ospiti.",
+    href: "/eventi",
+  },
+  {
+    label: "Richiedi una festa privata",
+    description: "Costruiamo insieme spazi, menu e allestimento.",
+    href: "/feste-private",
+  },
+] as const;
 
 export const metadata = buildMetadata({
   title: "Prenotazioni | Hawaii Pescara",
@@ -27,14 +61,16 @@ export default function BookingPage() {
               Ogni percorso ha il suo accesso.
             </p>
             <div className="mt-10 grid gap-4">
-              {bookingOptions.map((option) => (
+              {bookingDestinations.map((option) => (
                 <Link
                   key={option.href}
                   href={option.href}
+                  target={"external" in option ? "_blank" : undefined}
+                  rel={"external" in option ? "noopener noreferrer" : undefined}
                   className="rounded-[1.6rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)] p-5 transition hover:border-white/25 hover:bg-[rgba(255,255,255,0.06)]"
                 >
                   <strong className="block font-serif text-2xl text-[#16292d]">
-                    {option.title}
+                    {option.label}
                   </strong>
                   <p className="mt-2 text-sm leading-7 text-[#4c5453]">
                     {option.description}

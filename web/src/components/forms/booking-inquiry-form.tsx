@@ -6,11 +6,9 @@ import { useState } from "react";
 type FormState = "idle" | "loading" | "success" | "error";
 
 const requestTypes = [
-  "Prenota spiaggia",
-  "Prenota tavolo mare",
-  "Prenota terrazza",
-  "Prenota sport",
-  "Richiesta generale",
+  "Informazioni generali",
+  "Serate ed eventi",
+  "Feste private",
 ];
 
 export function BookingInquiryForm() {
@@ -60,7 +58,7 @@ export function BookingInquiryForm() {
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-2 text-sm text-[#4c5453] sm:col-span-2">
-          Cosa vuoi prenotare
+          Come possiamo aiutarti
           <select
             name="requestType"
             required
@@ -145,7 +143,7 @@ export function BookingInquiryForm() {
             ? "Richiesta inviata correttamente."
             : state === "error"
               ? errorMessage
-              : "Ti guidiamo verso il punto giusto tra beach, tavolo, sport e terrazza."}
+              : "Ti ricontattiamo per informazioni, serate ed eventi privati."}
         </p>
       </div>
     </form>
