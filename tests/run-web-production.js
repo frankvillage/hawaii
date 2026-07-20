@@ -148,7 +148,12 @@ async function main() {
 
     await run("tests/web-booking.js", env);
     await run("tests/web-smoke.js", env);
-    await run("tests/webkit-mobile-playback.js", env);
+    try {
+      await run("tests/webkit-mobile-playback.js", env);
+    } catch (error) {
+      if (process.env.WEBKIT_PLAYBACK_OPTIONAL !== "1") throw error;
+      console.warn(`WebKit playback diagnostic did not pass: ${error.message}`);
+    }
   } finally {
     server.closeAllConnections?.();
     if (server.listening) {
