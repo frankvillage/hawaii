@@ -231,7 +231,16 @@ async function main() {
         consent.click();
       }
     });
-    await popupTrigger.click();
+    // The trigger lives inside a sticky, transformed stage. Playwright's locator
+    // click can scroll that stage to the document end before dispatching the event.
+    await page.waitForFunction(
+      () => !document.querySelector('[data-testid="menu-popup-trigger"]')?.closest("[inert]"),
+      undefined,
+      { timeout: 6000 },
+    );
+    await page.evaluate(() => {
+      document.querySelector('[data-testid="menu-popup-trigger"]')?.click();
+    });
     const menuPopup = page.locator('[data-testid="menu-popup"]');
     await menuPopup.waitFor({ state: "visible", timeout: 2500 });
     const popupText = (await menuPopup.textContent()) || "";
