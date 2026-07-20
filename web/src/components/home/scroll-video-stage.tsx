@@ -4,6 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useJourneyClipPlayer } from "@/components/home/use-journey-clip-player";
+import { createJourneyCheckpointManifest } from "@/lib/journey-checkpoints";
+import {
+  JOURNEY_NAVIGATE_EVENT,
+  type NavigationSource,
+  sceneIndexFromProgress,
+  sceneProgressForIndex,
+} from "@/lib/journey-playback";
 import {
   homeHero,
   homeJourney,
@@ -11,14 +19,6 @@ import {
   routeCaptions,
   type JourneyHotspot,
 } from "@/lib/site-content";
-import {
-  checkpointTime,
-  JOURNEY_NAVIGATE_EVENT,
-  type NavigationSource,
-  sceneIndexFromProgress,
-  sceneProgressForIndex,
-  transitionKind,
-} from "@/lib/journey-playback";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -30,28 +30,17 @@ function captionFor(hotspot: JourneyHotspot) {
 
 const RING_RADIUS = 15;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
-
-/* Every hold-frame still used by the backup layer, deduplicated so the
-   crossfade stack mounts each image exactly once. */
-const fallbackStills = Array.from(
-  new Set([
-    homeJourney.media.poster,
-    ...homeJourney.scenes.map((scene) => scene.still ?? homeJourney.media.poster),
-  ]),
+const JOURNEY_FPS = 25;
+const journeyCheckpoints = createJourneyCheckpointManifest(
+  homeJourney.scenes.map((scene) => ({
+    id: scene.id,
+    start: scene.start,
+    end: scene.end,
+    still: scene.still ?? homeJourney.media.poster,
+  })),
+  homeJourney.media.duration,
+  JOURNEY_FPS,
 );
-
-/* JPEG frames are decoded only after a verified media failure. */
-const FRAME_COUNT = 172;
-const FRAME_FPS = 3;
-const FRAME_FALLBACK_DAMPING = 7;
-const FRAME_FALLBACK_MAX_SPEED = 18;
-const INTRO_DELAY_MS = 1000;
-
-type MediaRequest = {
-  id: number;
-  index: number;
-  source: NavigationSource;
-};
 
 type JourneyNavigateDetail = {
   index: number;
@@ -61,54 +50,96 @@ type JourneyNavigateDetail = {
 export function ScrollVideoStage() {
   const wrapperRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const targetTimeRef = useRef(0);
-  const activeSceneIndexRef = useRef(0);
-  const requestIdRef = useRef(0);
   const railTargetIndexRef = useRef<number | null>(null);
-  const transitionKindRef = useRef<ReturnType<typeof transitionKind>>("intro");
+  const introRequestedRef = useRef(false);
 
   const [isReducedMotion, setIsReducedMotion] = useState(false);
-  const [videoDuration, setVideoDuration] = useState(homeJourney.media.duration);
-  const [activeSceneIndex, setActiveSceneIndex] = useState(0);
-  const [mediaRequest, setMediaRequest] = useState<MediaRequest | null>(null);
-  const [isMediaTransitioning, setIsMediaTransitioning] = useState(false);
-  const [jumpCover, setJumpCover] = useState(false);
+  const [motionPreferenceReady, setMotionPreferenceReady] = useState(false);
+  const [navigationSource, setNavigationSource] = useState<NavigationSource | "initial">(
+    "initial",
+  );
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [sheetHotspot, setSheetHotspot] = useState<JourneyHotspot | null>(null);
-  const [videoFailed, setVideoFailed] = useState(false);
-  const [useFrames, setUseFrames] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const {
+    videoRef,
+    confirmedIndexRef,
+    requestedIndexRef,
+    state,
+    selectedStill,
+    request,
+  } = useJourneyClipPlayer({
+    checkpoints: journeyCheckpoints,
+    reducedMotion: isReducedMotion,
+  });
 
-  const requestScene = useCallback((index: number, source: NavigationSource) => {
-    const nextIndex = clamp(index, 0, homeJourney.scenes.length - 1);
-    const previousIndex = activeSceneIndexRef.current;
-    const nextTransitionKind = transitionKind(previousIndex, nextIndex, source);
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const playbackState =
+    state.status === "fallback"
+      ? "fallback"
+      : state.status === "idle"
+        ? "settled"
+        : "moving";
 
-    transitionKindRef.current = nextTransitionKind;
-    activeSceneIndexRef.current = nextIndex;
-    setActiveSceneIndex(nextIndex);
-    setIsMediaTransitioning(!reduceMotion);
-    setJumpCover(!reduceMotion && nextTransitionKind === "jump");
-    setMediaRequest({
-      id: ++requestIdRef.current,
-      index: nextIndex,
-      source,
+  const syncSoulRail = useCallback((index: number) => {
+    document.querySelectorAll<HTMLAnchorElement>("[data-soul-link]").forEach((link, linkIndex) => {
+      const isConfirmed = linkIndex === index;
+      const label = link.children.item(0) as HTMLElement | null;
+      const dot = link.children.item(1) as HTMLElement | null;
+
+      link.dataset.journeyConfirmed = String(isConfirmed);
+      if (isConfirmed) {
+        link.setAttribute("aria-current", "location");
+      } else {
+        link.removeAttribute("aria-current");
+      }
+      link.classList.toggle("text-[#e8c89e]", isConfirmed);
+      link.classList.toggle("text-[#dadad5]", !isConfirmed);
+      link.classList.toggle("hover:text-white", !isConfirmed);
+      label?.classList.toggle("sr-only", !isConfirmed);
+      label?.classList.toggle("md:not-sr-only", !isConfirmed);
+      dot?.classList.toggle("bg-[#e8c89e]", isConfirmed);
+      dot?.classList.toggle("shadow-[0_0_10px_rgba(232,200,158,0.8)]", isConfirmed);
+      dot?.classList.toggle("bg-white/20", !isConfirmed);
     });
   }, []);
 
+  const requestScene = useCallback(
+    (index: number, source: NavigationSource) => {
+      setNavigationSource(source);
+      return request(clamp(index, 0, homeJourney.scenes.length - 1), source);
+    },
+    [request],
+  );
+
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-    const syncMotionPreference = () => setIsReducedMotion(mediaQuery.matches);
+    const syncMotionPreference = () => {
+      setIsReducedMotion(mediaQuery.matches);
+      setMotionPreferenceReady(true);
+    };
 
     syncMotionPreference();
-
     mediaQuery.addEventListener("change", syncMotionPreference);
-
     return () => mediaQuery.removeEventListener("change", syncMotionPreference);
   }, []);
+
+  useEffect(() => {
+    if (!motionPreferenceReady || introRequestedRef.current) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      if (!introRequestedRef.current) {
+        introRequestedRef.current = true;
+        void requestScene(0, "intro");
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [motionPreferenceReady, requestScene]);
+
+  useEffect(() => {
+    syncSoulRail(state.confirmedIndex);
+  });
 
   useEffect(() => {
     if (!isPanelOpen && !sheetHotspot) {
@@ -133,95 +164,10 @@ export function ScrollVideoStage() {
   }, [isPanelOpen, sheetHotspot]);
 
   useEffect(() => {
-    const video = videoRef.current;
-
-    if (!video || useFrames) {
-      return;
-    }
-
-    const syncDuration = () => {
-      if (Number.isFinite(video.duration) && video.duration > 0) {
-        setVideoDuration(video.duration);
-      }
-    };
-
-    video.addEventListener("loadedmetadata", syncDuration);
-    video.addEventListener("durationchange", syncDuration);
-    syncDuration();
-
-    return () => {
-      video.removeEventListener("loadedmetadata", syncDuration);
-      video.removeEventListener("durationchange", syncDuration);
-    };
-  }, [useFrames]);
-
-  /* Backup screens: if the video cannot load (network error, unsupported
-     codec, blocked media), the journey falls back to the per-scene hold-frame
-     stills so scrolling still tells the whole story. */
-  useEffect(() => {
-    const video = videoRef.current;
-
-    if (!video) {
-      return;
-    }
-
-    const markFailed = () => {
-      setVideoFailed(true);
-      setUseFrames(true);
-    };
-    const markRecovered = () => setVideoFailed(false);
-
-    /* When every <source> is rejected, the error fires on the last <source>,
-       not on the <video> element itself. */
-    const sources = Array.from(video.querySelectorAll("source"));
-
-    video.addEventListener("error", markFailed);
-    video.addEventListener("loadeddata", markRecovered);
-    sources.forEach((source) => source.addEventListener("error", markFailed));
-
-    /* The error may have fired before hydration attached these listeners. */
-    const probeTimer = window.setTimeout(() => {
-      if (video.error || video.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
-        markFailed();
-      }
-    }, 0);
-
-    const stallTimer = window.setTimeout(() => {
-      if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-        markFailed();
-      }
-    }, 8000);
-
-    return () => {
-      video.removeEventListener("error", markFailed);
-      video.removeEventListener("loadeddata", markRecovered);
-      sources.forEach((source) => source.removeEventListener("error", markFailed));
-      window.clearTimeout(probeTimer);
-      window.clearTimeout(stallTimer);
-    };
-  }, [useFrames]);
-
-  useEffect(() => {
-    if (isReducedMotion) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      if (activeSceneIndexRef.current === 0) {
-        requestScene(0, "intro");
-      }
-    }, INTRO_DELAY_MS);
-
-    return () => window.clearTimeout(timer);
-  }, [isReducedMotion, requestScene]);
-
-  useEffect(() => {
     const root = document.documentElement;
-
     if (!isReducedMotion) {
       root.classList.add("journey-snap-root");
     }
-
     return () => root.classList.remove("journey-snap-root");
   }, [isReducedMotion]);
 
@@ -232,54 +178,44 @@ export function ScrollVideoStage() {
     }
 
     let frame = 0;
-
     const update = () => {
       frame = 0;
-
       const rect = wrapper.getBoundingClientRect();
       const scrollable = Math.max(wrapper.offsetHeight - window.innerHeight, 1);
       const nextProgress = clamp(-rect.top / scrollable, 0, 1);
       const nextIndex = sceneIndexFromProgress(nextProgress, homeJourney.scenes.length);
 
       wrapper.style.setProperty("--journey-progress", nextProgress.toFixed(4));
-
-      if (nextIndex !== activeSceneIndexRef.current) {
+      if (nextIndex !== requestedIndexRef.current) {
         if (railTargetIndexRef.current === nextIndex) {
           railTargetIndexRef.current = null;
         } else {
-          requestScene(nextIndex, "scroll");
+          void requestScene(nextIndex, "scroll");
         }
       }
+      syncSoulRail(confirmedIndexRef.current);
     };
 
     const requestUpdate = () => {
-      if (frame) {
-        return;
+      if (!frame) {
+        frame = window.requestAnimationFrame(update);
       }
-
-      frame = window.requestAnimationFrame(update);
     };
 
     update();
-
     window.addEventListener("scroll", requestUpdate, { passive: true });
     window.addEventListener("resize", requestUpdate);
-
     return () => {
       window.removeEventListener("scroll", requestUpdate);
       window.removeEventListener("resize", requestUpdate);
-
-      if (frame) {
-        window.cancelAnimationFrame(frame);
-      }
+      if (frame) window.cancelAnimationFrame(frame);
     };
-  }, [requestScene]);
+  }, [confirmedIndexRef, requestScene, requestedIndexRef, syncSoulRail]);
 
   useEffect(() => {
     const navigate = (event: Event) => {
       const detail = (event as CustomEvent<JourneyNavigateDetail>).detail;
       const wrapper = wrapperRef.current;
-
       if (!wrapper || !detail || !Number.isFinite(detail.index)) {
         return;
       }
@@ -295,7 +231,8 @@ export function ScrollVideoStage() {
       const previousScrollBehavior = root.style.scrollBehavior;
 
       railTargetIndexRef.current = nextIndex;
-      requestScene(nextIndex, "rail");
+      void requestScene(nextIndex, "rail");
+      syncSoulRail(confirmedIndexRef.current);
       root.style.scrollBehavior = "auto";
       window.scrollTo({ top: nextTop, behavior: "auto" });
 
@@ -306,383 +243,29 @@ export function ScrollVideoStage() {
       window.requestAnimationFrame(() => {
         root.style.scrollBehavior = previousScrollBehavior;
         railTargetIndexRef.current = null;
+        syncSoulRail(confirmedIndexRef.current);
       });
     };
 
     window.addEventListener(JOURNEY_NAVIGATE_EVENT, navigate);
-
     return () => window.removeEventListener(JOURNEY_NAVIGATE_EVENT, navigate);
-  }, [requestScene]);
+  }, [confirmedIndexRef, requestScene, syncSoulRail]);
 
-  /* Each scroll step plays the MP4 normally until the requested checkpoint.
-     Only direct/backward jumps seek; no animation frame repeatedly rewrites
-     currentTime, which would freeze iOS video after the first decoded frames. */
-  useEffect(() => {
-    if (
-      !mediaRequest ||
-      !Number.isFinite(videoDuration) ||
-      videoDuration <= 0
-    ) {
-      return;
-    }
-
-    const target = checkpointTime(homeJourney.scenes[mediaRequest.index], videoDuration);
-    targetTimeRef.current = target;
-
-    if (isReducedMotion || useFrames) {
-      return;
-    }
-
-    const video = videoRef.current;
-    if (!video) {
-      return;
-    }
-
-    const kind = transitionKindRef.current;
-    const shouldSeek = kind === "jump" || target < video.currentTime - 0.08;
-    let cancelled = false;
-    let settled = false;
-    let confirmingFrame = false;
-    let playAttemptInFlight = false;
-    let monitoringPlayback = false;
-    let frame = 0;
-    let settleTimer = 0;
-    let seekListener: (() => void) | null = null;
-
-    const settle = () => {
-      if (cancelled || settled) {
-        return;
-      }
-
-      settled = true;
-      video.pause();
-      video.playbackRate = 1;
-      setJumpCover(false);
-      setVideoFailed(false);
-      setIsMediaTransitioning(false);
-    };
-
-    const confirmDecodedFrame = () => {
-      if (cancelled || settled || confirmingFrame) {
-        return;
-      }
-
-      confirmingFrame = true;
-      let decodedConfirmationStarted = false;
-
-      const confirm = () => {
-        if (cancelled || settled || decodedConfirmationStarted) {
-          return;
-        }
-
-        decodedConfirmationStarted = true;
-        const frameVideo = video as HTMLVideoElement & {
-          requestVideoFrameCallback?: (callback: () => void) => number;
-        };
-
-        if (typeof frameVideo.requestVideoFrameCallback === "function") {
-          frameVideo.requestVideoFrameCallback(settle);
-          settleTimer = window.setTimeout(settle, 250);
-        } else {
-          settle();
-        }
-      };
-
-      if (Math.abs(video.currentTime - target) <= 0.04 && !video.seeking) {
-        confirm();
-        return;
-      }
-
-      seekListener = confirm;
-      video.addEventListener("seeked", seekListener, { once: true });
-      try {
-        video.currentTime = target;
-      } catch {
-        video.removeEventListener("seeked", seekListener);
-        seekListener = null;
-        settle();
-      }
-      settleTimer = window.setTimeout(confirm, 650);
-    };
-
-    const monitorPlayback = () => {
-      if (cancelled) {
-        return;
-      }
-
-      if (video.currentTime >= target - 0.08) {
-        monitoringPlayback = false;
-        video.pause();
-        confirmDecodedFrame();
-        return;
-      }
-
-      frame = window.requestAnimationFrame(monitorPlayback);
-    };
-
-    const playSegment = async () => {
-      if (playAttemptInFlight || monitoringPlayback || settled) {
-        return;
-      }
-
-      const distance = target - video.currentTime;
-      if (distance <= 0.08) {
-        confirmDecodedFrame();
-        return;
-      }
-
-      const desiredDuration = kind === "intro" ? 1.05 : 2.4;
-      video.playbackRate = clamp(distance / desiredDuration, 1, 3.5);
-      playAttemptInFlight = true;
-      try {
-        await video.play();
-        if (!cancelled) {
-          monitoringPlayback = true;
-          frame = window.requestAnimationFrame(monitorPlayback);
-        }
-      } catch {
-        // Muted inline playback is retried by the first user gesture below.
-      } finally {
-        playAttemptInFlight = false;
-      }
-    };
-
-    if (shouldSeek) {
-      video.pause();
-      confirmDecodedFrame();
-    } else {
-      void playSegment();
-    }
-
-    const retryFromGesture = () => {
-      if (!cancelled && video.paused && video.currentTime < target - 0.08) {
-        void playSegment();
-      }
-    };
-
-    window.addEventListener("pointerdown", retryFromGesture, { passive: true });
-    window.addEventListener("touchstart", retryFromGesture, { passive: true });
-
-    return () => {
-      cancelled = true;
-      video.pause();
-      video.playbackRate = 1;
-      window.cancelAnimationFrame(frame);
-      window.clearTimeout(settleTimer);
-      if (seekListener) {
-        video.removeEventListener("seeked", seekListener);
-      }
-      window.removeEventListener("pointerdown", retryFromGesture);
-      window.removeEventListener("touchstart", retryFromGesture);
-    };
-  }, [isReducedMotion, mediaRequest, useFrames, videoDuration]);
-
-  /* Touch fallback: load only the opening segment, checkpoint frames and the
-     segment currently requested. This avoids retaining 172 decoded images. */
-  useEffect(() => {
-    if (!useFrames) {
-      return;
-    }
-
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-
-    if (!canvas || !ctx) {
-      return;
-    }
-
-    const wantsDesktop = window.matchMedia("(min-aspect-ratio: 3/4)").matches;
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-    const prefix = `${basePath}/media/hawaii/frames/${wantsDesktop ? "d" : "m"}-`;
-    const checkpointFrames = homeJourney.scenes.map((scene) =>
-      clamp(Math.round(checkpointTime(scene, videoDuration) * FRAME_FPS), 0, FRAME_COUNT - 1),
-    );
-    const checkpointSet = new Set(checkpointFrames);
-    const loaded = new Map<number, HTMLImageElement>();
-    const queued = new Set<number>();
-    const order: number[] = [];
-    let disposed = false;
-    let inflight = 0;
-    let errorCount = 0;
-
-    const enqueue = (idx: number, priority = false) => {
-      const safeIndex = clamp(idx, 0, FRAME_COUNT - 1);
-
-      if (loaded.has(safeIndex) || queued.has(safeIndex)) {
-        return;
-      }
-
-      queued.add(safeIndex);
-      if (priority) {
-        order.unshift(safeIndex);
-      } else {
-        order.push(safeIndex);
-      }
-    };
-
-    const enqueuePath = (from: number, to: number, prioritizeTarget = true) => {
-      const direction = to >= from ? 1 : -1;
-
-      if (prioritizeTarget) {
-        enqueue(to, true);
-      }
-      for (let idx = from; idx !== to; idx += direction) {
-        enqueue(idx);
-      }
-      enqueue(to);
-    };
-
-    const pump = () => {
-      if (disposed) {
-        return;
-      }
-
-      while (inflight < 4 && order.length > 0) {
-        const idx = order.shift()!;
-        inflight += 1;
-
-        const img = new window.Image();
-        img.onload = () => {
-          loaded.set(idx, img);
-          queued.delete(idx);
-          inflight -= 1;
-          errorCount = 0;
-          pump();
-        };
-        img.onerror = () => {
-          queued.delete(idx);
-          inflight -= 1;
-          errorCount += 1;
-          if (errorCount >= 4 || idx === clamp(Math.round(targetTimeRef.current * FRAME_FPS), 0, FRAME_COUNT - 1)) {
-            setVideoFailed(true);
-          }
-          pump();
-        };
-        img.src = `${prefix}${String(idx + 1).padStart(3, "0")}.jpg`;
-      }
-    };
-
-    enqueue(0);
-    enqueuePath(1, checkpointFrames[0], false);
-    checkpointFrames.slice(1).forEach((idx) => enqueue(idx));
-    pump();
-
-    let lastDrawn = -1;
-
-    const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.round(canvas.clientWidth * dpr);
-      canvas.height = Math.round(canvas.clientHeight * dpr);
-      lastDrawn = -1;
-    };
-
-    resize();
-    window.addEventListener("resize", resize);
-
-    const nearestLoaded = (idx: number) => {
-      for (let d = 0; d < FRAME_COUNT; d++) {
-        if (idx - d >= 0 && loaded.has(idx - d)) {
-          return idx - d;
-        }
-        if (idx + d < FRAME_COUNT && loaded.has(idx + d)) {
-          return idx + d;
-        }
-      }
-
-      return -1;
-    };
-
-    let simTime = 0;
-    let last = performance.now();
-    let frame = 0;
-    let scheduledTarget = checkpointFrames[0];
-    let settledTarget = -1;
-
-    const tick = (now: number) => {
-      const dt = Math.min((now - last) / 1000, 0.1);
-      last = now;
-
-      const targetFrame = clamp(
-        Math.round(targetTimeRef.current * FRAME_FPS),
-        0,
-        FRAME_COUNT - 1,
-      );
-
-      if (targetFrame !== scheduledTarget) {
-        if (isReducedMotion) {
-          enqueue(targetFrame, true);
-        } else {
-          enqueuePath(clamp(Math.round(simTime * FRAME_FPS), 0, FRAME_COUNT - 1), targetFrame);
-        }
-        scheduledTarget = targetFrame;
-        settledTarget = -1;
-        pump();
-      }
-
-      const delta = targetTimeRef.current - simTime;
-      if (isReducedMotion || transitionKindRef.current === "jump") {
-        simTime = targetTimeRef.current;
-      } else {
-        let step = delta * (1 - Math.exp(-dt * FRAME_FALLBACK_DAMPING));
-        const maxStep = dt * FRAME_FALLBACK_MAX_SPEED;
-        step = clamp(step, -maxStep, maxStep);
-
-        if (Math.abs(step) > 0.001) {
-          simTime += step;
-        }
-      }
-
-      const wanted = clamp(Math.round(simTime * FRAME_FPS), 0, FRAME_COUNT - 1);
-      const idx = nearestLoaded(wanted);
-
-      if (idx !== -1 && idx !== lastDrawn) {
-        const img = loaded.get(idx)!;
-        const cw = canvas.width;
-        const ch = canvas.height;
-        const scale = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
-        const w = img.naturalWidth * scale;
-        const h = img.naturalHeight * scale;
-        ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
-        lastDrawn = idx;
-        canvas.dataset.frame = String(idx);
-      }
-
-      if (idx === targetFrame && Math.abs(targetTimeRef.current - simTime) <= 0.04 && settledTarget !== targetFrame) {
-        settledTarget = targetFrame;
-        setVideoFailed(false);
-        setJumpCover(false);
-        setIsMediaTransitioning(false);
-
-        if (loaded.size > 48) {
-          loaded.forEach((_image, loadedIndex) => {
-            if (!checkpointSet.has(loadedIndex) && Math.abs(loadedIndex - targetFrame) > 18) {
-              loaded.delete(loadedIndex);
-            }
-          });
-        }
-      }
-
-      frame = window.requestAnimationFrame(tick);
-    };
-
-    frame = window.requestAnimationFrame(tick);
-
-    return () => {
-      disposed = true;
-      window.removeEventListener("resize", resize);
-      window.cancelAnimationFrame(frame);
-    };
-  }, [useFrames, isReducedMotion, videoDuration]);
-
-  const activeScene = homeJourney.scenes[activeSceneIndex] ?? homeJourney.scenes[0];
-  const sceneFraction = isMediaTransitioning ? 0.35 : 1;
-  const rawSettle = isMediaTransitioning ? 0.3 : 1;
-  const overlaySettle = activeSceneIndex === 0 && !mediaRequest ? 1 : rawSettle;
+  const confirmedIndex = state.confirmedIndex;
+  const activeScene = homeJourney.scenes[confirmedIndex] ?? homeJourney.scenes[0];
+  const isMoving = state.status === "moving" || state.status === "waiting-for-gesture";
+  const sceneFraction = isMoving ? 0.35 : 1;
+  const rawSettle = isMoving ? 0.3 : 1;
+  const overlaySettle = rawSettle;
 
   const overlaysInteractive = overlaySettle > 0.18;
   const hotspotsInteractive = rawSettle > 0.18;
 
   const activeStill = activeScene.still ?? homeJourney.media.poster;
+  const coverStill =
+    state.coverIndex === null
+      ? null
+      : homeJourney.scenes[state.coverIndex]?.still ?? homeJourney.media.poster;
 
   const copyAlign = activeScene.align ?? "left";
   /* Right-aligned blocks stay clear of the WhatsApp button and the desktop
@@ -748,13 +331,14 @@ export function ScrollVideoStage() {
       ref={wrapperRef}
       data-testid="hero-stage"
       data-scene-id={activeScene.id}
-      data-media-mode={useFrames ? "frames" : isReducedMotion ? "stills" : "video"}
-      data-media-state={videoFailed ? "fallback" : isMediaTransitioning ? "moving" : "settled"}
-      data-nav-source={mediaRequest?.source ?? "initial"}
-      data-target-time={
-        mediaRequest ? checkpointTime(activeScene, videoDuration).toFixed(3) : "0.000"
-      }
-      data-settled={String(!isMediaTransitioning)}
+      data-confirmed-scene-id={activeScene.id}
+      data-requested-scene-id={homeJourney.scenes[state.requestedIndex]?.id ?? activeScene.id}
+      data-media-mode={state.mediaMode}
+      data-media-state={playbackState}
+      data-playback-state={playbackState}
+      data-nav-source={navigationSource}
+      data-target-time={state.targetTime.toFixed(3)}
+      data-settled={String(playbackState === "settled")}
       className="relative bg-[#070808]"
       aria-label="Hawaii Urban Village journey"
     >
@@ -765,34 +349,7 @@ export function ScrollVideoStage() {
         onMouseMove={handlePointerMove}
         onMouseLeave={resetPointer}
       >
-        {useFrames ? (
-          <>
-            <Image
-              src={homeJourney.media.poster}
-              alt={homeHero.media.alt}
-              fill
-              priority
-              sizes="100vw"
-              className="absolute inset-0 object-cover object-center"
-            />
-            <canvas
-              ref={canvasRef}
-              data-testid="journey-canvas"
-              aria-label={homeJourney.media.alt}
-              className="absolute inset-0 h-full w-full"
-            />
-          </>
-        ) : isReducedMotion ? (
-          <Image
-            key={activeStill}
-            src={activeStill}
-            alt={homeHero.media.alt}
-            fill
-            priority
-            sizes="100vw"
-            className="absolute inset-0 object-cover object-center"
-          />
-        ) : (
+        {state.mediaMode === "video" ? (
           <video
             ref={videoRef}
             data-testid="journey-video"
@@ -810,37 +367,28 @@ export function ScrollVideoStage() {
             />
             <source src={homeJourney.media.mobileSrc} type="video/mp4" />
           </video>
+        ) : (
+          <Image
+            key={selectedStill ?? activeStill}
+            src={selectedStill ?? activeStill}
+            alt={homeHero.media.alt}
+            fill
+            priority
+            sizes="100vw"
+            data-testid={state.mediaMode === "fallback" ? "journey-fallback" : undefined}
+            className="absolute inset-0 object-cover object-center"
+          />
         )}
 
-        {!isReducedMotion && jumpCover ? (
+        {state.mediaMode === "video" && coverStill ? (
           <Image
-            key={`jump-${activeStill}`}
-            src={activeStill}
+            key={`cover-${state.coverIndex}-${coverStill}`}
+            src={coverStill}
             alt=""
             fill
             sizes="100vw"
             className="pointer-events-none absolute inset-0 object-cover object-center transition-opacity duration-300"
           />
-        ) : null}
-
-        {!isReducedMotion && videoFailed ? (
-          <div
-            data-testid="journey-fallback"
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0"
-          >
-            {fallbackStills.map((still) => (
-              <Image
-                key={still}
-                src={still}
-                alt=""
-                fill
-                sizes="100vw"
-                className="absolute inset-0 object-cover object-center transition-opacity duration-700"
-                style={{ opacity: still === activeStill ? 1 : 0 }}
-              />
-            ))}
-          </div>
         ) : null}
 
         {/* No boxes: legibility comes from one light veil plus a feathered
@@ -899,7 +447,7 @@ export function ScrollVideoStage() {
               </svg>
               <div className="text-right">
                 <p className="text-[0.62rem] uppercase tracking-[0.24em] text-[#e8c89e]">
-                  {String(activeSceneIndex + 1).padStart(2, "0")} /{" "}
+                  {String(confirmedIndex + 1).padStart(2, "0")} /{" "}
                   {String(homeJourney.scenes.length).padStart(2, "0")}
                 </p>
                 <p className="mt-1 hidden text-xs uppercase tracking-[0.18em] text-[#efefea] sm:block">

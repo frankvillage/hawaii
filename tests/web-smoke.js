@@ -13,15 +13,24 @@ async function readTextContents(page, selector) {
 
 async function main() {
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
-  const mobilePage = await browser.newPage({ ...devices["iPhone 13"] });
-  const reducedMobilePage = await browser.newPage({
-    ...devices["iPhone 13"],
-    reducedMotion: "reduce",
-  });
-  const fallbackMobilePage = await browser.newPage({ ...devices["iPhone 13"] });
+  let context = null;
+  let page = null;
+
+  const openPage = async (options = {}) => {
+    assert.equal(context, null, "Smoke tests must use one browser context at a time");
+    context = await browser.newContext(options);
+    page = await context.newPage();
+    return page;
+  };
+
+  const closePage = async () => {
+    await context?.close();
+    context = null;
+    page = null;
+  };
 
   try {
+    page = await openPage();
     await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
 
     const soulRail = page.locator('[data-testid="soul-rail"]');
@@ -86,9 +95,10 @@ async function main() {
         const stage = document.querySelector('[data-testid="hero-stage"]');
         const video = document.querySelector('[data-testid="journey-video"]');
         return (
-          stage?.dataset.settled === "true" &&
+          stage?.dataset.playbackState === "settled" &&
           Number(stage.dataset.targetTime) > 3 &&
-          video?.paused === true
+          video?.paused === true &&
+          Math.abs(video.currentTime - Number(stage.dataset.targetTime)) <= 0.16
         );
       },
       undefined,
@@ -102,8 +112,8 @@ async function main() {
       "The opening frame should hold for one second, then advance to the first journey checkpoint",
     );
     assert.equal(
-      await page.locator('[data-testid="hero-stage"]').getAttribute("data-settled"),
-      "true",
+      await page.locator('[data-testid="hero-stage"]').getAttribute("data-playback-state"),
+      "settled",
       "The intro should stop cleanly at its first checkpoint",
     );
     const scrollToJourneyBeach = () =>
@@ -113,11 +123,23 @@ async function main() {
         window.scrollTo({ top: scrollable * (3 / 8), behavior: "auto" });
       });
     await scrollToJourneyBeach();
-    await page.waitForTimeout(350);
     // Late layout settling (fonts, hydration) can nudge the scroll position:
     // re-issue the same scroll so the journey lands on the intended scene.
+    await page.waitForTimeout(350);
     await scrollToJourneyBeach();
-    await page.waitForTimeout(250);
+    await page.waitForFunction(
+      () => {
+        const stage = document.querySelector('[data-testid="hero-stage"]');
+        const video = document.querySelector('[data-testid="journey-video"]');
+        return (
+          stage?.dataset.confirmedSceneId === "beach" &&
+          stage.dataset.playbackState === "settled" &&
+          video?.paused === true
+        );
+      },
+      undefined,
+      { timeout: 7000 },
+    );
     const progressedVideoTime = await page
       .locator('[data-testid="journey-video"]')
       .evaluate((node) => Math.round(node.currentTime * 100) / 100);
@@ -139,7 +161,13 @@ async function main() {
       const scrollable = stage.offsetHeight - window.innerHeight;
       window.scrollTo({ top: scrollable, behavior: "auto" });
     });
-    await page.waitForTimeout(1000);
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-testid="hero-stage"]')?.dataset.confirmedSceneId ===
+        "eventi",
+      undefined,
+      { timeout: 7000 },
+    );
     assert.equal(
       (await page.locator('[data-testid="scene-eyebrow"]').textContent())?.trim(),
       "Eventi",
@@ -147,7 +175,17 @@ async function main() {
     );
 
     await page.locator('[data-soul-link][href="#bar"]').click();
-    await page.waitForTimeout(1200);
+    await page.waitForFunction(
+      () => {
+        const stage = document.querySelector('[data-testid="hero-stage"]');
+        return (
+          stage?.dataset.confirmedSceneId === "bar" &&
+          stage.dataset.playbackState === "settled"
+        );
+      },
+      undefined,
+      { timeout: 7000 },
+    );
     assert.equal(
       (await page.locator('[data-testid="scene-eyebrow"]').textContent())?.trim(),
       "Cocktail bar",
@@ -161,8 +199,8 @@ async function main() {
       "A rail click should land near the selected scene checkpoint within a short transition",
     );
     assert.equal(
-      await page.locator('[data-testid="hero-stage"]').getAttribute("data-settled"),
-      "true",
+      await page.locator('[data-testid="hero-stage"]').getAttribute("data-playback-state"),
+      "settled",
       "A direct rail jump should settle instead of leaving overlays in their transition state",
     );
 
@@ -189,6 +227,8 @@ async function main() {
     await page.keyboard.press("Escape");
     await menuPopup.waitFor({ state: "detached", timeout: 2500 });
 
+    await closePage();
+    const mobilePage = await openPage({ ...devices["iPhone 13"] });
     await mobilePage.goto(baseUrl, { waitUntil: "domcontentloaded" });
     const mobileVideo = mobilePage.locator('[data-testid="journey-video"]');
     await mobileVideo.waitFor({ state: "visible", timeout: 2500 });
@@ -197,12 +237,22 @@ async function main() {
       0,
       "Healthy mobile playback should use the MP4 rather than the frame fallback",
     );
+    assert.equal(
+      await mobilePage.locator('[data-testid="hero-stage"]').getAttribute("data-media-mode"),
+      "video",
+      "Healthy mobile playback should report video mode",
+    );
+    assert.equal(
+      await mobilePage.locator(".journey-marker:visible").count(),
+      0,
+      "Mobile should hide every journey hotspot",
+    );
     await mobilePage.waitForFunction(
       () => {
         const stage = document.querySelector('[data-testid="hero-stage"]');
         const video = document.querySelector('[data-testid="journey-video"]');
         return (
-          stage?.dataset.settled === "true" &&
+          stage?.dataset.playbackState === "settled" &&
           Number(stage.dataset.targetTime) > 3 &&
           video?.paused === true &&
           video.currentTime > 2
@@ -222,20 +272,32 @@ async function main() {
     );
     const movingSamples = [];
     for (let index = 0; index < 3; index += 1) {
-      movingSamples.push(await mobileVideo.evaluate((node) => Number(node.currentTime)));
+      movingSamples.push(
+        await mobileVideo.evaluate((node) => ({
+          currentTime: Number(node.currentTime),
+          playbackRate: Number(node.playbackRate),
+        })),
+      );
       await mobilePage.waitForTimeout(180);
     }
     assert.ok(
-      movingSamples[1] > movingSamples[0] && movingSamples[2] > movingSamples[1],
-      `Mobile MP4 should play continuously between checkpoints: ${movingSamples.join(", ")}`,
+      movingSamples.every(({ playbackRate }) => playbackRate <= 1.25),
+      `Mobile playback rate must remain decoder-safe: ${JSON.stringify(movingSamples)}`,
+    );
+    assert.ok(
+      movingSamples.every(
+        ({ currentTime }, index) =>
+          index === 0 || currentTime > movingSamples[index - 1].currentTime,
+      ),
+      `Mobile MP4 should play continuously between checkpoints: ${JSON.stringify(movingSamples)}`,
     );
     await mobilePage.waitForFunction(
       () => {
         const stage = document.querySelector('[data-testid="hero-stage"]');
         const video = document.querySelector('[data-testid="journey-video"]');
         return (
-          stage?.dataset.sceneId === "bar" &&
-          stage.dataset.settled === "true" &&
+          stage?.dataset.confirmedSceneId === "bar" &&
+          stage.dataset.playbackState === "settled" &&
           video?.paused === true
         );
       },
@@ -252,6 +314,23 @@ async function main() {
       "Cocktail bar",
       "One mobile swipe-sized step should advance the journey to Bar",
     );
+
+    const mobileMenuButton = mobilePage.getByRole("button", { name: "Menu", exact: true });
+    await mobileMenuButton.waitFor({ state: "visible", timeout: 2500 });
+    await mobileMenuButton.click();
+    await mobilePage
+      .locator('[data-testid="mobile-nav-panel"]')
+      .waitFor({ state: "visible", timeout: 2500 });
+    assert.ok(
+      (await readTextContents(mobilePage, '[data-testid="mobile-nav-panel"] a')).includes("Beach"),
+      "Mobile navigation should expose the primary sections inside a lightweight panel",
+    );
+
+    await closePage();
+    const reducedMobilePage = await openPage({
+      ...devices["iPhone 13"],
+      reducedMotion: "reduce",
+    });
 
     await reducedMobilePage.goto(baseUrl, { waitUntil: "domcontentloaded" });
     await reducedMobilePage.waitForFunction(
@@ -271,7 +350,11 @@ async function main() {
     await reducedMobilePage.waitForFunction(
       () => {
         const stage = document.querySelector('[data-testid="hero-stage"]');
-        return stage?.dataset.sceneId === "bar" && stage.dataset.mediaMode === "stills";
+        return (
+          stage?.dataset.confirmedSceneId === "bar" &&
+          stage.dataset.mediaMode === "stills" &&
+          stage.dataset.playbackState === "settled"
+        );
       },
       undefined,
       { timeout: 3500 },
@@ -282,34 +365,39 @@ async function main() {
       "Reduced-motion mobile should keep visuals synchronized with the active scene",
     );
 
+    await closePage();
+    const fallbackMobilePage = await openPage({ ...devices["iPhone 13"] });
     await fallbackMobilePage.route("**/journey-*.mp4", (route) => route.abort());
     await fallbackMobilePage.goto(baseUrl, { waitUntil: "domcontentloaded" });
-    const fallbackCanvas = fallbackMobilePage.locator('[data-testid="journey-canvas"]');
-    await fallbackCanvas.waitFor({ state: "visible", timeout: 4500 });
+    await fallbackMobilePage.waitForFunction(
+      () =>
+        document.querySelector('[data-testid="hero-stage"]')?.dataset.mediaMode === "fallback",
+      undefined,
+      { timeout: 4500 },
+    );
+    assert.equal(
+      await fallbackMobilePage.locator('[data-testid="journey-canvas"]').count(),
+      0,
+      "Fallback should use scene stills rather than the JPEG canvas runtime",
+    );
     await fallbackMobilePage.evaluate(() => {
       window.scrollTo({ top: window.innerHeight, behavior: "auto" });
     });
     await fallbackMobilePage.waitForFunction(
       () => {
         const stage = document.querySelector('[data-testid="hero-stage"]');
-        const canvas = document.querySelector('[data-testid="journey-canvas"]');
-        return stage?.dataset.sceneId === "bar" && Number(canvas?.dataset.frame) > 0;
+        return (
+          stage?.dataset.confirmedSceneId === "bar" &&
+          stage.dataset.mediaMode === "fallback" &&
+          stage.dataset.playbackState === "fallback"
+        );
       },
       undefined,
       { timeout: 4500 },
     );
 
-    const mobileMenuButton = mobilePage.getByRole("button", { name: "Menu", exact: true });
-    await mobileMenuButton.waitFor({ state: "visible", timeout: 2500 });
-    await mobileMenuButton.click();
-    await mobilePage
-      .locator('[data-testid="mobile-nav-panel"]')
-      .waitFor({ state: "visible", timeout: 2500 });
-    assert.ok(
-      (await readTextContents(mobilePage, '[data-testid="mobile-nav-panel"] a')).includes("Beach"),
-      "Mobile navigation should expose the primary sections inside a lightweight panel",
-    );
-
+    await closePage();
+    page = await openPage();
     await page.goto(`${baseUrl}/prenotazioni`, { waitUntil: "networkidle" });
     const bookingForm = page.locator('[data-testid="booking-inquiry-form"]');
     await bookingForm.waitFor({ state: "visible", timeout: 2500 });
@@ -395,7 +483,7 @@ async function main() {
 
     console.log("web smoke test passed");
   } finally {
-    await mobilePage.close();
+    await closePage();
     await browser.close();
   }
 }

@@ -203,6 +203,12 @@ button {
   top: var(--hotspot-y, 50%);
 }
 
+@media (max-width: 767px) {
+  .journey-marker {
+    display: none;
+  }
+}
+
 /* On phones the copy block owns the lower half of the stage: keep markers
    in the upper band so they never overlap the scene text. */
 @media (max-width: 640px) {
