@@ -68,6 +68,7 @@ export function ScrollVideoStage() {
     "initial",
   );
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [panelSceneIndex, setPanelSceneIndex] = useState(0);
   const [sheetHotspot, setSheetHotspot] = useState<JourneyHotspot | null>(null);
 
   const playbackState = mediaMode === "fallback" ? "fallback" : isScrubbing ? "moving" : "settled";
@@ -343,6 +344,7 @@ export function ScrollVideoStage() {
 
   const confirmedIndex = activeIndex;
   const activeScene = homeJourney.scenes[activeIndex] ?? homeJourney.scenes[0];
+  const panelScene = homeJourney.scenes[panelSceneIndex] ?? activeScene;
   const isMoving = isScrubbing;
   const sceneFraction = isMoving ? 0.35 : 1;
   const rawSettle = isMoving ? 0.3 : 1;
@@ -670,7 +672,10 @@ export function ScrollVideoStage() {
                 <button
                   type="button"
                   data-testid="menu-popup-trigger"
-                  onClick={() => setIsPanelOpen(true)}
+                  onClick={() => {
+                    setPanelSceneIndex(activeIndex);
+                    setIsPanelOpen(true);
+                  }}
                   className="inline-flex cursor-pointer items-baseline self-center border-b border-[rgba(232,200,158,0.55)] pb-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#f5efe6] transition hover:border-[#e8c89e] hover:text-[#e8c89e]"
                   style={{ textShadow: "0 1px 12px rgba(6,6,7,0.6)" }}
                 >
@@ -762,10 +767,10 @@ export function ScrollVideoStage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[0.64rem] uppercase tracking-[0.26em] text-[#e8c89e]">
-                  Hawaii • {activeScene.eyebrow}
+                  Hawaii • {panelScene.eyebrow}
                 </p>
                 <p className="mt-2 font-serif text-2xl leading-tight text-[#f5efe6]">
-                  {activeScene.menu ? "Dal menu" : "Prenota il tuo momento"}
+                  {panelScene.menu ? "Dal menu" : "Prenota il tuo momento"}
                 </p>
               </div>
               <button
@@ -780,10 +785,10 @@ export function ScrollVideoStage() {
               </button>
             </div>
 
-            {activeScene.menu ? (
+            {panelScene.menu ? (
               <div className="mt-5">
                 <ul className="grid gap-2.5 text-sm leading-6 text-[#eaeae5]">
-                  {activeScene.menu.items.map((item) => (
+                  {panelScene.menu.items.map((item) => (
                     <li key={item.name} className="flex items-baseline justify-between gap-4">
                       <span>{item.name}</span>
                       {item.price ? (
@@ -793,7 +798,7 @@ export function ScrollVideoStage() {
                   ))}
                 </ul>
                 <Link
-                  href={`/menu#${activeScene.menu.anchor}`}
+                  href={`/menu#${panelScene.menu.anchor}`}
                   onClick={() => setIsPanelOpen(false)}
                   className="mt-4 inline-block text-[0.72rem] uppercase tracking-[0.18em] text-[#e8c89e] transition hover:text-[#f6ecd9]"
                 >
@@ -802,7 +807,7 @@ export function ScrollVideoStage() {
               </div>
             ) : null}
 
-            <div className={activeScene.menu ? "mt-6 border-t border-white/10 pt-5" : "mt-6"}>
+            <div className={panelScene.menu ? "mt-6 border-t border-white/10 pt-5" : "mt-6"}>
               <p className="text-[0.64rem] uppercase tracking-[0.26em] text-[#e8c89e]">
                 {quickBooking.eyebrow}
               </p>
