@@ -1,11 +1,11 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { JourneyCheckpoint } from "@/lib/journey-checkpoints";
 import { JOURNEY_FRAME_TOLERANCE_SECONDS, JOURNEY_SEEK_TOLERANCE_SECONDS, planJourneyClip } from "@/lib/journey-clip-plan";
 import {
   createJourneyClipRuntime, type JourneyClipMedia,
   isJourneyFallbackFrameReady, type JourneyClipPlayerState,
-  type JourneyClipRuntime,
+  syncJourneyClipIndexRefs, type JourneyClipRuntime,
 } from "@/lib/journey-clip-runtime";
 import type { NavigationSource } from "@/lib/journey-playback";
 type Options = {
@@ -158,7 +158,7 @@ export function useJourneyClipPlayer({ checkpoints, initialIndex = 0, reducedMot
   );
   const confirmedIndexRef = useRef(state.confirmedIndex);
   const requestedIndexRef = useRef(state.requestedIndex);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!checkpoints.length) return;
     const video = videoRef.current;
     const runtime = createJourneyClipRuntime({
@@ -177,13 +177,14 @@ export function useJourneyClipPlayer({ checkpoints, initialIndex = 0, reducedMot
       reducedMotion,
       selectStill: setSelectedStill,
       onStateChange(next) {
-        confirmedIndexRef.current = next.confirmedIndex;
-        requestedIndexRef.current = next.requestedIndex;
+        syncJourneyClipIndexRefs(next, confirmedIndexRef, requestedIndexRef);
         setState(next);
       },
     });
     runtimeRef.current = runtime;
-    setState(runtime.state());
+    const freshState = runtime.state();
+    syncJourneyClipIndexRefs(freshState, confirmedIndexRef, requestedIndexRef);
+    setState(freshState);
     const waiting = () => void runtime.waiting();
     const stalled = () => void runtime.stalled();
     const retry = () => void runtime.retryFromGesture();

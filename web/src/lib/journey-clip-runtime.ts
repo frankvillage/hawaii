@@ -59,6 +59,14 @@ export function isJourneyFallbackFrameReady(
     ? event === "seeked"
     : event === "timeupdate" && currentTime > startTime;
 }
+export function syncJourneyClipIndexRefs(
+  state: JourneyClipPlayerState,
+  confirmedIndexRef: { current: number },
+  requestedIndexRef: { current: number },
+) {
+  confirmedIndexRef.current = state.confirmedIndex;
+  requestedIndexRef.current = state.requestedIndex;
+}
 export function createJourneyClipRuntime(options: Options) {
   const {
     checkpoints, clock, media, planClip, seekToleranceSeconds,
@@ -272,6 +280,10 @@ export function createJourneyClipRuntime(options: Options) {
       showStill(destination.index, "stills", null);
       return Promise.resolve();
     }
+    if (
+      navigationSource === "rail" && state.status === "idle" &&
+      destination.index === state.confirmedIndex
+    ) return Promise.resolve();
     if (navigationSource === "rail") {
       playRejections = 0;
       set({ requestedIndex: destination.index, interruptionRetries: 0 });

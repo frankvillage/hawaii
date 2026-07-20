@@ -715,3 +715,35 @@ test("no-rVFC readiness rejects stale events and requires presented progress", (
   assert.equal(ready("timeupdate", false, 4, 4), false);
   assert.equal(ready("timeupdate", false, 4, 4.01), true);
 });
+
+test("Rail request for the confirmed scene settles without media work", async () => {
+  let playAttempts = 0;
+  const media = createMedia({
+    play() {
+      playAttempts += 1;
+      return Promise.reject(new Error("NotAllowedError"));
+    },
+  });
+  const { runtime } = createHarness({ media });
+
+  await runtime.request(0, "rail");
+
+  assert.equal(playAttempts, 0);
+  assert.equal(runtime.state().status, "idle");
+  assert.equal(runtime.state().confirmedIndex, 0);
+  assert.equal(runtime.state().requestedIndex, 0);
+  assert.equal(runtime.state().interruptionRetries, 0);
+});
+
+test("fresh runtime state synchronously replaces stale index refs", () => {
+  const syncRefs = journeyRuntime.syncJourneyClipIndexRefs;
+  assert.equal(typeof syncRefs, "function");
+  const confirmedIndexRef = { current: 2 };
+  const requestedIndexRef = { current: 1 };
+  const { runtime } = createHarness();
+
+  syncRefs(runtime.state(), confirmedIndexRef, requestedIndexRef);
+
+  assert.equal(confirmedIndexRef.current, 0);
+  assert.equal(requestedIndexRef.current, 0);
+});
