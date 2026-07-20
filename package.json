@@ -7,7 +7,7 @@
     "start:prototype": "python3 -m http.server 4173 --bind 127.0.0.1 -d prototype",
     "test:prototype": "node tests/prototype-smoke.js",
     "test:prototype:mobile": "node tests/prototype-mobile-playwright.js",
-    "test:web:journey": "node --no-warnings --experimental-strip-types --test tests/journey-playback.test.mjs tests/journey-clip-plan.test.mjs tests/journey-segment-machine.test.mjs tests/journey-segment-controller.test.mjs",
+    "test:web:journey": "node --no-warnings --experimental-strip-types --test tests/journey-playback.test.mjs tests/journey-clip-plan.test.mjs tests/journey-clip-player.test.mjs tests/journey-segment-machine.test.mjs tests/journey-segment-controller.test.mjs",
     "test:web:static": "node tests/web-static.js",
     "test:web:smoke": "node tests/web-smoke.js",
     "build:presentation": "node presentation/src/hawaii_pescara_2026_presentation.js",
