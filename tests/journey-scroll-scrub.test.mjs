@@ -3,9 +3,11 @@ import test from "node:test";
 
 import {
   advanceScrubTime,
+  playbackRateForDistance,
   sceneIndexForTimelineProgress,
   timelineProgressForSceneIndex,
   targetTimeForProgress,
+  transportForTimes,
 } from "../web/src/lib/journey-scroll-scrub.ts";
 
 const sceneRanges = [
@@ -40,6 +42,19 @@ test("one animation step cannot jump directly to a distant backward target", () 
 test("scrub steps converge without overshooting either direction", () => {
   assert.equal(advanceScrubTime(9.98, 10, 16.67), 10);
   assert.equal(advanceScrubTime(10.02, 10, 16.67), 10);
+});
+
+test("forward movement uses real playback while reverse movement uses seeking", () => {
+  assert.equal(transportForTimes(2, 8, 0.04), "play-forward");
+  assert.equal(transportForTimes(8, 2, 0.04), "seek-backward");
+  assert.equal(transportForTimes(7.98, 8, 0.04), "settled");
+});
+
+test("forward playback accelerates distant targets without exceeding a fluid rate", () => {
+  assert.equal(playbackRateForDistance(0.5), 1);
+  assert.equal(playbackRateForDistance(3), 2);
+  assert.equal(playbackRateForDistance(30), 3);
+  assert.equal(playbackRateForDistance(30, 2), 2);
 });
 
 test("invalid inputs produce finite safe times", () => {

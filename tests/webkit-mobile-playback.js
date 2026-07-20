@@ -9,6 +9,7 @@ async function videoState(page) {
     currentTime: Number(video.currentTime),
     duration: Number(video.duration),
     paused: video.paused,
+    playbackRate: Number(video.playbackRate),
   }));
 }
 
@@ -86,6 +87,15 @@ async function main() {
       if (mediaStage) {
         window.__journeyCoverObserver.observe(mediaStage, { childList: true, subtree: true });
       }
+
+      const video = document.querySelector('[data-testid="journey-video"]');
+      window.__journeyDecodedFrames = 0;
+      window.__journeyHasVideoFrameCallback = Boolean(video?.requestVideoFrameCallback);
+      const countFrame = () => {
+        window.__journeyDecodedFrames += 1;
+        video?.requestVideoFrameCallback?.(countFrame);
+      };
+      video?.requestVideoFrameCallback?.(countFrame);
     });
 
     const initial = await videoState(page);
@@ -115,17 +125,31 @@ async function main() {
       `WebKit MP4 time must progress monotonically: ${times.join(", ")}`,
     );
     assert.ok(
-      deltas.every((delta) => delta < 1.5),
-      `WebKit MP4 time must move in bounded steps instead of jumping: ${times.join(", ")}`,
+      deltas.every((delta) => delta < 0.75),
+      `WebKit MP4 time must advance through decoded playback instead of jumping: ${times.join(", ")}`,
     );
     assert.ok(
       samples[0].currentTime < targetTime - 1,
       `The first WebKit scrub step must not jump directly to ${targetTime.toFixed(2)}s: ${times.join(", ")}`,
     );
     assert.ok(
-      samples.every(({ paused }) => paused),
-      `Continuous scrubbing must seek the paused video without autonomous playback: ${JSON.stringify(samples)}`,
+      samples.filter(({ paused }) => !paused).length >= 3,
+      `Forward scrolling must keep the MP4 playing between the current and target times: ${JSON.stringify(samples)}`,
     );
+    assert.ok(
+      samples.every(({ playbackRate }) => playbackRate <= 2),
+      `Mobile playback must stay within the decoder-safe 2x limit: ${JSON.stringify(samples)}`,
+    );
+    const decodedFrameState = await page.evaluate(() => ({
+      supported: window.__journeyHasVideoFrameCallback,
+      count: window.__journeyDecodedFrames,
+    }));
+    if (decodedFrameState.supported) {
+      assert.ok(
+        decodedFrameState.count >= 3,
+        `WebKit must present decoded frames during forward playback: ${JSON.stringify(decodedFrameState)}`,
+      );
+    }
     assert.equal(
       await page.evaluate(() => {
         window.__journeyCoverObserver?.disconnect();
@@ -147,6 +171,54 @@ async function main() {
       undefined,
       { timeout: 12000 },
     );
+
+    const retryPage = await context.newPage();
+    await retryPage.addInitScript(() => {
+      const nativePlay = HTMLMediaElement.prototype.play;
+      let rejected = false;
+      HTMLMediaElement.prototype.play = function patchedPlay() {
+        if (!rejected) {
+          rejected = true;
+          return Promise.reject(new DOMException("Gesture required", "NotAllowedError"));
+        }
+        return nativePlay.call(this);
+      };
+    });
+    await retryPage.goto(baseUrl, { waitUntil: "domcontentloaded" });
+    await retryPage.waitForFunction(() => {
+      const video = document.querySelector('[data-testid="journey-video"]');
+      return video && Number.isFinite(video.duration) && video.duration > 0;
+    });
+    await retryPage.evaluate(() => {
+      const journey = document.querySelector('[data-testid="hero-stage"]');
+      const scrollable = Math.max(journey.offsetHeight - window.innerHeight, 1);
+      const journeyTop = window.scrollY + journey.getBoundingClientRect().top;
+      window.scrollTo({ top: journeyTop + scrollable * 0.08, behavior: "auto" });
+    });
+    await retryPage.waitForFunction(
+      () =>
+        document.querySelector('[data-testid="hero-stage"]')?.dataset.playbackState ===
+        "waiting-for-gesture",
+      undefined,
+      { timeout: 3000 },
+    );
+    assert.equal(
+      await retryPage.locator('[data-testid="hero-stage"]').getAttribute("data-media-mode"),
+      "video",
+      "A first play rejection must keep the MP4 ready for a gesture retry",
+    );
+    await retryPage.dispatchEvent('[data-testid="scroll-video-stage"]', "pointerdown", {
+      pointerType: "touch",
+    });
+    await retryPage.waitForFunction(
+      () => {
+        const video = document.querySelector('[data-testid="journey-video"]');
+        return video && !video.paused && video.currentTime > 0.05;
+      },
+      undefined,
+      { timeout: 4000 },
+    );
+    await retryPage.close();
 
     console.log("webkit mobile continuous journey checks passed");
   } finally {

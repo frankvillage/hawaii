@@ -11,9 +11,11 @@ import {
 } from "@/lib/journey-playback";
 import {
   advanceScrubTime,
+  playbackRateForDistance,
   sceneIndexForTimelineProgress,
   timelineProgressForSceneIndex,
   targetTimeForProgress,
+  transportForTimes,
 } from "@/lib/journey-scroll-scrub";
 import {
   homeHero,
@@ -51,6 +53,11 @@ export function ScrollVideoStage() {
   const scrollDirtyRef = useRef(true);
   const lastScrubTickRef = useRef(0);
   const seekStartedAtRef = useRef(0);
+  const playAttemptRef = useRef(false);
+  const playAttemptIdRef = useRef(0);
+  const playRejectionCountRef = useRef(0);
+  const waitingForGestureRef = useRef(false);
+  const maxPlaybackRateRef = useRef(3);
   const railScrollingRef = useRef(false);
   const railScrollTimeoutRef = useRef(0);
   const progressRef = useRef(0);
@@ -62,6 +69,7 @@ export function ScrollVideoStage() {
   const [isReducedMotion, setIsReducedMotion] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isScrubbing, setIsScrubbing] = useState(false);
+  const [isWaitingForGesture, setIsWaitingForGesture] = useState(false);
   const [mediaMode, setMediaMode] = useState<JourneyMediaMode>("video");
   const [fallbackReason, setFallbackReason] = useState("");
   const [navigationSource, setNavigationSource] = useState<NavigationSource | "initial">(
@@ -71,7 +79,14 @@ export function ScrollVideoStage() {
   const [panelSceneIndex, setPanelSceneIndex] = useState(0);
   const [sheetHotspot, setSheetHotspot] = useState<JourneyHotspot | null>(null);
 
-  const playbackState = mediaMode === "fallback" ? "fallback" : isScrubbing ? "moving" : "settled";
+  const playbackState =
+    mediaMode === "fallback"
+      ? "fallback"
+      : isWaitingForGesture
+        ? "waiting-for-gesture"
+        : isScrubbing
+          ? "moving"
+          : "settled";
 
   const stopScrub = useCallback(() => {
     if (journeyFrameRef.current) {
@@ -80,7 +95,14 @@ export function ScrollVideoStage() {
     }
     lastScrubTickRef.current = 0;
     seekStartedAtRef.current = 0;
-    videoRef.current?.pause();
+    playAttemptRef.current = false;
+    playAttemptIdRef.current += 1;
+    waitingForGestureRef.current = false;
+    setIsWaitingForGesture(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.playbackRate = 1;
+    }
     setIsScrubbing(false);
   }, []);
 
@@ -94,6 +116,14 @@ export function ScrollVideoStage() {
     }
     lastScrubTickRef.current = 0;
     seekStartedAtRef.current = 0;
+    playAttemptRef.current = false;
+    playAttemptIdRef.current += 1;
+    waitingForGestureRef.current = false;
+    setIsWaitingForGesture(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.playbackRate = 1;
+    }
     setIsScrubbing(false);
   }, []);
 
@@ -139,6 +169,12 @@ export function ScrollVideoStage() {
         return;
       }
 
+      if (waitingForGestureRef.current) {
+        lastScrubTickRef.current = 0;
+        setIsScrubbing(false);
+        return;
+      }
+
       if (video.seeking) {
         if (!seekStartedAtRef.current) seekStartedAtRef.current = timestamp;
         if (timestamp - seekStartedAtRef.current > 1500) {
@@ -150,49 +186,78 @@ export function ScrollVideoStage() {
       }
       seekStartedAtRef.current = 0;
 
+      const usableDuration = Math.max(durationRef.current - JOURNEY_FRAME_SECONDS, 0);
+      const visibleProgress = usableDuration > 0 ? video.currentTime / usableDuration : 0;
+      const visibleIndex = sceneIndexForTimelineProgress(visibleProgress, homeJourney.scenes);
+      const transport = transportForTimes(
+        video.currentTime,
+        targetTimeRef.current,
+        JOURNEY_FRAME_SECONDS,
+      );
+
+      setActiveIndex((current) => (current === visibleIndex ? current : visibleIndex));
+
+      if (transport === "play-forward") {
+        seekStartedAtRef.current = 0;
+        lastScrubTickRef.current = timestamp;
+        video.playbackRate = playbackRateForDistance(
+          targetTimeRef.current - video.currentTime,
+          maxPlaybackRateRef.current,
+        );
+
+        if (video.paused && !playAttemptRef.current) {
+          const attemptId = ++playAttemptIdRef.current;
+          playAttemptRef.current = true;
+          void video.play().then(
+            () => {
+              if (attemptId !== playAttemptIdRef.current) return;
+              playAttemptRef.current = false;
+              playRejectionCountRef.current = 0;
+            },
+            () => {
+              if (attemptId !== playAttemptIdRef.current) return;
+              playAttemptRef.current = false;
+              playRejectionCountRef.current += 1;
+              if (playRejectionCountRef.current >= 2) {
+                activateFallback("play-rejected");
+                return;
+              }
+              waitingForGestureRef.current = true;
+              setIsWaitingForGesture(true);
+              setIsScrubbing(false);
+            },
+          );
+        }
+
+        journeyFrameRef.current = window.requestAnimationFrame(tick);
+        return;
+      }
+
+      if (transport === "settled") {
+        playAttemptIdRef.current += 1;
+        video.pause();
+        video.playbackRate = 1;
+        playAttemptRef.current = false;
+        lastScrubTickRef.current = 0;
+        setIsScrubbing(false);
+        return;
+      }
+
       const elapsed = lastScrubTickRef.current
         ? timestamp - lastScrubTickRef.current
         : 1000 / 60;
       lastScrubTickRef.current = timestamp;
       const nextTime = advanceScrubTime(video.currentTime, targetTimeRef.current, elapsed);
-      const distance = Math.abs(targetTimeRef.current - nextTime);
-      const usableDuration = Math.max(durationRef.current - JOURNEY_FRAME_SECONDS, 0);
-      const visibleProgress = usableDuration > 0 ? video.currentTime / usableDuration : 0;
-      const visibleIndex = sceneIndexForTimelineProgress(visibleProgress, homeJourney.scenes);
-      let wroteTime = false;
-
-      setActiveIndex((current) => (current === visibleIndex ? current : visibleIndex));
 
       try {
+        playAttemptIdRef.current += 1;
         video.pause();
-        if (Math.abs(video.currentTime - nextTime) >= JOURNEY_FRAME_SECONDS) {
-          video.currentTime = nextTime;
-          seekStartedAtRef.current = timestamp;
-          wroteTime = true;
-        }
+        video.playbackRate = 1;
+        playAttemptRef.current = false;
+        video.currentTime = nextTime;
+        seekStartedAtRef.current = timestamp;
       } catch {
         activateFallback("seek-error");
-        return;
-      }
-
-      if (distance <= JOURNEY_FRAME_SECONDS) {
-        if (wroteTime || video.seeking) {
-          journeyFrameRef.current = window.requestAnimationFrame(tick);
-          return;
-        }
-        try {
-          if (Math.abs(video.currentTime - targetTimeRef.current) >= JOURNEY_FRAME_SECONDS) {
-            video.currentTime = targetTimeRef.current;
-            seekStartedAtRef.current = timestamp;
-            journeyFrameRef.current = window.requestAnimationFrame(tick);
-            return;
-          }
-        } catch {
-          activateFallback("seek-error");
-          return;
-        }
-        lastScrubTickRef.current = 0;
-        setIsScrubbing(false);
         return;
       }
 
@@ -202,8 +267,43 @@ export function ScrollVideoStage() {
     journeyFrameRef.current = window.requestAnimationFrame(tick);
   }, [activateFallback]);
 
+  const retryPlaybackFromGesture = useCallback(() => {
+    const video = videoRef.current;
+    if (!waitingForGestureRef.current || !video || mediaModeRef.current !== "video") {
+      return;
+    }
+
+    waitingForGestureRef.current = false;
+    setIsWaitingForGesture(false);
+    setIsScrubbing(true);
+    const attemptId = ++playAttemptIdRef.current;
+    playAttemptRef.current = true;
+
+    void video.play().then(
+      () => {
+        if (attemptId !== playAttemptIdRef.current) return;
+        playAttemptRef.current = false;
+        playRejectionCountRef.current = 0;
+        requestJourneyFrame();
+      },
+      () => {
+        if (attemptId !== playAttemptIdRef.current) return;
+        playAttemptRef.current = false;
+        playRejectionCountRef.current += 1;
+        if (playRejectionCountRef.current >= 2) {
+          activateFallback("play-rejected");
+          return;
+        }
+        waitingForGestureRef.current = true;
+        setIsWaitingForGesture(true);
+        setIsScrubbing(false);
+      },
+    );
+  }, [activateFallback, requestJourneyFrame]);
+
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const coarsePointerQuery = window.matchMedia("(pointer: coarse)");
     const syncMotionPreference = () => {
       const reduced = mediaQuery.matches;
       reducedMotionRef.current = reduced;
@@ -222,10 +322,18 @@ export function ScrollVideoStage() {
         requestJourneyFrame();
       }
     };
+    const syncPlaybackRate = () => {
+      maxPlaybackRateRef.current = coarsePointerQuery.matches ? 2 : 3;
+    };
 
     syncMotionPreference();
+    syncPlaybackRate();
     mediaQuery.addEventListener("change", syncMotionPreference);
-    return () => mediaQuery.removeEventListener("change", syncMotionPreference);
+    coarsePointerQuery.addEventListener("change", syncPlaybackRate);
+    return () => {
+      mediaQuery.removeEventListener("change", syncMotionPreference);
+      coarsePointerQuery.removeEventListener("change", syncPlaybackRate);
+    };
   }, [requestJourneyFrame, stopScrub]);
 
   useEffect(() => {
@@ -436,6 +544,7 @@ export function ScrollVideoStage() {
         ref={stageRef}
         data-testid="scroll-video-stage"
         className="journey-stage sticky top-0 h-[100svh] overflow-hidden"
+        onPointerDown={retryPlaybackFromGesture}
         onMouseMove={handlePointerMove}
         onMouseLeave={resetPointer}
       >

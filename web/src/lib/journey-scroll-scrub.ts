@@ -1,5 +1,6 @@
 const MAX_CATCHUP_RATE = 3;
 const MAX_ELAPSED_MS = 50;
+const MAX_FORWARD_PLAYBACK_RATE = 3;
 
 type TimelineRange = {
   start: number;
@@ -38,6 +39,36 @@ export function advanceScrubTime(
   if (maximumStep === 0) return current;
 
   return current + Math.sign(difference) * maximumStep;
+}
+
+export type JourneyTransport = "play-forward" | "seek-backward" | "settled";
+
+export function transportForTimes(
+  currentTime: number,
+  targetTime: number,
+  tolerance: number,
+): JourneyTransport {
+  const current = finiteNonNegative(currentTime);
+  const target = finiteNonNegative(targetTime);
+  const safeTolerance = finiteNonNegative(tolerance);
+  const difference = target - current;
+
+  if (Math.abs(difference) <= safeTolerance) return "settled";
+  return difference > 0 ? "play-forward" : "seek-backward";
+}
+
+export function playbackRateForDistance(
+  distance: number,
+  maximumRate = MAX_FORWARD_PLAYBACK_RATE,
+) {
+  const safeDistance = finiteNonNegative(distance);
+  const safeMaximumRate = clamp(
+    Number.isFinite(maximumRate) ? maximumRate : 1,
+    1,
+    MAX_FORWARD_PLAYBACK_RATE,
+  );
+
+  return clamp(safeDistance / 1.5, 1, safeMaximumRate);
 }
 
 export function sceneIndexForTimelineProgress(
