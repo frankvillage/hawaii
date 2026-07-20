@@ -6,7 +6,9 @@ import {
   JOURNEY_SEEK_TOLERANCE_SECONDS,
   planJourneyClip,
 } from "../web/src/lib/journey-clip-plan.ts";
-import { createJourneyClipRuntime } from "../web/src/lib/journey-clip-runtime.ts";
+import * as journeyRuntime from "../web/src/lib/journey-clip-runtime.ts";
+
+const { createJourneyClipRuntime } = journeyRuntime;
 
 const checkpoints = [
   {
@@ -90,6 +92,9 @@ function createClock() {
     },
     activeTimers() {
       return timers.size;
+    },
+    activeTimersFor(ms) {
+      return [...timers.values()].filter((timer) => timer.ms === ms).length;
     },
   };
 }
@@ -575,4 +580,138 @@ test("fallback confirms only canonical scene stills and never timeline JPEGs", a
     media.calls.some(([name]) => name === "waitForDecodedFrame"),
     false,
   );
+});
+
+test("pageshow reconciles and resumes the request retained by pagehide", async () => {
+  const { clock, media, runtime } = createHarness();
+  media.setCurrentTime(10);
+  const hiddenTransition = runtime.request(2, "scroll");
+  await flushMicrotasks();
+
+  runtime.pageHide();
+  const shown = runtime.pageShow();
+  await flushMicrotasks();
+  media.resolveFrame(2);
+  await shown;
+
+  assert.equal(clock.activeFrames(), 1);
+  clock.flushFrame();
+  await flushMicrotasks();
+  assert.equal(runtime.state().targetIndex, 2);
+
+  media.resolveFrame(9.75);
+  await confirmCurrentTarget(media, 12);
+  await hiddenTransition;
+  assert.equal(runtime.state().confirmedIndex, 2);
+});
+
+test("gesture retry calls play synchronously without repeating the intro delay", async () => {
+  let playAttempts = 0;
+  const media = createMedia({
+    play() {
+      playAttempts += 1;
+      return playAttempts === 1
+        ? Promise.reject(new Error("NotAllowedError"))
+        : Promise.resolve();
+    },
+  });
+  const { clock, runtime } = createHarness({ media });
+  const intro = runtime.request(0, "intro");
+  clock.fireTimeout(1_000);
+  await flushMicrotasks();
+  media.resolveFrame(0);
+  await intro;
+  assert.equal(runtime.state().status, "waiting-for-gesture");
+
+  const retry = runtime.retryFromGesture();
+
+  assert.equal(playAttempts, 2);
+  assert.equal(clock.activeTimersFor(1_000), 0);
+  await confirmCurrentTarget(media, 2);
+  await retry;
+  assert.equal(runtime.state().confirmedIndex, 0);
+});
+
+test("Rail replacement receives a fresh interruption retry budget", async () => {
+  const { media, runtime } = createHarness();
+  media.setCurrentTime(3);
+  const first = runtime.request(1, "scroll");
+  await flushMicrotasks();
+  const retry = runtime.waiting();
+  await flushMicrotasks();
+  assert.equal(runtime.state().interruptionRetries, 1);
+
+  const rail = runtime.request(2, "rail");
+
+  assert.equal(runtime.state().interruptionRetries, 0);
+  runtime.dispose();
+  await Promise.all([first, retry, rail]);
+});
+
+test("Rail replacement receives a fresh play-rejection budget", async () => {
+  const media = createMedia({
+    play: () => Promise.reject(new Error("NotAllowedError")),
+  });
+  media.setCurrentTime(3);
+  const { runtime } = createHarness({ media });
+  await runtime.request(1, "scroll");
+  assert.equal(runtime.state().status, "waiting-for-gesture");
+
+  const rail = runtime.request(2, "rail");
+  await flushMicrotasks();
+  media.resolveFrame(9.75);
+  await rail;
+
+  assert.equal(runtime.state().status, "waiting-for-gesture");
+  assert.equal(runtime.state().fallbackReason, null);
+});
+
+test("a retained visibility callback cannot replace a newer Rail operation", async () => {
+  const { clock, media, runtime } = createHarness();
+  media.setCurrentTime(10);
+  const hidden = runtime.request(2, "scroll");
+  await flushMicrotasks();
+  runtime.visibilityHidden();
+  const visible = runtime.visibilityVisible();
+  await flushMicrotasks();
+  media.resolveFrame(2);
+  await visible;
+  assert.equal(clock.activeFrames(), 1);
+
+  const rail = runtime.request(1, "rail");
+  await flushMicrotasks();
+  const railSignal = media.calls.filter(
+    ([name]) => name === "waitForDecodedFrame",
+  ).at(-1)[1];
+  clock.flushFrame();
+
+  assert.equal(railSignal.aborted, false);
+  assert.equal(runtime.state().targetIndex, 1);
+  runtime.dispose();
+  await Promise.all([hidden, rail]);
+});
+
+test("an active AbortError play rejection waits for gesture instead of sticking", async () => {
+  const media = createMedia({
+    play: () => Promise.reject(new DOMException("Interrupted", "AbortError")),
+  });
+  media.setCurrentTime(3);
+  const { runtime } = createHarness({ media });
+
+  await runtime.request(1, "scroll");
+
+  assert.equal(runtime.state().status, "waiting-for-gesture");
+  assert.equal(runtime.state().requestedIndex, 1);
+});
+
+test("no-rVFC readiness rejects stale events and requires presented progress", () => {
+  const ready = journeyRuntime.isJourneyFallbackFrameReady;
+  assert.equal(typeof ready, "function");
+
+  assert.equal(ready("loadeddata", true, 4, 4), false);
+  assert.equal(ready("timeupdate", true, 4, 4), false);
+  assert.equal(ready("seeked", true, 4, 4), true);
+  assert.equal(ready("loadeddata", false, 4, 5), false);
+  assert.equal(ready("timeupdate", false, 4, 4), false);
+  assert.equal(ready("timeupdate", false, 4, 4.01), true);
 });

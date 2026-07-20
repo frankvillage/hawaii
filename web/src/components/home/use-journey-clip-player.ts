@@ -4,7 +4,8 @@ import type { JourneyCheckpoint } from "@/lib/journey-checkpoints";
 import { JOURNEY_FRAME_TOLERANCE_SECONDS, JOURNEY_SEEK_TOLERANCE_SECONDS, planJourneyClip } from "@/lib/journey-clip-plan";
 import {
   createJourneyClipRuntime, type JourneyClipMedia,
-  type JourneyClipPlayerState, type JourneyClipRuntime,
+  isJourneyFallbackFrameReady, type JourneyClipPlayerState,
+  type JourneyClipRuntime,
 } from "@/lib/journey-clip-runtime";
 import type { NavigationSource } from "@/lib/journey-playback";
 type Options = {
@@ -55,12 +56,41 @@ function waitForEvent(
     events.forEach((event) => video.addEventListener(event, finish, { once: true }));
   });
 }
-function decodedFrame(video: HTMLVideoElement, signal: AbortSignal) {
+function fallbackFrame(
+  video: HTMLVideoElement,
+  signal: AbortSignal,
+  seeking: boolean,
+) {
+  return new Promise<number>((resolve, reject) => {
+    const startTime = video.currentTime;
+    const eventName = seeking ? "seeked" : "timeupdate";
+    const cleanup = () => {
+      signal.removeEventListener("abort", abort);
+      video.removeEventListener(eventName, frame);
+    };
+    const frame = (event: Event) => {
+      if (!isJourneyFallbackFrameReady(
+        event.type, seeking, startTime, video.currentTime,
+      )) return;
+      cleanup();
+      resolve(video.currentTime);
+    };
+    const abort = () => {
+      cleanup();
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    signal.addEventListener("abort", abort, { once: true });
+    video.addEventListener(eventName, frame);
+  });
+}
+function decodedFrame(
+  video: HTMLVideoElement,
+  signal: AbortSignal,
+  seeking: boolean,
+) {
   const frameVideo = video as FrameVideo;
   if (!frameVideo.requestVideoFrameCallback) {
-    return waitForEvent(video, signal, ["seeked", "loadeddata", "timeupdate"]).then(
-      () => video.currentTime,
-    );
+    return fallbackFrame(video, signal, seeking);
   }
   return new Promise<number>((resolve, reject) => {
     const id = frameVideo.requestVideoFrameCallback!((_now, metadata) => {
@@ -101,7 +131,8 @@ function mediaAdapter(
     },
     seek: (time) => { video.currentTime = time; },
     setPlaybackRate: (rate) => { video.playbackRate = Math.min(Math.max(rate, 1), 1.25); },
-    waitForDecodedFrame: (signal) => decodedFrame(video, signal),
+    waitForDecodedFrame: (signal, expectedTime) =>
+      decodedFrame(video, signal, expectedTime !== undefined),
     waitForPlayable: (signal) =>
       video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA
         ? Promise.resolve()
@@ -173,9 +204,11 @@ export function useJourneyClipPlayer({ checkpoints, initialIndex = 0, reducedMot
         ? runtime.visibilityHidden()
         : void runtime.visibilityVisible();
     const pageHide = () => runtime.pageHide();
+    const pageShow = () => void runtime.pageShow();
     const listeners: [EventTarget, string, EventListener][] = [
       [document, "visibilitychange", visibility],
       [window, "pagehide", pageHide],
+      [window, "pageshow", pageShow],
       [window, "pointerdown", retry],
       [window, "touchstart", retry],
     ];

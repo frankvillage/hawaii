@@ -17,7 +17,7 @@ export type JourneyClipMedia = {
   pause(): void;
   seek(time: number): void;
   setPlaybackRate(rate: number): void;
-  waitForDecodedFrame(signal: AbortSignal): Promise<number>;
+  waitForDecodedFrame(signal: AbortSignal, expectedTime?: number): Promise<number>;
   waitForPlayable(signal: AbortSignal): Promise<void>;
   unload(): void;
 };
@@ -27,7 +27,7 @@ type Clock = {
   nextFrame(callback: () => void): number;
   cancelFrame(id: number): void;
 };
-type Operation = { controller: AbortController };
+type Operation = { controller: AbortController; token: number };
 type Interruption = "waiting" | "stalled" | "unexpectedPause";
 type Options = {
   checkpoints: readonly JourneyCheckpoint[]; clock: Clock; media: JourneyClipMedia;
@@ -48,6 +48,17 @@ type Options = {
 const aborted = () => new DOMException("Aborted", "AbortError");
 const isAbort = (error: unknown) =>
   error instanceof DOMException && error.name === "AbortError";
+export function isJourneyFallbackFrameReady(
+  event: string,
+  seeking: boolean,
+  startTime: number,
+  currentTime: number,
+) {
+  if (!Number.isFinite(currentTime)) return false;
+  return seeking
+    ? event === "seeked"
+    : event === "timeupdate" && currentTime > startTime;
+}
 export function createJourneyClipRuntime(options: Options) {
   const {
     checkpoints, clock, media, planClip, seekToleranceSeconds,
@@ -65,6 +76,7 @@ export function createJourneyClipRuntime(options: Options) {
     fallbackReason: null, interruptionRetries: 0, disposed: false,
   };
   let operation: Operation | null = null;
+  let operationToken = 0;
   let task: Promise<void> | null = null;
   let source: NavigationSource = "scroll";
   let playRejections = 0;
@@ -86,7 +98,7 @@ export function createJourneyClipRuntime(options: Options) {
   }
   function begin() {
     stop();
-    operation = { controller: new AbortController() };
+    operation = { controller: new AbortController(), token: ++operationToken };
     return operation;
   }
   function release(candidate: Operation) {
@@ -154,7 +166,7 @@ export function createJourneyClipRuntime(options: Options) {
   async function verify(candidate: Operation, time: number, tolerance: number) {
     const decoded = await watched(
       candidate,
-      media.waitForDecodedFrame(candidate.controller.signal),
+      media.waitForDecodedFrame(candidate.controller.signal, time),
     );
     return (
       active(candidate) &&
@@ -163,38 +175,16 @@ export function createJourneyClipRuntime(options: Options) {
       Math.abs(decoded - time) <= tolerance
     );
   }
-  async function move(index: number, navigationSource: NavigationSource) {
-    const destination = at(index);
-    const candidate = begin();
-    source = navigationSource;
-    const plan = planClip({
-      currentTime: media.currentTime(),
-      targetTime: destination.time,
-      source: navigationSource,
-      isIntro: navigationSource === "intro",
-    });
-    set({
-      status: "moving", targetIndex: destination.index,
-      targetTime: destination.time,
-      coverIndex: plan.seekTime === null ? null : destination.index,
-      mediaMode: "video",
-    });
+  async function finishMove(
+    candidate: Operation,
+    destination: JourneyCheckpoint,
+    play: Promise<void>,
+  ) {
     try {
-      if (navigationSource === "intro") await delay(candidate);
-      if (!active(candidate)) return false;
-      if (plan.seekTime !== null) {
-        media.pause();
-        media.seek(plan.seekTime);
-        if (!(await verify(candidate, plan.seekTime, seekToleranceSeconds))) {
-          fallback("seek-failed");
-          return false;
-        }
-      }
-      media.setPlaybackRate(plan.playbackRate);
       try {
-        await watched(candidate, media.play());
-      } catch (error) {
-        if (!active(candidate) || isAbort(error)) return false;
+        await watched(candidate, play);
+      } catch {
+        if (!active(candidate)) return false;
         release(candidate);
         if (++playRejections === 1) set({ status: "waiting-for-gesture" });
         else fallback("play-rejected");
@@ -226,20 +216,50 @@ export function createJourneyClipRuntime(options: Options) {
       return false;
     }
   }
-  function start(index: number, navigationSource: NavigationSource) {
-    const next = move(index, navigationSource).then(async (confirmed) => {
-      if (
-        confirmed &&
-        !state.disposed &&
-        !hidden &&
-        state.status !== "fallback" &&
-        state.requestedIndex !== state.confirmedIndex
-      ) {
-        await start(state.requestedIndex, "scroll");
+  async function move(index: number, navigationSource: NavigationSource) {
+    const destination = at(index);
+    const candidate = begin();
+    source = navigationSource;
+    const plan = planClip({
+      currentTime: media.currentTime(), targetTime: destination.time,
+      source: navigationSource, isIntro: navigationSource === "intro",
+    });
+    set({
+      status: "moving", targetIndex: destination.index,
+      targetTime: destination.time,
+      coverIndex: plan.seekTime === null ? null : destination.index,
+      mediaMode: "video",
+    });
+    try {
+      if (navigationSource === "intro") await delay(candidate);
+      if (!active(candidate)) return false;
+      if (plan.seekTime !== null) {
+        media.pause();
+        media.seek(plan.seekTime);
+        if (!(await verify(candidate, plan.seekTime, seekToleranceSeconds))) {
+          fallback("seek-failed");
+          return false;
+        }
       }
+      media.setPlaybackRate(plan.playbackRate);
+      return finishMove(candidate, destination, media.play());
+    } catch (error) {
+      if (active(candidate) && !isAbort(error)) fallback("operation-timeout");
+      return false;
+    }
+  }
+  function own(nextMove: Promise<boolean>) {
+    const next = nextMove.then(async (confirmed) => {
+      if (
+        confirmed && !state.disposed && !hidden && state.status !== "fallback" &&
+        state.requestedIndex !== state.confirmedIndex
+      ) await start(state.requestedIndex, "scroll");
     });
     task = next;
     return next;
+  }
+  function start(index: number, navigationSource: NavigationSource) {
+    return own(move(index, navigationSource));
   }
   function request(index: number, navigationSource: NavigationSource) {
     if (state.disposed) return Promise.resolve();
@@ -252,7 +272,10 @@ export function createJourneyClipRuntime(options: Options) {
       showStill(destination.index, "stills", null);
       return Promise.resolve();
     }
-    set({ requestedIndex: destination.index });
+    if (navigationSource === "rail") {
+      playRejections = 0;
+      set({ requestedIndex: destination.index, interruptionRetries: 0 });
+    } else set({ requestedIndex: destination.index });
     if (
       navigationSource === "scroll" &&
       (state.status === "moving" || state.status === "waiting-for-gesture")
@@ -263,7 +286,10 @@ export function createJourneyClipRuntime(options: Options) {
     if (state.disposed || hidden || state.status !== "waiting-for-gesture") {
       return Promise.resolve();
     }
-    return start(state.targetIndex ?? state.requestedIndex, source);
+    const destination = at(state.targetIndex ?? state.requestedIndex);
+    const candidate = begin();
+    set({ status: "moving", targetIndex: destination.index });
+    return own(finishMove(candidate, destination, media.play()));
   }
   function interrupt(reason: Interruption) {
     if (state.disposed || state.status !== "moving") return Promise.resolve();
@@ -317,10 +343,14 @@ export function createJourneyClipRuntime(options: Options) {
       }
       release(candidate);
       set({ status: "idle", targetIndex: null, coverIndex: null });
+      const resumeToken = candidate.token;
       let frame = 0;
       frame = clock.nextFrame(() => {
         frames.delete(frame);
-        if (!state.disposed && !hidden && state.requestedIndex !== state.confirmedIndex) {
+        if (
+          operationToken === resumeToken && !state.disposed && !hidden &&
+          state.requestedIndex !== state.confirmedIndex
+        ) {
           start(state.requestedIndex, "scroll");
         }
       });
@@ -347,6 +377,7 @@ export function createJourneyClipRuntime(options: Options) {
     visibilityHidden: suspend,
     visibilityVisible,
     pageHide: suspend,
+    pageShow: visibilityVisible,
     mediaError: () => fallback("media-error"),
     dispose,
     state: snapshot,
