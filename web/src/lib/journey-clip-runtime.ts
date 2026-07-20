@@ -48,6 +48,7 @@ type Options = {
 const aborted = () => new DOMException("Aborted", "AbortError");
 const isAbort = (error: unknown) =>
   error instanceof DOMException && error.name === "AbortError";
+export const JOURNEY_OPERATION_TIMEOUT_MS = 2_500;
 export function isJourneyFallbackFrameReady(
   event: string,
   seeking: boolean,
@@ -71,7 +72,9 @@ export function createJourneyClipRuntime(options: Options) {
   const {
     checkpoints, clock, media, planClip, seekToleranceSeconds,
     frameToleranceSeconds, selectStill, onStateChange, initialIndex = 0,
-    introDelayMs = 1_000, operationTimeoutMs = 800, reducedMotion = false,
+    introDelayMs = 1_000,
+    operationTimeoutMs = JOURNEY_OPERATION_TIMEOUT_MS,
+    reducedMotion = false,
   } = options;
   if (!checkpoints.length) throw new Error("Journey requires checkpoints");
   const at = (index: number) =>

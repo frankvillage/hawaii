@@ -10,6 +10,10 @@ import * as journeyRuntime from "../web/src/lib/journey-clip-runtime.ts";
 
 const { createJourneyClipRuntime } = journeyRuntime;
 
+test("production frame watchdog tolerates cold software decoding", () => {
+  assert.equal(journeyRuntime.JOURNEY_OPERATION_TIMEOUT_MS, 2_500);
+});
+
 const checkpoints = [
   {
     version: 1,
