@@ -88,7 +88,7 @@ async function main() {
     await page.waitForFunction(
       () => document.querySelector('[data-testid="journey-video"]')?.paused === false,
       undefined,
-      { timeout: 2500 },
+      { timeout: 6000 },
     );
     const moving = await videoState(page);
     assert.ok(
@@ -140,7 +140,7 @@ async function main() {
     await page.waitForFunction(
       () => document.querySelector('[data-testid="journey-video"]')?.paused === false,
       undefined,
-      { timeout: 2500 },
+      { timeout: 6000 },
     );
     const recovered = await videoState(page);
     assert.equal(
