@@ -1,7 +1,29 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { planJourneyClip } from "../web/src/lib/journey-clip-plan.ts";
+import * as journeyClipPlan from "../web/src/lib/journey-clip-plan.ts";
+
+const { planJourneyClip } = journeyClipPlan;
+
+function isWithinTolerance(actualTime, expectedTime, tolerance) {
+  return Math.abs(actualTime - expectedTime) <= tolerance;
+}
+
+test("seek verification includes the 0.15 second boundary", () => {
+  const tolerance = journeyClipPlan.JOURNEY_SEEK_TOLERANCE_SECONDS;
+
+  assert.equal(tolerance, 0.15);
+  assert.equal(isWithinTolerance(0.15, 0, tolerance), true);
+  assert.equal(isWithinTolerance(0.150001, 0, tolerance), false);
+});
+
+test("frame verification includes the 0.15 second boundary", () => {
+  const tolerance = journeyClipPlan.JOURNEY_FRAME_TOLERANCE_SECONDS;
+
+  assert.equal(tolerance, 0.15);
+  assert.equal(isWithinTolerance(0.15, 0, tolerance), true);
+  assert.equal(isWithinTolerance(0.150001, 0, tolerance), false);
+});
 
 test("intro playback starts from zero", () => {
   assert.deepEqual(

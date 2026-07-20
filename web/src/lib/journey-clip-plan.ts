@@ -1,5 +1,12 @@
 import type { NavigationSource } from "./journey-playback.ts";
 
+/** Maximum decoded-time drift allowed when verifying a pre-roll seek. */
+export const JOURNEY_SEEK_TOLERANCE_SECONDS = 0.15;
+
+/** Maximum decoded-time drift allowed when confirming a checkpoint frame. */
+export const JOURNEY_FRAME_TOLERANCE_SECONDS =
+  JOURNEY_SEEK_TOLERANCE_SECONDS;
+
 const PRE_ROLL_SECONDS = 2.25;
 const PRE_ROLL_THRESHOLD_SECONDS = 3.25;
 const MIN_PLAYBACK_RATE = 1;
