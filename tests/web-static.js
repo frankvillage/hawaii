@@ -132,6 +132,7 @@ assert.match(verifyJob, /playwright install --with-deps chromium webkit/);
 assert.match(verifyJob, /STATIC_EXPORT:\s*["']1["']/);
 assert.match(verifyJob, /NEXT_PUBLIC_BASE_PATH:\s*\/\$\{\{ github\.event\.repository\.name \}\}/);
 assert.match(verifyJob, /NODE_OPTIONS:\s*--max-old-space-size=2048/);
+assert.match(verifyJob, /npm run build -- --webpack/);
 assert.match(verifyJob, /rm -rf pages-preview/);
 assert.match(verifyJob, /cp -a web\/out\/\. pages-preview\/\$\{\{ github\.event\.repository\.name \}\}\//);
 assert.match(verifyJob, /npm run test:web:production/);

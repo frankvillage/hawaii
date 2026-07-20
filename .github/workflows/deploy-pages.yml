@@ -57,7 +57,7 @@ jobs:
           STATIC_EXPORT: "1"
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
           NODE_OPTIONS: --max-old-space-size=2048
-        run: npm run build
+        run: npm run build -- --webpack
 
       - name: Prefix root media URLs
         run: |
