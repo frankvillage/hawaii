@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { bookingVenues } from "@/lib/booking-config";
 import type { EntityPage, FaqItem } from "@/lib/site-content";
 import { siteMeta } from "@/lib/site-content";
 
@@ -54,6 +55,9 @@ export function localBusinessSchema() {
 
 export function entitySchema(page: EntityPage) {
   const url = `${baseUrl}/${page.slug}`;
+  const bookingVenue = page.bookingVenueId
+    ? bookingVenues[page.bookingVenueId]
+    : undefined;
   const base = {
     "@context": "https://schema.org",
     "@type": page.schemaType,
@@ -72,10 +76,20 @@ export function entitySchema(page: EntityPage) {
   };
 
   if (page.schemaType === "Restaurant") {
+    if (!bookingVenue) {
+      throw new Error(`Restaurant ${page.slug} requires a booking venue`);
+    }
+
     return {
       ...base,
+      telephone: bookingVenue.phoneDisplay,
+      acceptsReservations: true,
+      potentialAction: {
+        "@type": "ReserveAction",
+        target: bookingVenue.internalBookingPath,
+      },
       servesCuisine:
-        page.slug === "terrazza"
+        bookingVenue.id === "muulab"
           ? ["Steakhouse", "Grill", "Creative Cuisine", "Cocktails"]
           : ["Seafood", "Mediterranean", "Cocktails"],
     };

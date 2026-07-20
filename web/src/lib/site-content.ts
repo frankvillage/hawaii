@@ -2,6 +2,7 @@ import {
   beachBookingUrl,
   bookingVenues,
   sportBooking,
+  type BookingVenueId,
 } from "@/lib/booking-config";
 
 export type Action = {
@@ -140,6 +141,7 @@ export type LegalSection = {
 
 export type EntityPage = {
   slug: string;
+  bookingVenueId?: BookingVenueId;
   navLabel: string;
   eyebrow: string;
   title: string;
@@ -740,6 +742,7 @@ export const pages: Record<string, EntityPage> = {
   },
   "ristorante-mare": {
     slug: "ristorante-mare",
+    bookingVenueId: "hawaii",
     navLabel: "Ristorante Mare",
     eyebrow: "Ristorante di mare",
     title: "Il pescato del giorno, dall'Adriatico alla tavola.",
@@ -809,6 +812,7 @@ export const pages: Record<string, EntityPage> = {
   },
   "terrazza": {
     slug: "terrazza",
+    bookingVenueId: "muulab",
     navLabel: "Terrazza",
     eyebrow: "La sera in terrazza",
     brandLogo: {
@@ -1430,6 +1434,10 @@ export const legalSections: Record<"privacy" | "cookie", LegalSection[]> = {
       ],
     },
     {
+      title: "Prenotazioni tramite TheFork",
+      body: "Il modulo di TheFork e protetto da un consenso specifico. Solo dopo l'attivazione il browser avvia una connessione di rete verso widget.thefork.com, servizio di terza parte gestito da TheFork, prima che l'utente inserisca eventuali dati di prenotazione.",
+    },
+    {
       title: "Clienti e fornitori",
       body: "Per clienti e fornitori sono trattati dati identificativi, di contatto e riferimenti di pagamento, per l'esecuzione del contratto, gli adempimenti legali e fiscali e la difesa dei diritti del titolare.",
       bullets: [
@@ -1459,6 +1467,10 @@ export const legalSections: Record<"privacy" | "cookie", LegalSection[]> = {
     {
       title: "Gestione del consenso",
       body: "Al primo accesso il banner consente di accettare o rifiutare i cookie non necessari; la scelta è modificabile in qualsiasi momento da questa pagina o dalle impostazioni del browser, dove i cookie possono anche essere eliminati.",
+    },
+    {
+      title: "Consenso specifico per TheFork",
+      body: "Il widget di TheFork resta disattivato finche non viene espresso un consenso specifico. L'attivazione avvia una connessione di rete verso widget.thefork.com, servizio di terza parte gestito da TheFork, prima di inserire i dati di prenotazione.",
     },
     {
       title: "Titolare e contatti",

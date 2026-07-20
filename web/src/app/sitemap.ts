@@ -6,26 +6,36 @@ const baseUrl = "https://www.hawaiipescara.it";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const routes = [
-    "",
-    "/villaggio",
-    "/beach",
-    "/ristorante-mare",
-    "/terrazza",
-    "/sport",
-    "/eventi",
-    "/feste-private",
-    "/menu",
-    "/prenotazioni",
-    "/faq",
-    "/contatti",
-    "/privacy",
-    "/cookie",
-  ];
+    { route: "", changeFrequency: "weekly", priority: 1 },
+    { route: "/villaggio", changeFrequency: "monthly", priority: 0.8 },
+    { route: "/beach", changeFrequency: "monthly", priority: 0.8 },
+    { route: "/ristorante-mare", changeFrequency: "monthly", priority: 0.8 },
+    { route: "/terrazza", changeFrequency: "monthly", priority: 0.8 },
+    { route: "/sport", changeFrequency: "monthly", priority: 0.8 },
+    { route: "/eventi", changeFrequency: "monthly", priority: 0.8 },
+    { route: "/feste-private", changeFrequency: "monthly", priority: 0.8 },
+    { route: "/menu", changeFrequency: "monthly", priority: 0.8 },
+    { route: "/prenotazioni", changeFrequency: "monthly", priority: 0.8 },
+    {
+      route: "/prenotazioni/ristorante",
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
+      route: "/prenotazioni/muulab",
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    { route: "/faq", changeFrequency: "monthly", priority: 0.8 },
+    { route: "/contatti", changeFrequency: "monthly", priority: 0.8 },
+    { route: "/privacy", changeFrequency: "monthly", priority: 0.8 },
+    { route: "/cookie", changeFrequency: "monthly", priority: 0.8 },
+  ] as const;
 
-  return routes.map((route) => ({
+  return routes.map(({ route, changeFrequency, priority }) => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
-    changeFrequency: route === "" ? "weekly" : "monthly",
-    priority: route === "" ? 1 : 0.8,
+    changeFrequency,
+    priority,
   }));
 }

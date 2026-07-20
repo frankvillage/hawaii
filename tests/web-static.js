@@ -34,6 +34,8 @@ const bookingFormPath = path.join(
 const nextConfigPath = path.join(root, "web", "next.config.ts");
 const bookingConfigPath = path.join(root, "web", "src", "lib", "booking-config.ts");
 const siteContentPath = path.join(root, "web", "src", "lib", "site-content.ts");
+const seoPath = path.join(root, "web", "src", "lib", "seo.ts");
+const sitemapPath = path.join(root, "web", "src", "app", "sitemap.ts");
 const whatsappButtonPath = path.join(
   root,
   "web",
@@ -62,6 +64,8 @@ const bookingForm = fs.readFileSync(bookingFormPath, "utf8");
 const nextConfig = fs.readFileSync(nextConfigPath, "utf8");
 const bookingConfig = fs.readFileSync(bookingConfigPath, "utf8");
 const siteContent = fs.readFileSync(siteContentPath, "utf8");
+const seo = fs.readFileSync(seoPath, "utf8");
+const sitemap = fs.readFileSync(sitemapPath, "utf8");
 const whatsappButton = fs.readFileSync(whatsappButtonPath, "utf8");
 const footer = fs.readFileSync(footerPath, "utf8");
 const contactPage = fs.readFileSync(contactPagePath, "utf8");
@@ -172,5 +176,59 @@ assert.match(villagePage, /bookingVenues\.muulab/);
 assert.doesNotMatch(propagatedBookingSources, /393755175508|375 5175508/);
 assert.doesNotMatch(propagatedBookingSources, /https:\/\/widget\.spiagge\.it/i);
 assert.doesNotMatch(propagatedBookingSources, /sportclubby/i);
+
+assert.match(
+  siteContent,
+  /"ristorante-mare":\s*{[\s\S]*?bookingVenueId:\s*"hawaii"[\s\S]*?schemaType:\s*"Restaurant"/,
+  "Ristorante Mare must declare Hawaii as its booking venue",
+);
+assert.match(
+  siteContent,
+  /"terrazza":\s*{[\s\S]*?bookingVenueId:\s*"muulab"[\s\S]*?schemaType:\s*"Restaurant"/,
+  "The terrace must declare MUULab as its booking venue",
+);
+assert.match(seo, /bookingVenues\[page\.bookingVenueId\]/);
+assert.doesNotMatch(
+  seo,
+  /page\.slug\s*===\s*["'](?:ristorante-mare|terrazza)["'][\s\S]{0,240}(?:telephone|potentialAction|ReserveAction)/,
+  "Restaurant booking identity must not be inferred from the page slug",
+);
+assert.match(seo, /telephone:\s*bookingVenue\.phoneDisplay/);
+assert.match(seo, /acceptsReservations:\s*true/);
+assert.match(seo, /"@type":\s*"ReserveAction"/);
+assert.match(seo, /target:\s*bookingVenue\.internalBookingPath/);
+
+assert.match(sitemap, /route:\s*"\/prenotazioni\/ristorante"/);
+assert.match(sitemap, /route:\s*"\/prenotazioni\/muulab"/);
+assert.match(
+  sitemap,
+  /route:\s*"\/prenotazioni\/(?:ristorante|muulab)"[\s\S]{0,120}priority:\s*0\.[0-7]/,
+  "Booking routes should have a lower priority than entity landing pages",
+);
+
+const privacyDisclosure = siteContent.match(
+  /privacy:\s*\[([\s\S]*?)\n\s*\],\n\s*cookie:/,
+)?.[1] || "";
+const cookieDisclosure = siteContent.match(
+  /cookie:\s*\[([\s\S]*?)\n\s*\],\n};/,
+)?.[1] || "";
+
+for (const [policy, disclosure] of [
+  ["privacy", privacyDisclosure],
+  ["cookie", cookieDisclosure],
+]) {
+  assert.match(disclosure, /TheFork/i, `${policy} must identify TheFork`);
+  assert.match(disclosure, /consenso specifico/i, `${policy} must explain the consent gate`);
+  assert.match(
+    disclosure,
+    /connessione di rete|trasferimento di rete/i,
+    `${policy} must disclose the third-party network transfer`,
+  );
+  assert.match(
+    disclosure,
+    /prima (?:che|di) (?:l['’]utente )?inseri/i,
+    `${policy} must disclose that transfer precedes booking data entry`,
+  );
+}
 
 console.log("web static regression checks passed");

@@ -12,6 +12,7 @@ if (!baseUrl) {
 const venues = [
   {
     path: "/prenotazioni/ristorante",
+    entityPath: "/ristorante-mare",
     name: "Hawaii",
     phoneDisplay: "085 9396664",
     phoneHref: "tel:+390859396664",
@@ -20,6 +21,7 @@ const venues = [
   },
   {
     path: "/prenotazioni/muulab",
+    entityPath: "/terrazza",
     name: "MUULab Riviera",
     phoneDisplay: "085 9396485",
     phoneHref: "tel:+390859396485",
@@ -27,6 +29,31 @@ const venues = [
     theForkUrl: "https://widget.thefork.com/cbc67fa3-b6fd-4e02-9891-572334c016d1",
   },
 ];
+
+async function expectVenueRestaurantSchema(browser, venue, otherVenue) {
+  await expectPageLinks(browser, venue.entityPath, async (page) => {
+    const schemas = await page
+      .locator('script[type="application/ld+json"]')
+      .evaluateAll((scripts) => scripts.map((script) => JSON.parse(script.textContent || "{}")));
+    const restaurant = schemas.find(
+      (schema) =>
+        schema["@type"] === "Restaurant" &&
+        schema.url === `${baseUrl}${venue.entityPath}`,
+    );
+
+    assert.ok(restaurant, `${venue.entityPath} should expose its Restaurant schema`);
+    assert.equal(restaurant.telephone, venue.phoneDisplay);
+    assert.equal(restaurant.acceptsReservations, true);
+    assert.deepEqual(restaurant.potentialAction, {
+      "@type": "ReserveAction",
+      target: venue.path,
+    });
+
+    const serializedRestaurant = JSON.stringify(restaurant);
+    assert.doesNotMatch(serializedRestaurant, new RegExp(otherVenue.phoneDisplay));
+    assert.doesNotMatch(serializedRestaurant, new RegExp(otherVenue.path));
+  });
+}
 
 async function expectSecureBooking(browser, venue) {
   const context = await browser.newContext();
@@ -215,6 +242,8 @@ async function main() {
     for (const venue of venues) {
       await expectSecureBooking(browser, venue);
     }
+    await expectVenueRestaurantSchema(browser, venues[0], venues[1]);
+    await expectVenueRestaurantSchema(browser, venues[1], venues[0]);
     await expectPropagatedBookingLinks(browser);
   } finally {
     await browser.close();
