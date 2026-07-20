@@ -5,6 +5,15 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = process.cwd();
+function readSourceTree(directory) {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) return readSourceTree(entryPath);
+    return /\.(?:ts|tsx)$/.test(entry.name) ? [fs.readFileSync(entryPath, "utf8")] : [];
+  });
+}
+
+const productionSources = readSourceTree(path.join(root, "web", "src")).join("\n");
 const layoutPath = path.join(root, "web", "src", "app", "layout.tsx");
 const stagePath = path.join(
   root,
@@ -100,6 +109,11 @@ assert.match(
   stage,
   /preload="auto"/,
   "The segmented journey should buffer ahead so mobile playback does not stall between checkpoints",
+);
+assert.doesNotMatch(
+  productionSources,
+  /(?:from|import\()\s*["'][^"']*journey-segment-(?:controller|machine)/,
+  "Production must not import the superseded journey controller or reducer",
 );
 assert.match(
   theFork,
