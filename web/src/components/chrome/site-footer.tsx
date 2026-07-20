@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { bookingVenues, sportBooking } from "@/lib/booking-config";
 import { bookingOptions, navigation, siteMeta } from "@/lib/site-content";
 
 export function SiteFooter() {
@@ -49,18 +50,73 @@ export function SiteFooter() {
           </p>
           <div className="space-y-2 text-sm leading-7 text-[#bcbcb6]">
             <p>{siteMeta.address}</p>
-            <p>Ristorante: {siteMeta.restaurantPhone}</p>
-            <p>Spiaggia: {siteMeta.beachPhone}</p>
+            <p>
+              Hawaii ristorante: {" "}
+              <a href={bookingVenues.hawaii.phoneHref} className="hover:text-white">
+                {bookingVenues.hawaii.phoneDisplay}
+              </a>
+            </p>
+            <p>
+              MUULab Riviera: {" "}
+              <a href={bookingVenues.muulab.phoneHref} className="hover:text-white">
+                {bookingVenues.muulab.phoneDisplay}
+              </a>
+            </p>
+            <p>
+              <a
+                href={bookingVenues.hawaii.whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-white"
+              >
+                WhatsApp Hawaii, informazioni ed eventi
+              </a>
+            </p>
+            <p>
+              <a
+                href={bookingVenues.muulab.whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-white"
+              >
+                WhatsApp MUULab Riviera
+              </a>
+            </p>
+            <p>
+              <a
+                href={sportBooking.whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-white"
+              >
+                Assistenza padel su WhatsApp
+              </a>
+            </p>
             <p>{siteMeta.email}</p>
           </div>
           <div className="pt-3 text-sm text-[#dbdbd6]">
-            {bookingOptions.slice(0, 3).map((item) => (
-              <div key={item.href}>
-                <Link href={item.href} className="transition hover:text-white">
-                  {item.title}
-                </Link>
-              </div>
-            ))}
+            {bookingOptions.slice(0, 3).map((item) => {
+              const className = "transition hover:text-white";
+
+              return (
+                <div key={item.href}>
+                  {"external" in item ? (
+                    <a
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={className}
+                    >
+                      {item.title}
+                    </a>
+                  ) : (
+                    <Link href={item.href} className={className}>
+                      {item.title}
+                    </Link>
+                  )}
+                </div>
+              );
+            })}
           </div>
           <div className="pt-3 text-xs text-[#7f919c]">
             <Link href="/privacy" className="mr-4 hover:text-white">

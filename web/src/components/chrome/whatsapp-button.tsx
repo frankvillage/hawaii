@@ -1,16 +1,19 @@
-import { siteMeta } from "@/lib/site-content";
+import { bookingVenues } from "@/lib/booking-config";
 
 /* Floating WhatsApp chat, as on the current WordPress site — the client
    relies on it. Sits above the soul rail on mobile. */
 export function WhatsAppButton() {
-  const number = siteMeta.beachPhone.replace(/\s/g, "");
+  const nationalNumber = bookingVenues.hawaii.whatsappUrl
+    .replace("https://wa.me/", "")
+    .replace(/^39/, "");
+  const displayNumber = `${nationalNumber.slice(0, 3)} ${nationalNumber.slice(3)}`;
 
   return (
     <a
-      href={`https://wa.me/39${number}`}
+      href={bookingVenues.hawaii.whatsappUrl}
       target="_blank"
-      rel="noreferrer"
-      aria-label="Scrivici su WhatsApp"
+      rel="noopener noreferrer"
+      aria-label={`WhatsApp Hawaii: ${displayNumber}`}
       className="fixed bottom-20 right-4 z-40 inline-flex items-center justify-center rounded-full bg-[#e8c89e] text-[#0d3d43] shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:-translate-y-0.5 hover:bg-[#0b444b] hover:text-[#e8c89e] sm:bottom-6 sm:right-6"
       style={{ width: "3.25rem", height: "3.25rem" }}
     >

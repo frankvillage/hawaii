@@ -1,3 +1,9 @@
+import {
+  beachBookingUrl,
+  bookingVenues,
+  sportBooking,
+} from "@/lib/booking-config";
+
 export type Action = {
   label: string;
   href: string;
@@ -160,11 +166,7 @@ export const siteMeta = {
   description:
     "Beach club, ristorante di mare, terrazza serale, sport ed eventi sul lungomare di Pescara.",
   address: "Viale della Riviera 154, 65123 Pescara PE",
-  restaurantPhone: "085 9396664",
-  beachPhone: "375 5175508",
-  beachBookingUrl:
-    "https://widget.spiagge.it/stabilimenti-balneari/prenotazione/it-pe-65123-lido-hawaii/?ybnl=1",
-  sportBookingUrl: "https://sportclubby.app.link/tfuwbM6rbyb",
+  restaurantPhone: bookingVenues.hawaii.phoneDisplay,
   email: "info@hawaiipescara.it",
   mapUrl: "https://g.page/r/CV_HAWAII_PESCARA",
   instagramUrl: "https://www.instagram.com/hawaii_pescara/",
@@ -289,14 +291,18 @@ export const homeJourney = {
       eyebrow: "Sport",
       title: "Il padel torna sulla sabbia.",
       summary:
-        "Due campi regolamentari GIMPADEL e crossfit in spiaggia: il campo o la lezione si prenotano direttamente dall'app.",
+        `Due campi regolamentari GIMPADEL e crossfit in spiaggia. ${sportBooking.registrationNotice}`,
       start: 0.2,
       end: 0.26,
       hotspots: [
         { label: "Campi da padel", href: "/sport", x: 31, y: 40 },
         { label: "Crossfit in spiaggia", href: "/sport", x: 72, y: 42 },
       ],
-      action: { label: "Prenota il campo", href: siteMeta.sportBookingUrl, external: true },
+      action: {
+        label: "Prenota padel su Wansport",
+        href: sportBooking.portalUrl,
+        external: true,
+      },
     },
     {
       id: "beach",
@@ -329,7 +335,7 @@ export const homeJourney = {
           { name: "Club sandwich al salmone", price: "€ 13" },
         ],
       },
-      action: { label: "Prenota ombrellone", href: siteMeta.beachBookingUrl, external: true },
+      action: { label: "Prenota ombrellone", href: beachBookingUrl, external: true },
     },
     {
       id: "ristorante",
@@ -347,7 +353,7 @@ export const homeJourney = {
       hotspots: [
         {
           label: "Il tavolo vista mare",
-          href: "/prenotazioni",
+          href: bookingVenues.hawaii.internalBookingPath,
           x: 30,
           y: 22,
           caption: "Il tuo tavolo vista mare, a pranzo e a cena",
@@ -362,7 +368,10 @@ export const homeJourney = {
           { name: "Riso vialone nano, scampi ed erbette", price: "€ 18" },
         ],
       },
-      action: { label: "Menu di mare", href: "/menu#ristorante-mare" },
+      action: {
+        label: "Prenota Hawaii su TheFork",
+        href: bookingVenues.hawaii.internalBookingPath,
+      },
     },
     {
       id: "pizzeria",
@@ -440,7 +449,10 @@ export const homeJourney = {
           { name: "Americano classic taste", price: "€ 10" },
         ],
       },
-      action: { label: "Prenota il tramonto", href: "/prenotazioni" },
+      action: {
+        label: "Prenota MUULab su TheFork",
+        href: bookingVenues.muulab.internalBookingPath,
+      },
     },
     {
       id: "muulab",
@@ -467,7 +479,10 @@ export const homeJourney = {
           { name: "Carpaccio di Wagyu A5 agli agrumi", price: "€ 25" },
         ],
       },
-      action: { label: "La braceria", href: "/menu#muulab" },
+      action: {
+        label: "Prenota MUULab su TheFork",
+        href: bookingVenues.muulab.internalBookingPath,
+      },
     },
     {
       id: "eventi",
@@ -492,7 +507,11 @@ export const homeJourney = {
         },
         { label: "Le serate", href: "/eventi", x: 66, y: 28 },
       ],
-      action: { label: "Gli eventi", href: "/eventi" },
+      action: {
+        label: "Info eventi su WhatsApp",
+        href: bookingVenues.hawaii.whatsappUrl,
+        external: true,
+      },
     },
   ] satisfies JourneyScene[],
 };
@@ -525,7 +544,7 @@ export const chapters: Chapter[] = [
     summary: "Palme, ombrelloni, sabbia chiara e tutto il mare davanti.",
     detail: "Una spiaggia da vivere con leggerezza, tra relax, servizi e pause che si allungano fino al tramonto.",
     atmosphere: ["palme", "ombrelloni", "mare", "relax", "giornata lunga"],
-    primaryAction: { label: "Prenota spiaggia", href: "/prenotazioni" },
+    primaryAction: { label: "Prenota spiaggia", href: beachBookingUrl },
     secondaryAction: { label: "Scopri la beach", href: "/beach" },
     gradient:
       "from-[#0f3349] via-[#1b5b75] to-[#b9d7de]",
@@ -544,7 +563,10 @@ export const chapters: Chapter[] = [
     detail: "Un gesto dopo l'altro, il locale entra nel pieno della giornata.",
     atmosphere: ["colazione", "bancone", "caffe", "ospitalita"],
     primaryAction: { label: "Scopri il ristorante", href: "/ristorante-mare" },
-    secondaryAction: { label: "Prenota un tavolo", href: "/prenotazioni" },
+    secondaryAction: {
+      label: "Prenota Hawaii su TheFork",
+      href: bookingVenues.hawaii.internalBookingPath,
+    },
     gradient:
       "from-[#223949] via-[#3c5f6a] to-[#d7c7ae]",
     media: {
@@ -562,7 +584,7 @@ export const chapters: Chapter[] = [
     detail: "Tra padel e outdoor training, il movimento resta parte naturale dell'esperienza Hawaii.",
     atmosphere: ["padel", "crossfit", "campi", "outdoor gym", "energia"],
     primaryAction: { label: "Scopri sport", href: "/sport" },
-    secondaryAction: { label: "Prenota attività", href: "/prenotazioni" },
+    secondaryAction: { label: "Prenota padel su Wansport", href: sportBooking.portalUrl },
     gradient:
       "from-[#142d2c] via-[#315347] to-[#c0c985]",
     media: {
@@ -579,7 +601,10 @@ export const chapters: Chapter[] = [
     summary: "Pesce, cucina espressa, servizio e tavoli aperti alla luce del giorno.",
     detail: "Crudi, primi, cucina espressa e carta vini accompagnano il lato piu conviviale della giornata.",
     atmosphere: ["sala", "cucina", "piatti di mare", "vino"],
-    primaryAction: { label: "Prenota tavolo", href: "/prenotazioni" },
+    primaryAction: {
+      label: "Prenota Hawaii su TheFork",
+      href: bookingVenues.hawaii.internalBookingPath,
+    },
     secondaryAction: { label: "Scopri il menu", href: "/menu" },
     gradient:
       "from-[#17384d] via-[#39566d] to-[#dbc3a0]",
@@ -632,7 +657,10 @@ export const chapters: Chapter[] = [
     summary: "MUULab Riviera porta in tavola carne, fuoco e cucina a vista.",
     detail: "Un capitolo piu raccolto, materico e serale rispetto al ristorante di mare.",
     atmosphere: ["brace", "carne", "cucina a vista", "cena"],
-    primaryAction: { label: "Prenota in terrazza", href: "/prenotazioni" },
+    primaryAction: {
+      label: "Prenota MUULab su TheFork",
+      href: bookingVenues.muulab.internalBookingPath,
+    },
     secondaryAction: { label: "Scopri il menu", href: "/menu" },
     gradient:
       "from-[#281d22] via-[#5d3e34] to-[#f0b16f]",
@@ -670,7 +698,7 @@ export const pages: Record<string, EntityPage> = {
     lead: "Palme distanziate, sabbia fine e un giardino sempre curato: comodità e riservatezza davanti al mare.",
     intro:
       "L'ampiezza della nostra spiaggia permette un vero distanziamento tra le palme; l'attenzione ai servizi e la cura degli ospiti fanno il resto, dal primo caffè fino al tramonto.",
-    primaryAction: { label: "Prenota palma o ombrellone", href: siteMeta.beachBookingUrl },
+    primaryAction: { label: "Prenota palma o ombrellone", href: beachBookingUrl },
     secondaryAction: { label: "Contattaci", href: "/contatti" },
     gradient: "from-[#0e3147] via-[#1d6079] to-[#cde0df]",
     media: {
@@ -718,7 +746,10 @@ export const pages: Record<string, EntityPage> = {
     lead: "Una location suggestiva ti aspetta a pranzo e a cena, con un menù à la carte di mare e tutto l'estro del nostro chef.",
     intro:
       "Il pescato del giorno arriva dal mare Adriatico, passa per le mani della brigata di cucina e si sposa con le materie prime più fresche del territorio. Chiedi al maître i piatti del giorno.",
-    primaryAction: { label: "Prenota il tavolo", href: "/prenotazioni" },
+    primaryAction: {
+      label: "Prenota Hawaii su TheFork",
+      href: bookingVenues.hawaii.internalBookingPath,
+    },
     secondaryAction: { label: "Guarda il menù", href: "/menu#ristorante-mare" },
     gradient: "from-[#18384e] via-[#405667] to-[#dbc8ad]",
     media: {
@@ -788,7 +819,10 @@ export const pages: Record<string, EntityPage> = {
     lead: "La cucina creativa e le carni alla brace ti aspettano in terrazza, dove la cucina a vista e il tramonto fanno da padroni.",
     intro:
       "MUULab Riviera è l'anima serale del villaggio: si sale per l'aperitivo al tramonto e si resta per la cena, tra brace, crudi di carne e una carta vini che attraversa mezza Europa.",
-    primaryAction: { label: "Prenota MUULab Riviera", href: "/prenotazioni" },
+    primaryAction: {
+      label: "Prenota MUULab su TheFork",
+      href: bookingVenues.muulab.internalBookingPath,
+    },
     secondaryAction: { label: "Guarda il menù", href: "/menu#muulab" },
     gradient: "from-[#241b21] via-[#66453a] to-[#f0b16f]",
     media: {
@@ -849,9 +883,12 @@ export const pages: Record<string, EntityPage> = {
     title: "Il padel torna sulla spiaggia di Hawaii.",
     lead: "Per tutti gli amanti del benessere: padel e crossfit a pochi passi dalla sabbia.",
     intro:
-      "Lo sport più praticato del momento e il fitness che ti accompagna per tutta l'estate: campo o lezione si prenotano in un attimo dall'app.",
-    primaryAction: { label: "Prenota campo o lezione", href: siteMeta.sportBookingUrl },
-    secondaryAction: { label: "Contattaci", href: "/contatti" },
+      "Lo sport più praticato del momento e il fitness che ti accompagna per tutta l'estate: campo o lezione si prenotano online con Wansport.",
+    primaryAction: { label: "Prenota padel su Wansport", href: sportBooking.portalUrl },
+    secondaryAction: {
+      label: "Assistenza padel su WhatsApp",
+      href: sportBooking.whatsappUrl,
+    },
     gradient: "from-[#152c2f] via-[#355247] to-[#bfc57d]",
     media: {
       src: "/media/hawaii/padel-court.jpg",
@@ -864,7 +901,7 @@ export const pages: Record<string, EntityPage> = {
         bullets: [
           "due campi regolamentari GIMPADEL",
           "partite libere e lezioni con istruttore",
-          "prenotazione dall'app SportClubby",
+          sportBooking.registrationNotice,
         ],
       },
       {
@@ -875,7 +912,7 @@ export const pages: Record<string, EntityPage> = {
     faqs: [
       {
         question: "Come si prenotano campo e lezioni?",
-        answer: "Tramite l'app SportClubby: scegli campo o lezione, giorno e orario. Il link diretto è in questa pagina.",
+        answer: "Su Wansport: registrati o accedi, poi scegli campo o lezione, giorno e orario. Per assistenza usa il contatto WhatsApp dedicato.",
       },
       {
         question: "Sport e spiaggia convivono nella stessa giornata?",
@@ -892,7 +929,10 @@ export const pages: Record<string, EntityPage> = {
     lead: "Quando scende la sera il villaggio cambia ritmo: dj set, format fissi e date speciali.",
     intro:
       "La domenica pomeriggio con dj set, il giovedì in terrazza con champagne e crudi, le serate evento annunciate sui social: ogni settimana ha i suoi appuntamenti.",
-    primaryAction: { label: "Prenota il tavolo", href: "/prenotazioni" },
+    primaryAction: {
+      label: "Info eventi su WhatsApp",
+      href: bookingVenues.hawaii.whatsappUrl,
+    },
     secondaryAction: { label: "Feste private", href: "/feste-private" },
     gradient: "from-[#12161f] via-[#283140] to-[#7b5149]",
     media: {
@@ -990,36 +1030,45 @@ export const quickBooking = {
   eyebrow: "Prenotazioni",
   options: [
     {
-      label: "Spiaggia",
+      label: "Prenota spiaggia",
       detail: "Palma o ombrellone",
-      href: siteMeta.beachBookingUrl,
+      href: beachBookingUrl,
       external: true,
     },
     {
-      label: "Tavolo al ristorante",
+      label: "Prenota Hawaii su TheFork",
       detail: "Pranzo e cena di mare",
-      href: "/prenotazioni",
+      href: bookingVenues.hawaii.internalBookingPath,
     },
     {
-      label: "Terrazza MUULab",
+      label: "Prenota MUULab su TheFork",
       detail: "Sunset e cena alla brace",
-      href: "/prenotazioni",
+      href: bookingVenues.muulab.internalBookingPath,
     },
     {
-      label: "Sport e padel",
-      detail: "Campi e lezioni via app",
-      href: siteMeta.sportBookingUrl,
+      label: "Prenota padel su Wansport",
+      detail: sportBooking.registrationNotice,
+      href: sportBooking.portalUrl,
       external: true,
     },
     {
-      label: "Eventi e feste private",
-      detail: "Richiedi una data",
-      href: "/feste-private",
+      label: "Info eventi su WhatsApp",
+      detail: "Informazioni e serate Hawaii",
+      href: bookingVenues.hawaii.whatsappUrl,
+      external: true,
     },
   ],
   phones: [
-    { label: "Ristorante", number: siteMeta.restaurantPhone, tel: "+390859396664" },
-    { label: "Spiaggia", number: siteMeta.beachPhone, tel: "+393755175508" },
+    {
+      label: "Hawaii",
+      number: bookingVenues.hawaii.phoneDisplay,
+      tel: bookingVenues.hawaii.phoneHref.replace("tel:", ""),
+    },
+    {
+      label: "MUULab",
+      number: bookingVenues.muulab.phoneDisplay,
+      tel: bookingVenues.muulab.phoneHref.replace("tel:", ""),
+    },
   ],
 };
 
@@ -1027,27 +1076,30 @@ export const bookingOptions = [
   {
     title: "Prenota spiaggia",
     description: "Palma, ombrellone e una giornata piena di mare.",
-    href: "/beach",
+    href: beachBookingUrl,
+    external: true,
   },
   {
-    title: "Prenota tavolo mare",
+    title: "Prenota Hawaii su TheFork",
     description: "Pranzo o cena di pesce al piano terra.",
-    href: "/ristorante-mare",
+    href: bookingVenues.hawaii.internalBookingPath,
   },
   {
-    title: "Prenota terrazza",
+    title: "Prenota MUULab su TheFork",
     description: "MUULab Riviera, sunset e dinner con vista mare.",
-    href: "/terrazza",
+    href: bookingVenues.muulab.internalBookingPath,
   },
   {
-    title: "Prenota sport",
-    description: "Padel, outdoor gym e attivita sul mare.",
-    href: "/sport",
+    title: "Prenota padel su Wansport",
+    description: sportBooking.registrationNotice,
+    href: sportBooking.portalUrl,
+    external: true,
   },
   {
-    title: "Richiedi un evento",
-    description: "Feste private, cene speciali e format dedicati.",
-    href: "/feste-private",
+    title: "Info eventi su WhatsApp",
+    description: "Informazioni, serate e date speciali Hawaii.",
+    href: bookingVenues.hawaii.whatsappUrl,
+    external: true,
   },
 ];
 
@@ -1077,7 +1129,10 @@ export const venueMenus: VenueMenu[] = [
     title: "Ristorante Mare",
     description:
       "Crudi, primi e griglia di pesce a pranzo e a cena, con i fritti al cono per la spiaggia e la pizza la sera.",
-    action: { label: "Prenota tavolo mare", href: "/prenotazioni" },
+    action: {
+      label: "Prenota Hawaii su TheFork",
+      href: bookingVenues.hawaii.internalBookingPath,
+    },
     photos: [
       { src: "/media/hawaii/photos/food-gnocchi-mare.jpg", alt: "Piatto di pesce con pomodoro e basilico del ristorante Hawaii" },
       { src: "/media/hawaii/photos/brace-fuoco.jpg", alt: "Il pesce sulla griglia viva del ristorante Hawaii" },
@@ -1197,7 +1252,10 @@ export const venueMenus: VenueMenu[] = [
     title: "La braceria della terrazza",
     description:
       "Crudi di carne, tagli alla brace e cocktail: MUULab Riviera vive la sera della terrazza, dal tramonto alla cena.",
-    action: { label: "Prenota in terrazza", href: "/prenotazioni" },
+    action: {
+      label: "Prenota MUULab su TheFork",
+      href: bookingVenues.muulab.internalBookingPath,
+    },
     photos: [
       { src: "/media/hawaii/photos/muulab-vino.jpg", alt: "Vino al calice servito in terrazza da MUULab Riviera" },
       { src: "/media/hawaii/photos/muulab-tartare.jpg", alt: "Tartare di manzo di MUULab Riviera" },
@@ -1300,7 +1358,7 @@ export const eventFormats: EventFormat[] = [
     description:
       "Il format della domenica: pranzo à la carte che si allunga nel pomeriggio, dj set e il mare davanti fino al tramonto.",
     notes: ["pranzo à la carte", "dj set", "pomeriggio sul mare"],
-    action: { label: "Prenota il tavolo", href: "/prenotazioni" },
+    action: { label: "Info eventi su WhatsApp", href: bookingVenues.hawaii.whatsappUrl },
   },
   {
     title: "Il Giovedì in terrazza",
@@ -1316,7 +1374,7 @@ export const eventFormats: EventFormat[] = [
     description:
       "Serate speciali e tappe d'estate — come l'Aperol tour — con dj set, ospiti e tavoli evento annunciati sui canali social.",
     notes: ["dj set", "special guest", "tavoli evento"],
-    action: { label: "Richiedi info eventi", href: "/contatti" },
+    action: { label: "Info eventi su WhatsApp", href: bookingVenues.hawaii.whatsappUrl },
   },
 ];
 
@@ -1352,7 +1410,7 @@ export const legalSections: Record<"privacy" | "cookie", LegalSection[]> = {
   privacy: [
     {
       title: "Titolare del trattamento",
-      body: "Il titolare del trattamento è Kona S.R.L., Viale della Riviera 154, 65123 Pescara (PE). Per ogni richiesta relativa ai dati personali: info@hawaiipescara.it · 375 5175508.",
+      body: `Il titolare del trattamento è Kona S.R.L., Viale della Riviera 154, 65123 Pescara (PE). Per ogni richiesta relativa ai dati personali: info@hawaiipescara.it · WhatsApp ${bookingVenues.hawaii.whatsappUrl}.`,
     },
     {
       title: "Navigazione sul sito",

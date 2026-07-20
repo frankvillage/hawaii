@@ -63,10 +63,12 @@ async function expectSecureBooking(browser, venue) {
       .getByText("Prenotazioni telefoniche con assistente virtuale", { exact: true })
       .waitFor();
 
-    const phone = page.getByRole("link", { name: venue.phoneDisplay, exact: true });
+    const phone = page
+      .getByRole("main")
+      .getByRole("link", { name: venue.phoneDisplay, exact: true });
     assert.equal(await phone.getAttribute("href"), venue.phoneHref);
 
-    const whatsapp = page.getByRole("link", {
+    const whatsapp = page.getByRole("main").getByRole("link", {
       name: `WhatsApp ${venue.name}`,
       exact: true,
     });
@@ -122,6 +124,90 @@ async function expectSecureBooking(browser, venue) {
   }
 }
 
+async function expectPageLinks(browser, path, assertions) {
+  const context = await browser.newContext();
+  let page;
+
+  try {
+    await context.route("**/*", async (route) => {
+      if (["image", "media"].includes(route.request().resourceType())) {
+        await route.abort();
+        return;
+      }
+
+      await route.continue();
+    });
+
+    page = await context.newPage();
+    page.setDefaultTimeout(5_000);
+    const response = await page.goto(`${baseUrl}${path}`, {
+      waitUntil: "domcontentloaded",
+    });
+
+    assert.equal(response?.status(), 200, `${path} should be available`);
+    await assertions(page);
+  } finally {
+    await page?.close();
+    await context.close();
+  }
+}
+
+async function expectPropagatedBookingLinks(browser) {
+  await expectPageLinks(browser, "/ristorante-mare", async (page) => {
+    const globalWhatsapp = page.getByRole("link", {
+      name: "WhatsApp Hawaii: 351 6900701",
+      exact: true,
+    });
+    assert.equal(await globalWhatsapp.getAttribute("href"), "https://wa.me/393516900701");
+
+    const restaurantCta = page
+      .getByRole("link", { name: "Prenota Hawaii su TheFork", exact: true })
+      .first();
+    assert.equal(
+      await restaurantCta.getAttribute("href"),
+      "/prenotazioni/ristorante",
+    );
+  });
+
+  await expectPageLinks(browser, "/terrazza", async (page) => {
+    const muulabCta = page
+      .getByRole("link", { name: "Prenota MUULab su TheFork", exact: true })
+      .first();
+    assert.equal(await muulabCta.getAttribute("href"), "/prenotazioni/muulab");
+  });
+
+  await expectPageLinks(browser, "/beach", async (page) => {
+    const beachCta = page
+      .getByRole("link", { name: "Prenota palma o ombrellone", exact: true })
+      .first();
+    assert.equal(
+      await beachCta.getAttribute("href"),
+      "https://new-widget.spiagge.it/stabilimenti-balneari/prenotazione/it-pe-65123-lido-hawaii/insertPeriod?yb_booking_license=it-pe-65123-lido-hawaii",
+    );
+  });
+
+  await expectPageLinks(browser, "/sport", async (page) => {
+    await page
+      .getByText("Registrarsi o accedere a Wansport per prenotare.", { exact: true })
+      .waitFor();
+    const wansportCta = page
+      .getByRole("link", { name: "Prenota padel su Wansport", exact: true })
+      .first();
+    assert.equal(await wansportCta.getAttribute("href"), "https://wansport.com");
+    const assistanceCta = page
+      .getByRole("link", { name: "Assistenza padel su WhatsApp", exact: true })
+      .first();
+    assert.equal(await assistanceCta.getAttribute("href"), "https://wa.me/393513200049");
+  });
+
+  await expectPageLinks(browser, "/eventi", async (page) => {
+    const eventsCta = page
+      .getByRole("link", { name: "Info eventi su WhatsApp", exact: true })
+      .first();
+    assert.equal(await eventsCta.getAttribute("href"), "https://wa.me/393516900701");
+  });
+}
+
 async function main() {
   const browser = await chromium.launch({ headless: true });
 
@@ -129,6 +215,7 @@ async function main() {
     for (const venue of venues) {
       await expectSecureBooking(browser, venue);
     }
+    await expectPropagatedBookingLinks(browser);
   } finally {
     await browser.close();
   }

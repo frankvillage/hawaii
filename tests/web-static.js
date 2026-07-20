@@ -32,6 +32,27 @@ const bookingFormPath = path.join(
   "booking-inquiry-form.tsx",
 );
 const nextConfigPath = path.join(root, "web", "next.config.ts");
+const bookingConfigPath = path.join(root, "web", "src", "lib", "booking-config.ts");
+const siteContentPath = path.join(root, "web", "src", "lib", "site-content.ts");
+const whatsappButtonPath = path.join(
+  root,
+  "web",
+  "src",
+  "components",
+  "chrome",
+  "whatsapp-button.tsx",
+);
+const footerPath = path.join(
+  root,
+  "web",
+  "src",
+  "components",
+  "chrome",
+  "site-footer.tsx",
+);
+const contactPagePath = path.join(root, "web", "src", "app", "contatti", "page.tsx");
+const menuPagePath = path.join(root, "web", "src", "app", "menu", "page.tsx");
+const villagePagePath = path.join(root, "web", "src", "app", "villaggio", "page.tsx");
 
 const layout = fs.readFileSync(layoutPath, "utf8");
 const stage = fs.readFileSync(stagePath, "utf8");
@@ -39,6 +60,22 @@ const theFork = fs.existsSync(theForkPath) ? fs.readFileSync(theForkPath, "utf8"
 const bookingHub = fs.readFileSync(bookingHubPath, "utf8");
 const bookingForm = fs.readFileSync(bookingFormPath, "utf8");
 const nextConfig = fs.readFileSync(nextConfigPath, "utf8");
+const bookingConfig = fs.readFileSync(bookingConfigPath, "utf8");
+const siteContent = fs.readFileSync(siteContentPath, "utf8");
+const whatsappButton = fs.readFileSync(whatsappButtonPath, "utf8");
+const footer = fs.readFileSync(footerPath, "utf8");
+const contactPage = fs.readFileSync(contactPagePath, "utf8");
+const menuPage = fs.readFileSync(menuPagePath, "utf8");
+const villagePage = fs.readFileSync(villagePagePath, "utf8");
+const propagatedBookingSources = [
+  bookingConfig,
+  siteContent,
+  whatsappButton,
+  footer,
+  contactPage,
+  menuPage,
+  villagePage,
+].join("\n");
 
 assert.doesNotMatch(
   layout,
@@ -104,5 +141,36 @@ assert.match(bookingForm, /Informazioni generali/);
 assert.match(bookingForm, /Serate ed eventi/);
 assert.match(bookingForm, /Feste private/);
 assert.doesNotMatch(bookingForm, /Prenota (spiaggia|tavolo mare|terrazza|sport)/);
+
+assert.match(bookingConfig, /https:\/\/wa\.me\/393516900701/);
+assert.match(bookingConfig, /https:\/\/wa\.me\/393333440051/);
+assert.match(bookingConfig, /https:\/\/wa\.me\/393513200049/);
+assert.match(
+  bookingConfig,
+  /https:\/\/new-widget\.spiagge\.it\/stabilimenti-balneari\/prenotazione\/it-pe-65123-lido-hawaii\/insertPeriod\?yb_booking_license=it-pe-65123-lido-hawaii/,
+);
+assert.match(bookingConfig, /portalUrl: "https:\/\/wansport\.com"/);
+assert.doesNotMatch(bookingConfig, /portalUrl: "https:\/\/wansport\.com\//);
+
+assert.match(siteContent, /from "@\/lib\/booking-config"/);
+assert.match(siteContent, /bookingVenues\.hawaii\.internalBookingPath/);
+assert.match(siteContent, /bookingVenues\.muulab\.internalBookingPath/);
+assert.match(siteContent, /beachBookingUrl/);
+assert.match(siteContent, /sportBooking\.portalUrl/);
+assert.match(siteContent, /sportBooking\.registrationNotice/);
+assert.match(siteContent, /sportBooking\.whatsappUrl/);
+assert.match(siteContent, /bookingVenues\.hawaii\.whatsappUrl/);
+assert.match(whatsappButton, /bookingVenues\.hawaii\.whatsappUrl/);
+assert.match(footer, /bookingVenues\.hawaii/);
+assert.match(footer, /bookingVenues\.muulab/);
+assert.match(contactPage, /bookingVenues\.hawaii/);
+assert.match(contactPage, /bookingVenues\.muulab/);
+assert.match(menuPage, /bookingVenues\.hawaii\.internalBookingPath/);
+assert.match(menuPage, /bookingVenues\.muulab\.internalBookingPath/);
+assert.match(villagePage, /bookingVenues\.hawaii/);
+assert.match(villagePage, /bookingVenues\.muulab/);
+assert.doesNotMatch(propagatedBookingSources, /393755175508|375 5175508/);
+assert.doesNotMatch(propagatedBookingSources, /https:\/\/widget\.spiagge\.it/i);
+assert.doesNotMatch(propagatedBookingSources, /sportclubby/i);
 
 console.log("web static regression checks passed");

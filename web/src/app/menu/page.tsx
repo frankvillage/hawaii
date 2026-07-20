@@ -1,7 +1,9 @@
-import { buildMetadata } from "@/lib/seo";
-import { menuHighlights, venueMenus } from "@/lib/site-content";
 import Image from "next/image";
 import Link from "next/link";
+
+import { bookingVenues } from "@/lib/booking-config";
+import { buildMetadata } from "@/lib/seo";
+import { menuHighlights, venueMenus } from "@/lib/site-content";
 
 export const metadata = buildMetadata({
   title: "Menu | Hawaii Pescara",
@@ -127,12 +129,14 @@ export default function MenuPage() {
               diverso della giornata, dal pranzo al dopocena.
             </p>
           </div>
-          <Link
-            href="/prenotazioni"
-            className="cta"
-          >
-            Prenota ora
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link href={bookingVenues.hawaii.internalBookingPath} className="cta">
+              Prenota Hawaii su TheFork
+            </Link>
+            <Link href={bookingVenues.muulab.internalBookingPath} className="cta-ghost">
+              Prenota MUULab su TheFork
+            </Link>
+          </div>
         </div>
       </section>
     </main>

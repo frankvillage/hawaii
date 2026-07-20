@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ContactForm } from "@/components/forms/contact-form";
+import { bookingVenues, sportBooking } from "@/lib/booking-config";
 import { buildMetadata } from "@/lib/seo";
 import { siteMeta } from "@/lib/site-content";
 
@@ -25,8 +26,48 @@ export default function ContactPage() {
           <div className="mt-10 rounded-[1.6rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)] p-6">
             <div className="space-y-3 text-sm leading-7 text-[#3c4a4e]">
               <p>{siteMeta.address}</p>
-              <p>Ristorante: {siteMeta.restaurantPhone}</p>
-              <p>Spiaggia: {siteMeta.beachPhone}</p>
+              <p>
+                Hawaii ristorante: {" "}
+                <a href={bookingVenues.hawaii.phoneHref} className="text-[#96703d]">
+                  {bookingVenues.hawaii.phoneDisplay}
+                </a>
+              </p>
+              <p>
+                MUULab Riviera: {" "}
+                <a href={bookingVenues.muulab.phoneHref} className="text-[#96703d]">
+                  {bookingVenues.muulab.phoneDisplay}
+                </a>
+              </p>
+              <p>
+                <a
+                  href={bookingVenues.hawaii.whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#96703d]"
+                >
+                  WhatsApp Hawaii, informazioni ed eventi
+                </a>
+              </p>
+              <p>
+                <a
+                  href={bookingVenues.muulab.whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#96703d]"
+                >
+                  WhatsApp MUULab Riviera
+                </a>
+              </p>
+              <p>
+                <a
+                  href={sportBooking.whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#96703d]"
+                >
+                  Assistenza padel su WhatsApp
+                </a>
+              </p>
               <p>{siteMeta.email}</p>
             </div>
             <div className="mt-6 flex flex-col gap-3">

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { beachBookingUrl, bookingVenues, sportBooking } from "@/lib/booking-config";
 import { buildMetadata } from "@/lib/seo";
 import { quickBooking, siteMeta } from "@/lib/site-content";
 
@@ -18,7 +19,7 @@ const anime = [
     body: "Palme, ombrelloni ampi e mare aperto: la giornata comincia sulla sabbia e finisce col tramonto.",
     href: "/beach",
     image: { src: "/media/hawaii/beach-umbrellas.jpg", alt: "La spiaggia di Hawaii con ombrelloni e palme" },
-    action: { label: "Prenota ombrellone", href: siteMeta.beachBookingUrl, external: true },
+    action: { label: "Prenota ombrellone", href: beachBookingUrl, external: true },
   },
   {
     label: "Restaurant",
@@ -26,7 +27,10 @@ const anime = [
     body: "Crudi, primi e griglia di pesce a pranzo e a cena, al piano terra sul lungomare.",
     href: "/ristorante-mare",
     image: { src: "/media/hawaii/photos/food-risotto-bollicine.jpg", alt: "Risotto agli scampi con bollicine" },
-    action: { label: "Scopri il menu", href: "/menu#ristorante-mare" },
+    action: {
+      label: "Prenota Hawaii su TheFork",
+      href: bookingVenues.hawaii.internalBookingPath,
+    },
   },
   {
     label: "Sport",
@@ -34,7 +38,11 @@ const anime = [
     body: "Due campi da padel regolamentari e outdoor training a pochi passi dalla sabbia.",
     href: "/sport",
     image: { src: "/media/hawaii/padel-court.jpg", alt: "Partita di padel sui campi di Hawaii" },
-    action: { label: "Prenota campi e lezioni", href: siteMeta.sportBookingUrl, external: true },
+    action: {
+      label: "Prenota padel su Wansport",
+      href: sportBooking.portalUrl,
+      external: true,
+    },
   },
   {
     label: "Nightlife",
@@ -58,7 +66,10 @@ const cucine = [
     ],
     actions: [
       { label: "Menu del mare", href: "/menu#ristorante-mare" },
-      { label: "Prenota tavolo", href: "/prenotazioni" },
+      {
+        label: "Prenota Hawaii su TheFork",
+        href: bookingVenues.hawaii.internalBookingPath,
+      },
     ],
   },
   {
@@ -72,7 +83,10 @@ const cucine = [
     ],
     actions: [
       { label: "Menu della braceria", href: "/menu#muulab" },
-      { label: "Prenota in terrazza", href: "/prenotazioni" },
+      {
+        label: "Prenota MUULab su TheFork",
+        href: bookingVenues.muulab.internalBookingPath,
+      },
     ],
   },
   {
@@ -304,13 +318,13 @@ export default function VillaggioPage() {
             <div className="mt-7 space-y-2 text-sm leading-7 text-[#4c5453]">
               <p>{siteMeta.address}</p>
               <p>
-                Ristorante{" "}
-                <a href="tel:+390859396664" className="text-[#96703d] hover:text-[#6f5027]">
-                  {siteMeta.restaurantPhone}
+                Hawaii{" "}
+                <a href={bookingVenues.hawaii.phoneHref} className="text-[#96703d] hover:text-[#6f5027]">
+                  {bookingVenues.hawaii.phoneDisplay}
                 </a>{" "}
-                · Spiaggia{" "}
-                <a href="tel:+393755175508" className="text-[#96703d] hover:text-[#6f5027]">
-                  {siteMeta.beachPhone}
+                · MUULab{" "}
+                <a href={bookingVenues.muulab.phoneHref} className="text-[#96703d] hover:text-[#6f5027]">
+                  {bookingVenues.muulab.phoneDisplay}
                 </a>
               </p>
               <p>{siteMeta.email}</p>
