@@ -12,7 +12,7 @@ function clamp(value: number, min: number, max: number) {
 export function SoulRail() {
   const [activeIndex, setActiveIndex] = useState(0);
 
-  /* The rail follows the frame confirmed by the player, never raw scroll. */
+  /* The rail follows the scene range reached by continuous page progress. */
   useEffect(() => {
     const confirm = (event: Event) => {
       const index = Number((event as CustomEvent<{ index?: number }>).detail?.index);

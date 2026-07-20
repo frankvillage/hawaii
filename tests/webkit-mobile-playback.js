@@ -6,49 +6,10 @@ const executablePath = process.env.PLAYWRIGHT_WEBKIT_EXECUTABLE_PATH;
 
 async function videoState(page) {
   return page.locator('[data-testid="journey-video"]').evaluate((video) => ({
-    currentTime: video.currentTime,
+    currentTime: Number(video.currentTime),
+    duration: Number(video.duration),
     paused: video.paused,
-    playbackRate: video.playbackRate,
   }));
-}
-
-async function waitForSettledScene(page, sceneId, timeout = 9000) {
-  try {
-    await page.waitForFunction(
-      (expectedScene) => {
-        const stage = document.querySelector('[data-testid="hero-stage"]');
-        const video = document.querySelector('[data-testid="journey-video"]');
-        return (
-          stage?.dataset.confirmedSceneId === expectedScene &&
-          stage.dataset.playbackState === "settled" &&
-          video?.paused === true &&
-          Math.abs(video.currentTime - Number(stage.dataset.targetTime)) <= 0.16
-        );
-      },
-      sceneId,
-      { timeout },
-    );
-  } catch (error) {
-    const diagnostic = await page.evaluate(() => {
-      const stage = document.querySelector('[data-testid="hero-stage"]');
-      const video = document.querySelector('[data-testid="journey-video"]');
-      return {
-        stage: stage instanceof HTMLElement ? { ...stage.dataset } : null,
-        video: video instanceof HTMLVideoElement
-          ? {
-              currentTime: video.currentTime,
-              duration: video.duration,
-              paused: video.paused,
-              readyState: video.readyState,
-              networkState: video.networkState,
-              error: video.error?.code ?? null,
-            }
-          : null,
-      };
-    });
-    console.error(`Journey diagnostic: ${JSON.stringify(diagnostic)}`);
-    throw error;
-  }
 }
 
 async function main() {
@@ -61,10 +22,16 @@ async function main() {
 
   try {
     await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+    const stage = page.locator('[data-testid="hero-stage"]');
     const video = page.locator('[data-testid="journey-video"]');
     await video.waitFor({ state: "visible" });
+    await page.waitForFunction(() => {
+      const journeyVideo = document.querySelector('[data-testid="journey-video"]');
+      return journeyVideo && Number.isFinite(journeyVideo.duration) && journeyVideo.duration > 0;
+    });
+
     assert.equal(
-      await page.locator('[data-testid="hero-stage"]').getAttribute("data-media-mode"),
+      await stage.getAttribute("data-media-mode"),
       "video",
       "Healthy WebKit playback must expose video mode",
     );
@@ -73,6 +40,12 @@ async function main() {
       0,
       "Healthy WebKit playback must use the real MP4",
     );
+    assert.equal(
+      await stage.locator('[data-testid="scroll-video-stage"] img').count(),
+      0,
+      "Healthy video mode must not render a cover still over the MP4",
+    );
+
     const mobileHotspotState = await page.locator(".journey-marker").evaluateAll((markers) => ({
       viewportWidth: window.innerWidth,
       displays: markers.map((marker) => getComputedStyle(marker).display),
@@ -83,73 +56,99 @@ async function main() {
       `Mobile must not expose visible journey hotspots: ${JSON.stringify(mobileHotspotState)}`,
     );
 
-    await waitForSettledScene(page, "arrivo");
-    await page.evaluate(() => window.scrollTo({ top: window.innerHeight, behavior: "auto" }));
-    await page.waitForFunction(
-      () => document.querySelector('[data-testid="journey-video"]')?.paused === false,
-      undefined,
-      { timeout: 6000 },
-    );
-    const moving = await videoState(page);
+    const snapState = await page.evaluate(() => ({
+      hasSnapClass: document.documentElement.classList.contains("journey-snap-root"),
+      rootSnapType: getComputedStyle(document.documentElement).scrollSnapType,
+      chapterSnapStops: [...document.querySelectorAll("[data-chapter]")].map(
+        (chapter) => getComputedStyle(chapter).scrollSnapStop,
+      ),
+    }));
+    assert.equal(snapState.hasSnapClass, false, "The journey must not enable a snap root");
     assert.ok(
-      moving.playbackRate <= 1.25,
-      `Mobile playback rate must stay decoder-safe, received ${moving.playbackRate}`,
+      !snapState.rootSnapType.includes("mandatory"),
+      `The journey must not use mandatory scroll snap: ${JSON.stringify(snapState)}`,
     );
-    const samples = [moving.currentTime];
-    for (let index = 0; index < 3; index += 1) {
-      await page.waitForTimeout(140);
-      samples.push((await videoState(page)).currentTime);
-    }
-    assert.ok(
-      samples.every((sample, index) => index === 0 || sample > samples[index - 1]),
-      `WebKit MP4 time must increase monotonically: ${samples.join(", ")}`,
+    assert.equal(
+      snapState.chapterSnapStops.filter((value) => value === "always").length,
+      0,
+      `Journey scene spacers must not force snap stops: ${JSON.stringify(snapState)}`,
     );
-    await waitForSettledScene(page, "bar");
 
     await page.evaluate(() => {
-      window.scrollTo({ top: window.innerHeight * 2, behavior: "auto" });
-      window.setTimeout(
-        () => window.scrollTo({ top: window.innerHeight * 4, behavior: "auto" }),
-        50,
-      );
+      const mediaStage = document.querySelector('[data-testid="scroll-video-stage"]');
+      window.__journeyCoverImagesSeen = mediaStage?.querySelectorAll("img").length ?? 0;
+      window.__journeyCoverObserver = new MutationObserver(() => {
+        window.__journeyCoverImagesSeen = Math.max(
+          window.__journeyCoverImagesSeen,
+          mediaStage?.querySelectorAll("img").length ?? 0,
+        );
+      });
+      if (mediaStage) {
+        window.__journeyCoverObserver.observe(mediaStage, { childList: true, subtree: true });
+      }
     });
-    await page.waitForTimeout(180);
-    assert.equal(
-      await page.locator('[data-testid="hero-stage"]').getAttribute("data-confirmed-scene-id"),
-      "bar",
-      "Momentum scroll must queue the latest destination without replacing the active segment",
+
+    const initial = await videoState(page);
+    const targetProgress = 0.35;
+    await page.evaluate((progress) => {
+      const journey = document.querySelector('[data-testid="hero-stage"]');
+      const scrollable = Math.max(journey.offsetHeight - window.innerHeight, 1);
+      const journeyTop = window.scrollY + journey.getBoundingClientRect().top;
+      window.scrollTo({ top: journeyTop + scrollable * progress, behavior: "auto" });
+    }, targetProgress);
+
+    const samples = [];
+    for (let index = 0; index < 7; index += 1) {
+      await page.waitForTimeout(140);
+      samples.push(await videoState(page));
+    }
+
+    const times = [initial.currentTime, ...samples.map(({ currentTime }) => currentTime)];
+    const deltas = times.slice(1).map((time, index) => time - times[index]);
+    const targetTime = initial.duration * targetProgress;
+    assert.ok(
+      times.at(-1) > initial.currentTime + 0.1,
+      `WebKit MP4 time must advance with document scroll: ${times.join(", ")}`,
+    );
+    assert.ok(
+      deltas.every((delta) => delta >= -0.05),
+      `WebKit MP4 time must progress monotonically: ${times.join(", ")}`,
+    );
+    assert.ok(
+      deltas.every((delta) => delta < 1.5),
+      `WebKit MP4 time must move in bounded steps instead of jumping: ${times.join(", ")}`,
+    );
+    assert.ok(
+      samples[0].currentTime < targetTime - 1,
+      `The first WebKit scrub step must not jump directly to ${targetTime.toFixed(2)}s: ${times.join(", ")}`,
+    );
+    assert.ok(
+      samples.every(({ paused }) => paused),
+      `Continuous scrubbing must seek the paused video without autonomous playback: ${JSON.stringify(samples)}`,
     );
     assert.equal(
-      (await page.locator('[data-testid="scene-eyebrow"]').textContent())?.trim(),
-      "Cocktail bar",
-      "Copy must remain on the confirmed scene while a destination is queued",
+      await page.evaluate(() => {
+        window.__journeyCoverObserver?.disconnect();
+        return window.__journeyCoverImagesSeen;
+      }),
+      0,
+      "WebKit scrubbing must not add a destination cover still",
     );
-    assert.equal(
-      await page.locator('[data-soul-link][aria-current="location"]').getAttribute("href"),
-      "#bar",
-      "Soul Rail selection must remain on the confirmed scene while moving",
+    await page.waitForFunction(
+      () => {
+        const journeyStage = document.querySelector('[data-testid="hero-stage"]');
+        const journeyVideo = document.querySelector('[data-testid="journey-video"]');
+        return (
+          journeyStage?.dataset.playbackState === "settled" &&
+          journeyVideo?.seeking === false &&
+          Math.abs(journeyVideo.currentTime - Number(journeyStage.dataset.targetTime)) <= 0.08
+        );
+      },
+      undefined,
+      { timeout: 12000 },
     );
 
-    await page.evaluate(() => window.scrollTo({ top: window.innerHeight * 5, behavior: "auto" }));
-    await page.waitForFunction(
-      () => document.querySelector('[data-testid="journey-video"]')?.paused === false,
-      undefined,
-      { timeout: 9000 },
-    );
-    await page.locator('[data-testid="journey-video"]').evaluate((node) => node.pause());
-    await page.waitForFunction(
-      () => document.querySelector('[data-testid="journey-video"]')?.paused === false,
-      undefined,
-      { timeout: 6000 },
-    );
-    const recovered = await videoState(page);
-    assert.equal(
-      recovered.paused,
-      false,
-      "A system-imposed pause before the checkpoint must retry playback",
-    );
-
-    console.log("webkit mobile journey playback checks passed");
+    console.log("webkit mobile continuous journey checks passed");
   } finally {
     await context.close();
     await browser.close();

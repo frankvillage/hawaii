@@ -117,7 +117,34 @@ assert.doesNotMatch(
 assert.match(
   stage,
   /preload="auto"/,
-  "The segmented journey should buffer ahead so mobile playback does not stall between checkpoints",
+  "The continuous journey should buffer ahead for responsive scroll scrubbing",
+);
+assert.match(stage, /advanceScrubTime/, "The homepage should use bounded continuous scrubbing");
+assert.doesNotMatch(
+  stage,
+  /useJourneyClipPlayer|requestScene|coverStill/,
+  "The homepage must not execute checkpoint clips or destination covers",
+);
+assert.doesNotMatch(
+  stage,
+  /journey-snap-root|scroll-snap-(?:align|stop)/,
+  "The homepage must not force scene-by-scene scroll snapping",
+);
+assert.match(
+  stage,
+  /data-journey-tail[\s\S]*h-\[100svh\]/,
+  "The journey should include the final viewport that aligns track ranges with scrollable progress",
+);
+assert.match(stage, /journeyFrameRef/, "Scroll measurement and media scrub should share one RAF");
+assert.doesNotMatch(
+  stage,
+  /scrollFrameRef|scrubFrameRef|JOURNEY_FRAME_SECONDS \* 0\.7/,
+  "The journey must not run competing RAF loops or seek below one full video frame",
+);
+assert.match(
+  stage,
+  /const overlaysInteractive = !isMoving;[\s\S]*const hotspotsInteractive = !isMoving;/,
+  "Faded journey controls must become inert while the decoded frame catches up",
 );
 assert.doesNotMatch(
   productionSources,

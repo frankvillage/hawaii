@@ -86,122 +86,135 @@ async function main() {
       "Homepage should not isolate the promo video inside a nightlife-only panel",
     );
 
-    const initialVideoTime = await page.locator('[data-testid="journey-video"]').evaluate((node) => {
-      const video = node;
-      return Math.round(video.currentTime * 100) / 100;
-    });
-    await page.waitForFunction(
-      () => {
-        const stage = document.querySelector('[data-testid="hero-stage"]');
-        const video = document.querySelector('[data-testid="journey-video"]');
-        return (
-          stage?.dataset.playbackState === "settled" &&
-          Number(stage.dataset.targetTime) > 3 &&
-          video?.paused === true &&
-          Math.abs(video.currentTime - Number(stage.dataset.targetTime)) <= 0.16
-        );
-      },
-      undefined,
-      { timeout: 6000 },
-    );
-    const introVideoTime = await page
-      .locator('[data-testid="journey-video"]')
-      .evaluate((node) => Math.round(node.currentTime * 100) / 100);
+    const snapState = await page.evaluate(() => ({
+      hasSnapClass: document.documentElement.classList.contains("journey-snap-root"),
+      rootSnapType: getComputedStyle(document.documentElement).scrollSnapType,
+      chapterSnapStops: [...document.querySelectorAll("[data-chapter]")].map(
+        (chapter) => getComputedStyle(chapter).scrollSnapStop,
+      ),
+    }));
+    assert.equal(snapState.hasSnapClass, false, "The journey must not enable a snap root");
     assert.ok(
-      introVideoTime > initialVideoTime + 0.4,
-      "The opening frame should hold for one second, then advance to the first journey checkpoint",
+      !snapState.rootSnapType.includes("mandatory"),
+      `The journey must not use mandatory scroll snap: ${JSON.stringify(snapState)}`,
     );
     assert.equal(
-      await page.locator('[data-testid="hero-stage"]').getAttribute("data-playback-state"),
-      "settled",
-      "The intro should stop cleanly at its first checkpoint",
-    );
-    const scrollToJourneyBeach = () =>
-      page.evaluate(() => {
-        const stage = document.querySelector('[data-testid="hero-stage"]');
-        const scrollable = stage.offsetHeight - window.innerHeight;
-        window.scrollTo({ top: scrollable * (3 / 8), behavior: "auto" });
-      });
-    await scrollToJourneyBeach();
-    // Late layout settling (fonts, hydration) can nudge the scroll position:
-    // re-issue the same scroll so the journey lands on the intended scene.
-    await page.waitForTimeout(350);
-    await scrollToJourneyBeach();
-    await page.waitForFunction(
-      () => {
-        const stage = document.querySelector('[data-testid="hero-stage"]');
-        const video = document.querySelector('[data-testid="journey-video"]');
-        return (
-          stage?.dataset.confirmedSceneId === "beach" &&
-          stage.dataset.playbackState === "settled" &&
-          video?.paused === true
-        );
-      },
-      undefined,
-      { timeout: 7000 },
-    );
-    const progressedVideoTime = await page
-      .locator('[data-testid="journey-video"]')
-      .evaluate((node) => Math.round(node.currentTime * 100) / 100);
-    assert.ok(
-      progressedVideoTime > initialVideoTime,
-      "Homepage journey video should advance when the page scrolls",
-    );
-    const beachCta = await page
-      .locator('[data-testid="scene-primary-action"]')
-      .getAttribute("href");
-    assert.match(
-      beachCta || "",
-      /widget\.spiagge\.it/,
-      "The beach scene should surface the real umbrella booking CTA",
+      snapState.chapterSnapStops.filter((value) => value === "always").length,
+      0,
+      `Journey scene spacers must not force snap stops: ${JSON.stringify(snapState)}`,
     );
 
-    await page.evaluate(() => {
-      const stage = document.querySelector('[data-testid="hero-stage"]');
-      const scrollable = stage.offsetHeight - window.innerHeight;
-      window.scrollTo({ top: scrollable, behavior: "auto" });
+    const journeyVideo = page.locator('[data-testid="journey-video"]');
+    await page.waitForFunction(() => {
+      const video = document.querySelector('[data-testid="journey-video"]');
+      return video && Number.isFinite(video.duration) && video.duration > 0;
     });
-    await page.waitForFunction(
-      () =>
-        document.querySelector('[data-testid="hero-stage"]')?.dataset.confirmedSceneId ===
-        "eventi",
-      undefined,
-      { timeout: 7000 },
-    );
-    assert.equal(
-      (await page.locator('[data-testid="scene-eyebrow"]').textContent())?.trim(),
-      "Eventi",
-      "The last rail stop should select the Events checkpoint",
-    );
+    const initialVideoState = await journeyVideo.evaluate((video) => ({
+      currentTime: Number(video.currentTime),
+      duration: Number(video.duration),
+    }));
+    await page.evaluate(() => {
+      const mediaStage = document.querySelector('[data-testid="scroll-video-stage"]');
+      window.__journeyScrollSamples = [window.scrollY];
+      window.__journeyLastScrollAt = performance.now();
+      window.__journeyScrollListener = () => {
+        window.__journeyScrollSamples.push(window.scrollY);
+        window.__journeyLastScrollAt = performance.now();
+      };
+      window.addEventListener("scroll", window.__journeyScrollListener, { passive: true });
+
+      window.__journeyCoverImagesSeen = mediaStage?.querySelectorAll("img").length ?? 0;
+      window.__journeyCoverObserver = new MutationObserver(() => {
+        window.__journeyCoverImagesSeen = Math.max(
+          window.__journeyCoverImagesSeen,
+          mediaStage?.querySelectorAll("img").length ?? 0,
+        );
+      });
+      if (mediaStage) {
+        window.__journeyCoverObserver.observe(mediaStage, { childList: true, subtree: true });
+      }
+    });
 
     await page.locator('[data-soul-link][href="#bar"]').click();
     await page.waitForFunction(
-      () => {
-        const stage = document.querySelector('[data-testid="hero-stage"]');
-        return (
-          stage?.dataset.confirmedSceneId === "bar" &&
-          stage.dataset.playbackState === "settled"
-        );
-      },
+      () =>
+        window.__journeyScrollSamples.length > 1 &&
+        performance.now() - window.__journeyLastScrollAt > 140,
       undefined,
-      { timeout: 7000 },
+      { timeout: 4000 },
+    );
+    await page.waitForFunction(
+      (initialTime) =>
+        document.querySelector('[data-testid="journey-video"]')?.currentTime >
+        initialTime + 0.02,
+      initialVideoState.currentTime,
+      { timeout: 2500 },
+    );
+
+    const railResult = await page.evaluate(() => {
+      window.removeEventListener("scroll", window.__journeyScrollListener);
+      window.__journeyCoverObserver?.disconnect();
+      const stage = document.querySelector('[data-testid="hero-stage"]');
+      const scrollable = Math.max(stage.offsetHeight - window.innerHeight, 1);
+      const stageTop = window.scrollY + stage.getBoundingClientRect().top;
+      return {
+        coverImagesSeen: window.__journeyCoverImagesSeen,
+        finalProgress: Math.min(Math.max((window.scrollY - stageTop) / scrollable, 0), 1),
+        navSource: stage.dataset.navSource,
+        sceneId: stage.dataset.sceneId,
+        scrollPositions: window.__journeyScrollSamples,
+        videoTime: Number(
+          document.querySelector('[data-testid="journey-video"]')?.currentTime,
+        ),
+      };
+    });
+    const uniqueScrollPositions = [...new Set(railResult.scrollPositions.map(Math.round))];
+    assert.ok(
+      uniqueScrollPositions.length >= 4,
+      `Soul Rail clicks must smoothly move the document through intermediate positions: ${uniqueScrollPositions.join(", ")}`,
+    );
+    assert.ok(
+      uniqueScrollPositions.every(
+        (position, index) => index === 0 || position >= uniqueScrollPositions[index - 1],
+      ),
+      `Soul Rail scrolling must progress toward the selected scene: ${uniqueScrollPositions.join(", ")}`,
+    );
+    assert.ok(
+      railResult.finalProgress > 0,
+      `Soul Rail scrolling must finish beyond the journey start: ${JSON.stringify(railResult)}`,
+    );
+    assert.ok(
+      railResult.videoTime > initialVideoState.currentTime,
+      "The journey video should follow the document movement",
+    );
+    assert.ok(
+      railResult.videoTime < initialVideoState.duration * railResult.finalProgress - 0.25,
+      "A rail click must not jump the video directly to the selected scene time",
+    );
+    assert.notEqual(
+      railResult.sceneId,
+      "bar",
+      "Scene copy must follow the displayed video frame instead of jumping ahead with scroll position",
+    );
+    assert.equal(
+      railResult.navSource,
+      "rail",
+      "Smooth document scroll started by the Soul Rail should retain its navigation source",
+    );
+    assert.equal(
+      railResult.coverImagesSeen,
+      0,
+      "Healthy video mode must not add a destination cover still while scrolling",
+    );
+    await page.waitForFunction(
+      () => document.querySelector('[data-testid="hero-stage"]')?.dataset.sceneId === "bar",
+      undefined,
+      { timeout: 6000 },
     );
     assert.equal(
       (await page.locator('[data-testid="scene-eyebrow"]').textContent())?.trim(),
       "Cocktail bar",
-      "A rail click should select the requested checkpoint without replaying every prior scene",
-    );
-    const barCheckpointTime = await page
-      .locator('[data-testid="journey-video"]')
-      .evaluate((node) => Number(node.currentTime));
-    assert.ok(
-      Math.abs(barCheckpointTime - 9.3) < 3,
-      "A rail click should land near the selected scene checkpoint within a short transition",
-    );
-    assert.equal(
-      await page.locator('[data-testid="hero-stage"]').getAttribute("data-playback-state"),
-      "settled",
-      "A direct rail jump should settle instead of leaving overlays in their transition state",
+      "Scene copy should reach Bar as the displayed video catches the selected range",
     );
 
     const popupTrigger = page.locator('[data-testid="menu-popup-trigger"]');
@@ -247,76 +260,21 @@ async function main() {
       "Healthy mobile playback should report video mode",
     );
     assert.equal(
+      await mobilePage.locator('[data-testid="scroll-video-stage"] img').count(),
+      0,
+      "Healthy mobile playback should not render a cover still over the MP4",
+    );
+    assert.equal(
       await mobilePage.locator(".journey-marker:visible").count(),
       0,
       "Mobile should hide every journey hotspot",
     );
-    await mobilePage.waitForFunction(
-      () => {
-        const stage = document.querySelector('[data-testid="hero-stage"]');
-        const video = document.querySelector('[data-testid="journey-video"]');
-        return (
-          stage?.dataset.playbackState === "settled" &&
-          Number(stage.dataset.targetTime) > 3 &&
-          video?.paused === true &&
-          video.currentTime > 2
-        );
-      },
-      undefined,
-      { timeout: 7000 },
-    );
-    const mobileIntroVideoTime = await mobileVideo.evaluate((node) => Number(node.currentTime));
-    await mobilePage.evaluate(() => {
-      window.scrollTo({ top: window.innerHeight, behavior: "auto" });
-    });
-    await mobilePage.waitForFunction(
-      () => document.querySelector('[data-testid="journey-video"]')?.paused === false,
-      undefined,
-      { timeout: 2500 },
-    );
-    const movingSamples = [];
-    for (let index = 0; index < 3; index += 1) {
-      movingSamples.push(
-        await mobileVideo.evaluate((node) => ({
-          currentTime: Number(node.currentTime),
-          playbackRate: Number(node.playbackRate),
-        })),
-      );
-      await mobilePage.waitForTimeout(180);
-    }
-    assert.ok(
-      movingSamples.every(({ playbackRate }) => playbackRate <= 1.25),
-      `Mobile playback rate must remain decoder-safe: ${JSON.stringify(movingSamples)}`,
-    );
-    assert.ok(
-      movingSamples.every(
-        ({ currentTime }, index) =>
-          index === 0 || currentTime > movingSamples[index - 1].currentTime,
-      ),
-      `Mobile MP4 should play continuously between checkpoints: ${JSON.stringify(movingSamples)}`,
-    );
-    await mobilePage.waitForFunction(
-      () => {
-        const stage = document.querySelector('[data-testid="hero-stage"]');
-        const video = document.querySelector('[data-testid="journey-video"]');
-        return (
-          stage?.dataset.confirmedSceneId === "bar" &&
-          stage.dataset.playbackState === "settled" &&
-          video?.paused === true
-        );
-      },
-      undefined,
-      { timeout: 7000 },
-    );
-    const barVideoTime = await mobileVideo.evaluate((node) => Number(node.currentTime));
-    assert.ok(
-      barVideoTime > mobileIntroVideoTime + 2,
-      "The mobile video should advance from the intro checkpoint to Bar",
-    );
     assert.equal(
-      (await mobilePage.locator('[data-testid="scene-eyebrow"]').textContent())?.trim(),
-      "Cocktail bar",
-      "One mobile swipe-sized step should advance the journey to Bar",
+      await mobilePage.evaluate(() =>
+        document.documentElement.classList.contains("journey-snap-root"),
+      ),
+      false,
+      "Mobile must not enable mandatory journey snapping",
     );
 
     const mobileMenuButton = mobilePage.getByRole("button", { name: "Menu", exact: true });
@@ -349,15 +307,13 @@ async function main() {
       "Reduced-motion mode should not decode the frame fallback when media is healthy",
     );
     await reducedMobilePage.evaluate(() => {
-      window.scrollTo({ top: window.innerHeight, behavior: "auto" });
+      document.querySelector("#bar")?.scrollIntoView({ behavior: "auto" });
     });
     await reducedMobilePage.waitForFunction(
       () => {
         const stage = document.querySelector('[data-testid="hero-stage"]');
         return (
-          stage?.dataset.confirmedSceneId === "bar" &&
-          stage.dataset.mediaMode === "stills" &&
-          stage.dataset.playbackState === "settled"
+          stage?.dataset.sceneId === "bar" && stage.dataset.mediaMode === "stills"
         );
       },
       undefined,
@@ -385,16 +341,12 @@ async function main() {
       "Fallback should use scene stills rather than the JPEG canvas runtime",
     );
     await fallbackMobilePage.evaluate(() => {
-      window.scrollTo({ top: window.innerHeight, behavior: "auto" });
+      document.querySelector("#bar")?.scrollIntoView({ behavior: "auto" });
     });
     await fallbackMobilePage.waitForFunction(
       () => {
         const stage = document.querySelector('[data-testid="hero-stage"]');
-        return (
-          stage?.dataset.confirmedSceneId === "bar" &&
-          stage.dataset.mediaMode === "fallback" &&
-          stage.dataset.playbackState === "fallback"
-        );
+        return stage?.dataset.sceneId === "bar" && stage.dataset.mediaMode === "fallback";
       },
       undefined,
       { timeout: 4500 },

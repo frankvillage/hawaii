@@ -4,15 +4,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useJourneyClipPlayer } from "@/components/home/use-journey-clip-player";
-import { createJourneyCheckpointManifest } from "@/lib/journey-checkpoints";
 import {
   JOURNEY_CONFIRMED_EVENT,
   JOURNEY_NAVIGATE_EVENT,
   type NavigationSource,
-  sceneIndexFromProgress,
-  sceneProgressForIndex,
 } from "@/lib/journey-playback";
+import {
+  advanceScrubTime,
+  sceneIndexForTimelineProgress,
+  timelineProgressForSceneIndex,
+  targetTimeForProgress,
+} from "@/lib/journey-scroll-scrub";
 import {
   homeHero,
   homeJourney,
@@ -32,16 +34,9 @@ function captionFor(hotspot: JourneyHotspot) {
 const RING_RADIUS = 15;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 const JOURNEY_FPS = 25;
-const journeyCheckpoints = createJourneyCheckpointManifest(
-  homeJourney.scenes.map((scene) => ({
-    id: scene.id,
-    start: scene.start,
-    end: scene.end,
-    still: scene.still ?? homeJourney.media.poster,
-  })),
-  homeJourney.media.duration,
-  JOURNEY_FPS,
-);
+const JOURNEY_FRAME_SECONDS = 1 / JOURNEY_FPS;
+
+type JourneyMediaMode = "video" | "stills" | "fallback";
 
 type JourneyNavigateDetail = {
   index: number;
@@ -51,76 +46,207 @@ type JourneyNavigateDetail = {
 export function ScrollVideoStage() {
   const wrapperRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  const railTargetIndexRef = useRef<number | null>(null);
-  const introRequestedRef = useRef(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const journeyFrameRef = useRef(0);
+  const scrollDirtyRef = useRef(true);
+  const lastScrubTickRef = useRef(0);
+  const seekStartedAtRef = useRef(0);
+  const railScrollingRef = useRef(false);
+  const railScrollTimeoutRef = useRef(0);
+  const progressRef = useRef(0);
+  const targetTimeRef = useRef(0);
+  const durationRef = useRef(homeJourney.media.duration);
+  const reducedMotionRef = useRef(false);
+  const mediaModeRef = useRef<JourneyMediaMode>("video");
 
   const [isReducedMotion, setIsReducedMotion] = useState(false);
-  const [motionPreferenceReady, setMotionPreferenceReady] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [mediaMode, setMediaMode] = useState<JourneyMediaMode>("video");
+  const [fallbackReason, setFallbackReason] = useState("");
   const [navigationSource, setNavigationSource] = useState<NavigationSource | "initial">(
     "initial",
   );
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [sheetHotspot, setSheetHotspot] = useState<JourneyHotspot | null>(null);
-  const {
-    videoRef,
-    requestedIndexRef,
-    state,
-    selectedStill,
-    request,
-  } = useJourneyClipPlayer({
-    checkpoints: journeyCheckpoints,
-    reducedMotion: isReducedMotion,
-  });
 
-  const playbackState =
-    state.status === "fallback"
-      ? "fallback"
-      : state.status === "idle"
-        ? "settled"
-        : "moving";
+  const playbackState = mediaMode === "fallback" ? "fallback" : isScrubbing ? "moving" : "settled";
 
-  const requestScene = useCallback(
-    (index: number, source: NavigationSource) => {
-      setNavigationSource(source);
-      return request(clamp(index, 0, homeJourney.scenes.length - 1), source);
-    },
-    [request],
-  );
+  const stopScrub = useCallback(() => {
+    if (journeyFrameRef.current) {
+      window.cancelAnimationFrame(journeyFrameRef.current);
+      journeyFrameRef.current = 0;
+    }
+    lastScrubTickRef.current = 0;
+    seekStartedAtRef.current = 0;
+    videoRef.current?.pause();
+    setIsScrubbing(false);
+  }, []);
+
+  const activateFallback = useCallback((reason: string) => {
+    mediaModeRef.current = "fallback";
+    setFallbackReason(reason);
+    setMediaMode("fallback");
+    if (journeyFrameRef.current) {
+      window.cancelAnimationFrame(journeyFrameRef.current);
+      journeyFrameRef.current = 0;
+    }
+    lastScrubTickRef.current = 0;
+    seekStartedAtRef.current = 0;
+    setIsScrubbing(false);
+  }, []);
+
+  const requestJourneyFrame = useCallback(() => {
+    if (journeyFrameRef.current) return;
+
+    if (!reducedMotionRef.current && mediaModeRef.current === "video") {
+      setIsScrubbing(true);
+    }
+    const tick = (timestamp: number) => {
+      journeyFrameRef.current = 0;
+      const wrapper = wrapperRef.current;
+
+      if (wrapper && scrollDirtyRef.current) {
+        scrollDirtyRef.current = false;
+        const rect = wrapper.getBoundingClientRect();
+        const scrollable = Math.max(wrapper.offsetHeight - window.innerHeight, 1);
+        const nextProgress = clamp(-rect.top / scrollable, 0, 1);
+        const nextIndex = sceneIndexForTimelineProgress(nextProgress, homeJourney.scenes);
+        const usableDuration = Math.max(durationRef.current - JOURNEY_FRAME_SECONDS, 0);
+        const nextTargetTime = targetTimeForProgress(nextProgress, usableDuration);
+
+        progressRef.current = nextProgress;
+        targetTimeRef.current = nextTargetTime;
+        wrapper.style.setProperty("--journey-progress", nextProgress.toFixed(4));
+        wrapper.dataset.scrollProgress = nextProgress.toFixed(4);
+        wrapper.dataset.targetTime = nextTargetTime.toFixed(3);
+        if (reducedMotionRef.current || mediaModeRef.current !== "video") {
+          setActiveIndex((current) => (current === nextIndex ? current : nextIndex));
+        }
+      }
+
+      const video = videoRef.current;
+      if (!video || reducedMotionRef.current || mediaModeRef.current !== "video") {
+        lastScrubTickRef.current = 0;
+        setIsScrubbing(false);
+        return;
+      }
+
+      if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
+        lastScrubTickRef.current = 0;
+        setIsScrubbing(false);
+        return;
+      }
+
+      if (video.seeking) {
+        if (!seekStartedAtRef.current) seekStartedAtRef.current = timestamp;
+        if (timestamp - seekStartedAtRef.current > 1500) {
+          activateFallback("seek-timeout");
+          return;
+        }
+        journeyFrameRef.current = window.requestAnimationFrame(tick);
+        return;
+      }
+      seekStartedAtRef.current = 0;
+
+      const elapsed = lastScrubTickRef.current
+        ? timestamp - lastScrubTickRef.current
+        : 1000 / 60;
+      lastScrubTickRef.current = timestamp;
+      const nextTime = advanceScrubTime(video.currentTime, targetTimeRef.current, elapsed);
+      const distance = Math.abs(targetTimeRef.current - nextTime);
+      const usableDuration = Math.max(durationRef.current - JOURNEY_FRAME_SECONDS, 0);
+      const visibleProgress = usableDuration > 0 ? video.currentTime / usableDuration : 0;
+      const visibleIndex = sceneIndexForTimelineProgress(visibleProgress, homeJourney.scenes);
+      let wroteTime = false;
+
+      setActiveIndex((current) => (current === visibleIndex ? current : visibleIndex));
+
+      try {
+        video.pause();
+        if (Math.abs(video.currentTime - nextTime) >= JOURNEY_FRAME_SECONDS) {
+          video.currentTime = nextTime;
+          seekStartedAtRef.current = timestamp;
+          wroteTime = true;
+        }
+      } catch {
+        activateFallback("seek-error");
+        return;
+      }
+
+      if (distance <= JOURNEY_FRAME_SECONDS) {
+        if (wroteTime || video.seeking) {
+          journeyFrameRef.current = window.requestAnimationFrame(tick);
+          return;
+        }
+        try {
+          if (Math.abs(video.currentTime - targetTimeRef.current) >= JOURNEY_FRAME_SECONDS) {
+            video.currentTime = targetTimeRef.current;
+            seekStartedAtRef.current = timestamp;
+            journeyFrameRef.current = window.requestAnimationFrame(tick);
+            return;
+          }
+        } catch {
+          activateFallback("seek-error");
+          return;
+        }
+        lastScrubTickRef.current = 0;
+        setIsScrubbing(false);
+        return;
+      }
+
+      journeyFrameRef.current = window.requestAnimationFrame(tick);
+    };
+
+    journeyFrameRef.current = window.requestAnimationFrame(tick);
+  }, [activateFallback]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     const syncMotionPreference = () => {
-      setIsReducedMotion(mediaQuery.matches);
-      setMotionPreferenceReady(true);
+      const reduced = mediaQuery.matches;
+      reducedMotionRef.current = reduced;
+      setIsReducedMotion(reduced);
+
+      if (reduced) {
+        mediaModeRef.current = "stills";
+        setMediaMode("stills");
+        stopScrub();
+        scrollDirtyRef.current = true;
+        requestJourneyFrame();
+      } else if (mediaModeRef.current !== "fallback") {
+        mediaModeRef.current = "video";
+        setMediaMode("video");
+        scrollDirtyRef.current = true;
+        requestJourneyFrame();
+      }
     };
 
     syncMotionPreference();
     mediaQuery.addEventListener("change", syncMotionPreference);
     return () => mediaQuery.removeEventListener("change", syncMotionPreference);
-  }, []);
+  }, [requestJourneyFrame, stopScrub]);
 
   useEffect(() => {
-    if (!motionPreferenceReady || introRequestedRef.current) {
-      return;
-    }
+    if (mediaMode !== "video") return;
 
-    const timer = window.setTimeout(() => {
-      if (!introRequestedRef.current) {
-        introRequestedRef.current = true;
-        void requestScene(0, "intro");
+    const watchdog = window.setTimeout(() => {
+      const video = videoRef.current;
+      if (!video || video.readyState < HTMLMediaElement.HAVE_METADATA) {
+        activateFallback("metadata-timeout");
       }
-    }, 0);
+    }, 3500);
 
-    return () => window.clearTimeout(timer);
-  }, [motionPreferenceReady, requestScene]);
+    return () => window.clearTimeout(watchdog);
+  }, [activateFallback, mediaMode]);
 
   useEffect(() => {
     window.dispatchEvent(
       new CustomEvent(JOURNEY_CONFIRMED_EVENT, {
-        detail: { index: state.confirmedIndex },
+        detail: { index: activeIndex },
       }),
     );
-  }, [state.confirmedIndex]);
+  }, [activeIndex]);
 
   useEffect(() => {
     if (!isPanelOpen && !sheetHotspot) {
@@ -145,52 +271,37 @@ export function ScrollVideoStage() {
   }, [isPanelOpen, sheetHotspot]);
 
   useEffect(() => {
-    const root = document.documentElement;
-    if (!isReducedMotion) {
-      root.classList.add("journey-snap-root");
-    }
-    return () => root.classList.remove("journey-snap-root");
-  }, [isReducedMotion]);
-
-  useEffect(() => {
     const wrapper = wrapperRef.current;
     if (!wrapper) {
       return;
     }
 
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      const rect = wrapper.getBoundingClientRect();
-      const scrollable = Math.max(wrapper.offsetHeight - window.innerHeight, 1);
-      const nextProgress = clamp(-rect.top / scrollable, 0, 1);
-      const nextIndex = sceneIndexFromProgress(nextProgress, homeJourney.scenes.length);
-
-      wrapper.style.setProperty("--journey-progress", nextProgress.toFixed(4));
-      if (nextIndex !== requestedIndexRef.current) {
-        if (railTargetIndexRef.current === nextIndex) {
-          railTargetIndexRef.current = null;
-        } else {
-          void requestScene(nextIndex, "scroll");
-        }
+    const requestScrollUpdate = () => {
+      if (railScrollingRef.current) {
+        window.clearTimeout(railScrollTimeoutRef.current);
+        railScrollTimeoutRef.current = window.setTimeout(() => {
+          railScrollingRef.current = false;
+        }, 180);
+      } else {
+        setNavigationSource("scroll");
       }
+      scrollDirtyRef.current = true;
+      requestJourneyFrame();
+    };
+    const requestResizeUpdate = () => {
+      scrollDirtyRef.current = true;
+      requestJourneyFrame();
     };
 
-    const requestUpdate = () => {
-      if (!frame) {
-        frame = window.requestAnimationFrame(update);
-      }
-    };
-
-    update();
-    window.addEventListener("scroll", requestUpdate, { passive: true });
-    window.addEventListener("resize", requestUpdate);
+    requestResizeUpdate();
+    window.addEventListener("scroll", requestScrollUpdate, { passive: true });
+    window.addEventListener("resize", requestResizeUpdate);
     return () => {
-      window.removeEventListener("scroll", requestUpdate);
-      window.removeEventListener("resize", requestUpdate);
-      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", requestScrollUpdate);
+      window.removeEventListener("resize", requestResizeUpdate);
+      window.clearTimeout(railScrollTimeoutRef.current);
     };
-  }, [requestScene, requestedIndexRef]);
+  }, [requestJourneyFrame]);
 
   useEffect(() => {
     const navigate = (event: Event) => {
@@ -206,44 +317,41 @@ export function ScrollVideoStage() {
       const scrollable = Math.max(wrapper.offsetHeight - window.innerHeight, 1);
       const nextTop =
         wrapperTop +
-        sceneProgressForIndex(nextIndex, homeJourney.scenes.length) * scrollable;
-      const root = document.documentElement;
-      const previousScrollBehavior = root.style.scrollBehavior;
-
-      railTargetIndexRef.current = nextIndex;
-      void requestScene(nextIndex, "rail");
-      root.style.scrollBehavior = "auto";
-      window.scrollTo({ top: nextTop, behavior: "auto" });
+        timelineProgressForSceneIndex(nextIndex, homeJourney.scenes) * scrollable;
+      railScrollingRef.current = true;
+      window.clearTimeout(railScrollTimeoutRef.current);
+      railScrollTimeoutRef.current = window.setTimeout(() => {
+        railScrollingRef.current = false;
+      }, 180);
+      setNavigationSource("rail");
+      window.scrollTo({
+        top: nextTop,
+        behavior: isReducedMotion ? "auto" : "smooth",
+      });
 
       if (detail.anchor) {
         window.history.replaceState(null, "", `#${detail.anchor}`);
       }
 
-      window.requestAnimationFrame(() => {
-        root.style.scrollBehavior = previousScrollBehavior;
-        railTargetIndexRef.current = null;
-      });
     };
 
     window.addEventListener(JOURNEY_NAVIGATE_EVENT, navigate);
     return () => window.removeEventListener(JOURNEY_NAVIGATE_EVENT, navigate);
-  }, [requestScene]);
+  }, [isReducedMotion]);
 
-  const confirmedIndex = state.confirmedIndex;
-  const activeScene = homeJourney.scenes[confirmedIndex] ?? homeJourney.scenes[0];
-  const isMoving = state.status === "moving" || state.status === "waiting-for-gesture";
+  useEffect(() => () => stopScrub(), [stopScrub]);
+
+  const confirmedIndex = activeIndex;
+  const activeScene = homeJourney.scenes[activeIndex] ?? homeJourney.scenes[0];
+  const isMoving = isScrubbing;
   const sceneFraction = isMoving ? 0.35 : 1;
   const rawSettle = isMoving ? 0.3 : 1;
   const overlaySettle = rawSettle;
 
-  const overlaysInteractive = overlaySettle > 0.18;
-  const hotspotsInteractive = rawSettle > 0.18;
+  const overlaysInteractive = !isMoving;
+  const hotspotsInteractive = !isMoving;
 
   const activeStill = activeScene.still ?? homeJourney.media.poster;
-  const coverStill =
-    state.coverIndex === null
-      ? null
-      : homeJourney.scenes[state.coverIndex]?.still ?? homeJourney.media.poster;
 
   const copyAlign = activeScene.align ?? "left";
   /* Right-aligned blocks stay clear of the WhatsApp button and the desktop
@@ -310,13 +418,14 @@ export function ScrollVideoStage() {
       data-testid="hero-stage"
       data-scene-id={activeScene.id}
       data-confirmed-scene-id={activeScene.id}
-      data-requested-scene-id={homeJourney.scenes[state.requestedIndex]?.id ?? activeScene.id}
-      data-media-mode={state.mediaMode}
+      data-requested-scene-id={activeScene.id}
+      data-media-mode={mediaMode}
       data-media-state={playbackState}
       data-playback-state={playbackState}
-      data-fallback-reason={state.fallbackReason ?? ""}
+      data-fallback-reason={fallbackReason}
       data-nav-source={navigationSource}
-      data-target-time={state.targetTime.toFixed(3)}
+      data-target-time="0.000"
+      data-scroll-progress="0.0000"
       data-settled={String(playbackState === "settled")}
       className="relative bg-[#070808]"
       aria-label="Hawaii Urban Village journey"
@@ -328,7 +437,7 @@ export function ScrollVideoStage() {
         onMouseMove={handlePointerMove}
         onMouseLeave={resetPointer}
       >
-        {state.mediaMode === "video" ? (
+        {mediaMode === "video" ? (
           <video
             ref={videoRef}
             data-testid="journey-video"
@@ -338,6 +447,18 @@ export function ScrollVideoStage() {
             preload="auto"
             poster={homeJourney.media.poster}
             aria-label={homeJourney.media.alt}
+            onLoadedMetadata={(event) => {
+              const duration = event.currentTarget.duration;
+              if (Number.isFinite(duration) && duration > 0) {
+                durationRef.current = duration;
+                const usableDuration = Math.max(duration - JOURNEY_FRAME_SECONDS, 0);
+                const nextTarget = targetTimeForProgress(progressRef.current, usableDuration);
+                targetTimeRef.current = nextTarget;
+                scrollDirtyRef.current = true;
+                requestJourneyFrame();
+              }
+            }}
+            onError={() => activateFallback("media-error")}
           >
             <source
               src={homeJourney.media.src}
@@ -348,27 +469,16 @@ export function ScrollVideoStage() {
           </video>
         ) : (
           <Image
-            key={selectedStill ?? activeStill}
-            src={selectedStill ?? activeStill}
+            key={activeStill}
+            src={activeStill}
             alt={homeHero.media.alt}
             fill
             priority
             sizes="100vw"
-            data-testid={state.mediaMode === "fallback" ? "journey-fallback" : undefined}
+            data-testid={mediaMode === "fallback" ? "journey-fallback" : undefined}
             className="absolute inset-0 object-cover object-center"
           />
         )}
-
-        {state.mediaMode === "video" && coverStill ? (
-          <Image
-            key={`cover-${state.coverIndex}-${coverStill}`}
-            src={coverStill}
-            alt=""
-            fill
-            sizes="100vw"
-            className="pointer-events-none absolute inset-0 object-cover object-center transition-opacity duration-300"
-          />
-        ) : null}
 
         {/* No boxes: legibility comes from one light veil plus a feathered
             scrim that follows the copy block (left / center / right). */}
@@ -436,7 +546,11 @@ export function ScrollVideoStage() {
             </div>
           </div>
 
-          <div className="pointer-events-none absolute inset-0" style={hotspotLayerStyle}>
+          <div
+            inert={!hotspotsInteractive}
+            className="pointer-events-none absolute inset-0"
+            style={hotspotLayerStyle}
+          >
             {activeScene.hotspots.map((hotspot, index) => {
               const mirrored = hotspot.x > 50;
 
@@ -529,6 +643,7 @@ export function ScrollVideoStage() {
               </p>
 
               <div
+                inert={!overlaysInteractive}
                 className={`mt-5 flex flex-wrap gap-3 sm:mt-6 ${copyRowJustify} ${
                   overlaysInteractive ? "" : "pointer-events-none"
                 }`}
@@ -567,8 +682,7 @@ export function ScrollVideoStage() {
         </div>
       </div>
 
-      {/* The track overlaps the sticky stage: nine equal snap points produce
-          eight viewport-sized moves from the first scene to the last. */}
+      {/* Eighteen viewport heights are distributed by each scene's video range. */}
       <div aria-hidden="true" className="pointer-events-none relative z-0 -mt-[100svh]">
         {homeJourney.scenes.map((scene) => (
           <section
@@ -576,7 +690,7 @@ export function ScrollVideoStage() {
             id={scene.anchor}
             data-chapter
             data-soul={scene.soul}
-            className="h-[100svh] [scroll-snap-align:start] [scroll-snap-stop:always]"
+            style={{ height: `${(scene.end - scene.start) * 1800}svh` }}
           >
             <div className="sr-only">
               <h2>{scene.title}</h2>
@@ -585,6 +699,7 @@ export function ScrollVideoStage() {
           </section>
         ))}
       </div>
+      <div data-journey-tail aria-hidden="true" className="h-[100svh]" />
 
       {sheetHotspot ? (
         <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6">
