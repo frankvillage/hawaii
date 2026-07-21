@@ -84,22 +84,21 @@ async function main() {
     });
     if (quality.callbackSupported) {
       assert.ok(
-        quality.presentedFrames >= 14,
+        quality.presentedFrames >= 30,
         `Desktop must present decoded frames continuously: ${JSON.stringify(quality)}`,
       );
     }
-    if (quality.totalFrames >= 10) {
-      assert.ok(
-        quality.droppedFrames / quality.totalFrames <= 0.2,
-        `Desktop dropped-frame ratio is too high: ${JSON.stringify(quality)}`,
-      );
-    }
+
+    // Headless CI uses software decoding, so dropped-frame totals are diagnostic only.
+    const droppedFrameRatio =
+      quality.totalFrames >= 10 ? quality.droppedFrames / quality.totalFrames : null;
 
     console.log(
       `desktop continuous journey checks passed ${JSON.stringify({
         presentedFrames: quality.presentedFrames,
         totalFrames: quality.totalFrames,
         droppedFrames: quality.droppedFrames,
+        droppedFrameRatio,
       })}`,
     );
   } finally {
