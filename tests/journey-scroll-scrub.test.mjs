@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   advanceScrubTime,
+  mobileTransportForState,
   playbackRateForDistance,
   sceneIndexForTimelineProgress,
   timelineProgressForSceneIndex,
@@ -55,6 +56,68 @@ test("forward playback accelerates distant targets without exceeding a fluid rat
   assert.equal(playbackRateForDistance(3), 2);
   assert.equal(playbackRateForDistance(30), 3);
   assert.equal(playbackRateForDistance(30, 2), 2);
+});
+
+test("mobile keeps one forward playback alive across consecutive swipes", () => {
+  assert.equal(
+    mobileTransportForState({
+      currentTime: 0,
+      targetTime: 2.2,
+      scrollIdleMs: 100,
+      scrollDirection: 1,
+    }),
+    "play-forward",
+  );
+  assert.equal(
+    mobileTransportForState({
+      currentTime: 2.35,
+      targetTime: 2.2,
+      scrollIdleMs: 100,
+      scrollDirection: 1,
+    }),
+    "play-forward",
+  );
+});
+
+test("mobile settles small overshoots without seeking backward", () => {
+  assert.equal(
+    mobileTransportForState({
+      currentTime: 2.35,
+      targetTime: 2.2,
+      scrollIdleMs: 900,
+      scrollDirection: 1,
+    }),
+    "settled",
+  );
+});
+
+test("mobile performs one reverse seek only after upward scrolling stops", () => {
+  const moving = {
+    currentTime: 8,
+    targetTime: 3,
+    scrollDirection: -1,
+  };
+
+  assert.equal(
+    mobileTransportForState({ ...moving, scrollIdleMs: 80 }),
+    "hold-reverse",
+  );
+  assert.equal(
+    mobileTransportForState({ ...moving, scrollIdleMs: 240 }),
+    "seek-backward",
+  );
+});
+
+test("mobile corrects a small reverse overshoot after upward scrolling stops", () => {
+  assert.equal(
+    mobileTransportForState({
+      currentTime: 3.35,
+      targetTime: 3,
+      scrollDirection: -1,
+      scrollIdleMs: 240,
+    }),
+    "seek-backward",
+  );
 });
 
 test("invalid inputs produce finite safe times", () => {

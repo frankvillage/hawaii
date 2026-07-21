@@ -11,6 +11,7 @@ import {
 } from "@/lib/journey-playback";
 import {
   advanceScrubTime,
+  mobileTransportForState,
   playbackRateForDistance,
   sceneIndexForTimelineProgress,
   timelineProgressForSceneIndex,
@@ -58,6 +59,14 @@ export function ScrollVideoStage() {
   const playRejectionCountRef = useRef(0);
   const waitingForGestureRef = useRef(false);
   const maxPlaybackRateRef = useRef(3);
+  const isCoarsePointerRef = useRef(false);
+  const lastScrollAtRef = useRef(0);
+  const lastScrollYRef = useRef(0);
+  const scrollDirectionRef = useRef(0);
+  const lastMediaTimeRef = useRef(0);
+  const lastMediaAdvanceAtRef = useRef(0);
+  const bufferingRef = useRef(false);
+  const bufferRetryTimerRef = useRef(0);
   const railScrollingRef = useRef(false);
   const railScrollTimeoutRef = useRef(0);
   const progressRef = useRef(0);
@@ -70,6 +79,7 @@ export function ScrollVideoStage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [isWaitingForGesture, setIsWaitingForGesture] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [mediaMode, setMediaMode] = useState<JourneyMediaMode>("video");
   const [fallbackReason, setFallbackReason] = useState("");
   const [navigationSource, setNavigationSource] = useState<NavigationSource | "initial">(
@@ -84,9 +94,11 @@ export function ScrollVideoStage() {
       ? "fallback"
       : isWaitingForGesture
         ? "waiting-for-gesture"
-        : isScrubbing
-          ? "moving"
-          : "settled";
+        : isBuffering
+          ? "buffering"
+          : isScrubbing
+            ? "moving"
+            : "settled";
 
   const stopScrub = useCallback(() => {
     if (journeyFrameRef.current) {
@@ -98,7 +110,10 @@ export function ScrollVideoStage() {
     playAttemptRef.current = false;
     playAttemptIdRef.current += 1;
     waitingForGestureRef.current = false;
+    bufferingRef.current = false;
+    window.clearTimeout(bufferRetryTimerRef.current);
     setIsWaitingForGesture(false);
+    setIsBuffering(false);
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.playbackRate = 1;
@@ -119,7 +134,10 @@ export function ScrollVideoStage() {
     playAttemptRef.current = false;
     playAttemptIdRef.current += 1;
     waitingForGestureRef.current = false;
+    bufferingRef.current = false;
+    window.clearTimeout(bufferRetryTimerRef.current);
     setIsWaitingForGesture(false);
+    setIsBuffering(false);
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.playbackRate = 1;
@@ -175,6 +193,12 @@ export function ScrollVideoStage() {
         return;
       }
 
+      if (bufferingRef.current) {
+        lastScrubTickRef.current = 0;
+        setIsScrubbing(false);
+        return;
+      }
+
       if (video.seeking) {
         if (!seekStartedAtRef.current) seekStartedAtRef.current = timestamp;
         if (timestamp - seekStartedAtRef.current > 1500) {
@@ -189,21 +213,59 @@ export function ScrollVideoStage() {
       const usableDuration = Math.max(durationRef.current - JOURNEY_FRAME_SECONDS, 0);
       const visibleProgress = usableDuration > 0 ? video.currentTime / usableDuration : 0;
       const visibleIndex = sceneIndexForTimelineProgress(visibleProgress, homeJourney.scenes);
-      const transport = transportForTimes(
-        video.currentTime,
-        targetTimeRef.current,
-        JOURNEY_FRAME_SECONDS,
-      );
+      const scrollIdleMs = Math.max(timestamp - lastScrollAtRef.current, 0);
+      const transport = isCoarsePointerRef.current
+        ? mobileTransportForState({
+            currentTime: video.currentTime,
+            targetTime: targetTimeRef.current,
+            scrollIdleMs,
+            scrollDirection: scrollDirectionRef.current,
+          })
+        : transportForTimes(
+            video.currentTime,
+            targetTimeRef.current,
+            JOURNEY_FRAME_SECONDS,
+          );
 
       setActiveIndex((current) => (current === visibleIndex ? current : visibleIndex));
 
       if (transport === "play-forward") {
         seekStartedAtRef.current = 0;
         lastScrubTickRef.current = timestamp;
-        video.playbackRate = playbackRateForDistance(
-          targetTimeRef.current - video.currentTime,
-          maxPlaybackRateRef.current,
-        );
+        const nextPlaybackRate = isCoarsePointerRef.current
+          ? 1
+          : playbackRateForDistance(
+              targetTimeRef.current - video.currentTime,
+              maxPlaybackRateRef.current,
+            );
+        if (Math.abs(video.playbackRate - nextPlaybackRate) >= 0.05) {
+          video.playbackRate = nextPlaybackRate;
+        }
+
+        if (Math.abs(video.currentTime - lastMediaTimeRef.current) >= JOURNEY_FRAME_SECONDS) {
+          lastMediaTimeRef.current = video.currentTime;
+          lastMediaAdvanceAtRef.current = timestamp;
+        } else if (
+          !video.paused &&
+          lastMediaAdvanceAtRef.current > 0 &&
+          timestamp - lastMediaAdvanceAtRef.current > 2500
+        ) {
+          bufferingRef.current = true;
+          playAttemptIdRef.current += 1;
+          playAttemptRef.current = false;
+          setIsBuffering(true);
+          setIsScrubbing(false);
+          video.pause();
+          window.clearTimeout(bufferRetryTimerRef.current);
+          bufferRetryTimerRef.current = window.setTimeout(() => {
+            bufferingRef.current = false;
+            setIsBuffering(false);
+            setIsScrubbing(true);
+            lastMediaAdvanceAtRef.current = performance.now();
+            journeyFrameRef.current = window.requestAnimationFrame(tick);
+          }, 900);
+          return;
+        }
 
         if (video.paused && !playAttemptRef.current) {
           const attemptId = ++playAttemptIdRef.current;
@@ -213,6 +275,8 @@ export function ScrollVideoStage() {
               if (attemptId !== playAttemptIdRef.current) return;
               playAttemptRef.current = false;
               playRejectionCountRef.current = 0;
+              lastMediaTimeRef.current = video.currentTime;
+              lastMediaAdvanceAtRef.current = performance.now();
             },
             () => {
               if (attemptId !== playAttemptIdRef.current) return;
@@ -233,10 +297,19 @@ export function ScrollVideoStage() {
         return;
       }
 
+      if (transport === "hold-reverse") {
+        playAttemptIdRef.current += 1;
+        video.pause();
+        if (video.playbackRate !== 1) video.playbackRate = 1;
+        playAttemptRef.current = false;
+        journeyFrameRef.current = window.requestAnimationFrame(tick);
+        return;
+      }
+
       if (transport === "settled") {
         playAttemptIdRef.current += 1;
         video.pause();
-        video.playbackRate = 1;
+        if (video.playbackRate !== 1) video.playbackRate = 1;
         playAttemptRef.current = false;
         lastScrubTickRef.current = 0;
         setIsScrubbing(false);
@@ -247,14 +320,18 @@ export function ScrollVideoStage() {
         ? timestamp - lastScrubTickRef.current
         : 1000 / 60;
       lastScrubTickRef.current = timestamp;
-      const nextTime = advanceScrubTime(video.currentTime, targetTimeRef.current, elapsed);
+      const nextTime = isCoarsePointerRef.current
+        ? targetTimeRef.current
+        : advanceScrubTime(video.currentTime, targetTimeRef.current, elapsed);
 
       try {
         playAttemptIdRef.current += 1;
         video.pause();
-        video.playbackRate = 1;
+        if (video.playbackRate !== 1) video.playbackRate = 1;
         playAttemptRef.current = false;
         video.currentTime = nextTime;
+        lastMediaTimeRef.current = nextTime;
+        lastMediaAdvanceAtRef.current = timestamp;
         seekStartedAtRef.current = timestamp;
       } catch {
         activateFallback("seek-error");
@@ -269,13 +346,22 @@ export function ScrollVideoStage() {
 
   const retryPlaybackFromGesture = useCallback(() => {
     const video = videoRef.current;
-    if (!waitingForGestureRef.current || !video || mediaModeRef.current !== "video") {
+    if (
+      (!bufferingRef.current && !waitingForGestureRef.current) ||
+      !video ||
+      mediaModeRef.current !== "video"
+    ) {
       return;
     }
 
+    window.clearTimeout(bufferRetryTimerRef.current);
+    bufferingRef.current = false;
     waitingForGestureRef.current = false;
+    setIsBuffering(false);
     setIsWaitingForGesture(false);
     setIsScrubbing(true);
+    lastMediaTimeRef.current = video.currentTime;
+    lastMediaAdvanceAtRef.current = performance.now();
     const attemptId = ++playAttemptIdRef.current;
     playAttemptRef.current = true;
 
@@ -323,7 +409,8 @@ export function ScrollVideoStage() {
       }
     };
     const syncPlaybackRate = () => {
-      maxPlaybackRateRef.current = coarsePointerQuery.matches ? 2 : 3;
+      isCoarsePointerRef.current = coarsePointerQuery.matches;
+      maxPlaybackRateRef.current = coarsePointerQuery.matches ? 1 : 3;
     };
 
     syncMotionPreference();
@@ -386,6 +473,13 @@ export function ScrollVideoStage() {
     }
 
     const requestScrollUpdate = () => {
+      const nextScrollY = window.scrollY;
+      const delta = nextScrollY - lastScrollYRef.current;
+      if (Math.abs(delta) >= 1) {
+        scrollDirectionRef.current = Math.sign(delta);
+      }
+      lastScrollYRef.current = nextScrollY;
+      lastScrollAtRef.current = performance.now();
       if (railScrollingRef.current) {
         window.clearTimeout(railScrollTimeoutRef.current);
         railScrollTimeoutRef.current = window.setTimeout(() => {
@@ -403,6 +497,8 @@ export function ScrollVideoStage() {
     };
 
     requestResizeUpdate();
+    lastScrollYRef.current = window.scrollY;
+    lastScrollAtRef.current = performance.now();
     window.addEventListener("scroll", requestScrollUpdate, { passive: true });
     window.addEventListener("resize", requestResizeUpdate);
     return () => {
@@ -562,6 +658,8 @@ export function ScrollVideoStage() {
               const duration = event.currentTarget.duration;
               if (Number.isFinite(duration) && duration > 0) {
                 durationRef.current = duration;
+                lastMediaTimeRef.current = event.currentTarget.currentTime;
+                lastMediaAdvanceAtRef.current = performance.now();
                 const usableDuration = Math.max(duration - JOURNEY_FRAME_SECONDS, 0);
                 const nextTarget = targetTimeForProgress(progressRef.current, usableDuration);
                 targetTimeRef.current = nextTarget;

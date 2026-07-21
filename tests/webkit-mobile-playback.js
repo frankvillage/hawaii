@@ -57,6 +57,24 @@ async function main() {
       `Mobile must not expose visible journey hotspots: ${JSON.stringify(mobileHotspotState)}`,
     );
 
+    const mobileCompositing = await page.evaluate(() => {
+      const journeyVideo = document.querySelector('[data-testid="journey-video"]');
+      const soulRail = document.querySelector('[data-testid="soul-rail"] nav');
+      const videoStyle = getComputedStyle(journeyVideo);
+      const railStyle = getComputedStyle(soulRail);
+
+      return {
+        videoTransform: videoStyle.transform,
+        videoTransition: videoStyle.transitionDuration,
+        videoWillChange: videoStyle.willChange,
+        railBackdropFilter: railStyle.backdropFilter,
+      };
+    });
+    assert.equal(mobileCompositing.videoTransform, "none");
+    assert.equal(mobileCompositing.videoTransition, "0s");
+    assert.equal(mobileCompositing.videoWillChange, "auto");
+    assert.equal(mobileCompositing.railBackdropFilter, "none");
+
     const snapState = await page.evaluate(() => ({
       hasSnapClass: document.documentElement.classList.contains("journey-snap-root"),
       rootSnapType: getComputedStyle(document.documentElement).scrollSnapType,
@@ -91,6 +109,14 @@ async function main() {
       const video = document.querySelector('[data-testid="journey-video"]');
       window.__journeyDecodedFrames = 0;
       window.__journeyHasVideoFrameCallback = Boolean(video?.requestVideoFrameCallback);
+      window.__journeyPlayEvents = 0;
+      window.__journeyPauseEvents = 0;
+      video?.addEventListener("play", () => {
+        window.__journeyPlayEvents += 1;
+      });
+      video?.addEventListener("pause", () => {
+        window.__journeyPauseEvents += 1;
+      });
       const countFrame = () => {
         window.__journeyDecodedFrames += 1;
         video?.requestVideoFrameCallback?.(countFrame);
@@ -99,23 +125,41 @@ async function main() {
     });
 
     const initial = await videoState(page);
-    const targetProgress = 0.35;
-    await page.evaluate((progress) => {
-      const journey = document.querySelector('[data-testid="hero-stage"]');
-      const scrollable = Math.max(journey.offsetHeight - window.innerHeight, 1);
-      const journeyTop = window.scrollY + journey.getBoundingClientRect().top;
-      window.scrollTo({ top: journeyTop + scrollable * progress, behavior: "auto" });
-    }, targetProgress);
-
+    const swipeProgress = 0.03;
     const samples = [];
-    for (let index = 0; index < 7; index += 1) {
-      await page.waitForTimeout(140);
+    const frameSamples = [];
+    for (let index = 0; index < 4; index += 1) {
+      await page.evaluate((progress) => {
+        const journey = document.querySelector('[data-testid="hero-stage"]');
+        const scrollable = Math.max(journey.offsetHeight - window.innerHeight, 1);
+        const journeyTop = window.scrollY + journey.getBoundingClientRect().top;
+        window.scrollTo({ top: journeyTop + scrollable * progress, behavior: "auto" });
+      }, swipeProgress * (index + 1));
+      if (index === 0) {
+        await page.waitForFunction(() => {
+          const journeyVideo = document.querySelector('[data-testid="journey-video"]');
+          return journeyVideo && !journeyVideo.paused;
+        });
+        for (let frameIndex = 0; frameIndex < 6; frameIndex += 1) {
+          await page.waitForTimeout(120);
+          frameSamples.push(await videoState(page));
+        }
+        await page.waitForTimeout(480);
+      } else {
+        await page.waitForTimeout(1200);
+      }
       samples.push(await videoState(page));
     }
 
     const times = [initial.currentTime, ...samples.map(({ currentTime }) => currentTime)];
     const deltas = times.slice(1).map((time, index) => time - times[index]);
+    const targetProgress = swipeProgress * samples.length;
     const targetTime = initial.duration * targetProgress;
+    const firstTargetTime = initial.duration * swipeProgress;
+    const frameTimes = frameSamples.map(({ currentTime }) => currentTime);
+    const frameDeltas = frameTimes
+      .slice(1)
+      .map((time, index) => time - frameTimes[index]);
     assert.ok(
       times.at(-1) > initial.currentTime + 0.1,
       `WebKit MP4 time must advance with document scroll: ${times.join(", ")}`,
@@ -125,25 +169,42 @@ async function main() {
       `WebKit MP4 time must progress monotonically: ${times.join(", ")}`,
     );
     assert.ok(
-      deltas.every((delta) => delta < 0.75),
+      deltas.every((delta) => delta < 1.6),
       `WebKit MP4 time must advance through decoded playback instead of jumping: ${times.join(", ")}`,
     );
     assert.ok(
-      samples[0].currentTime < targetTime - 1,
-      `The first WebKit scrub step must not jump directly to ${targetTime.toFixed(2)}s: ${times.join(", ")}`,
+      samples[0].currentTime < firstTargetTime - 0.1,
+      `The first swipe must play toward ${firstTargetTime.toFixed(2)}s instead of jumping: ${times.join(", ")}`,
     );
     assert.ok(
-      samples.filter(({ paused }) => !paused).length >= 3,
-      `Forward scrolling must keep the MP4 playing between the current and target times: ${JSON.stringify(samples)}`,
+      frameTimes.at(-1) > frameTimes[0] + 0.4 &&
+        frameDeltas.every((delta) => delta >= -0.05 && delta < 0.35),
+      `One swipe must present continuous intermediate frames: ${frameTimes.join(", ")}`,
     );
     assert.ok(
-      samples.every(({ playbackRate }) => playbackRate <= 2),
-      `Mobile playback must stay within the decoder-safe 2x limit: ${JSON.stringify(samples)}`,
+      samples.every(({ paused }) => !paused),
+      `Consecutive mobile swipes must remain one continuous playback: ${JSON.stringify(samples)}`,
+    );
+    assert.ok(
+      samples.every(({ playbackRate }) => Math.abs(playbackRate - 1) < 0.01),
+      `Mobile playback must stay at native 1x decode speed: ${JSON.stringify(samples)}`,
     );
     const decodedFrameState = await page.evaluate(() => ({
       supported: window.__journeyHasVideoFrameCallback,
       count: window.__journeyDecodedFrames,
+      playEvents: window.__journeyPlayEvents,
+      pauseEvents: window.__journeyPauseEvents,
     }));
+    assert.equal(
+      decodedFrameState.playEvents,
+      1,
+      `The four swipes must produce one play session: ${JSON.stringify(decodedFrameState)}`,
+    );
+    assert.equal(
+      decodedFrameState.pauseEvents,
+      0,
+      `The player must not pause at intermediate swipe targets: ${JSON.stringify(decodedFrameState)}`,
+    );
     if (decodedFrameState.supported) {
       assert.ok(
         decodedFrameState.count >= 3,
@@ -165,11 +226,11 @@ async function main() {
         return (
           journeyStage?.dataset.playbackState === "settled" &&
           journeyVideo?.seeking === false &&
-          Math.abs(journeyVideo.currentTime - Number(journeyStage.dataset.targetTime)) <= 0.08
+          Math.abs(journeyVideo.currentTime - Number(journeyStage.dataset.targetTime)) <= 0.13
         );
       },
       undefined,
-      { timeout: 12000 },
+      { timeout: 8000 },
     );
 
     const retryPage = await context.newPage();
@@ -207,8 +268,8 @@ async function main() {
       "video",
       "A first play rejection must keep the MP4 ready for a gesture retry",
     );
-    await retryPage.dispatchEvent('[data-testid="scroll-video-stage"]', "pointerdown", {
-      pointerType: "touch",
+    await retryPage.locator('[data-testid="scroll-video-stage"]').tap({
+      position: { x: 24, y: 180 },
     });
     await retryPage.waitForFunction(
       () => {

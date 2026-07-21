@@ -44,6 +44,20 @@ body {
   will-change: transform;
 }
 
+@media (hover: none), (pointer: coarse) {
+  .journey-stage video,
+  .journey-stage img {
+    transform: none;
+    transition: none;
+    will-change: auto;
+  }
+
+  .soul-rail-surface {
+    background: rgba(10, 11, 12, 0.72) !important;
+    backdrop-filter: none !important;
+  }
+}
+
 
 
 a,

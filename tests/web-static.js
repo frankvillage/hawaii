@@ -32,6 +32,23 @@ const stagePath = path.join(
   "home",
   "scroll-video-stage.tsx",
 );
+const globalStylesPath = path.join(root, "web", "src", "app", "globals.css");
+const soulRailPath = path.join(
+  root,
+  "web",
+  "src",
+  "components",
+  "home",
+  "soul-rail.tsx",
+);
+const siteHeaderPath = path.join(
+  root,
+  "web",
+  "src",
+  "components",
+  "chrome",
+  "site-header.tsx",
+);
 const theForkPath = path.join(
   root,
   "web",
@@ -76,6 +93,9 @@ const villagePagePath = path.join(root, "web", "src", "app", "villaggio", "page.
 
 const layout = fs.readFileSync(layoutPath, "utf8");
 const stage = fs.readFileSync(stagePath, "utf8");
+const globalStyles = fs.readFileSync(globalStylesPath, "utf8");
+const soulRail = fs.readFileSync(soulRailPath, "utf8");
+const siteHeader = fs.readFileSync(siteHeaderPath, "utf8");
 const theFork = fs.existsSync(theForkPath) ? fs.readFileSync(theForkPath, "utf8") : "";
 const bookingHub = fs.readFileSync(bookingHubPath, "utf8");
 const bookingForm = fs.readFileSync(bookingFormPath, "utf8");
@@ -140,6 +160,36 @@ assert.doesNotMatch(
   stage,
   /scrollFrameRef|scrubFrameRef|JOURNEY_FRAME_SECONDS \* 0\.7/,
   "The journey must not run competing RAF loops or seek below one full video frame",
+);
+assert.match(
+  globalStyles,
+  /@media \(hover: none\), \(pointer: coarse\)[\s\S]*?\.journey-stage video,[\s\S]*?transform:\s*none;[\s\S]*?transition:\s*none;[\s\S]*?will-change:\s*auto;/,
+  "Touch journey media must not allocate a continuously transformed compositor layer",
+);
+assert.doesNotMatch(
+  soulRail,
+  /px-2 py-1 backdrop-blur-md/,
+  "The fixed mobile Soul Rail must not blur every video frame beneath it",
+);
+assert.match(
+  soulRail,
+  /soul-rail-surface/,
+  "The Soul Rail surface must expose a touch-specific compositing hook",
+);
+assert.match(
+  siteHeader,
+  /coarsePointerQuery\.matches\s*\?\s*\(window\.scrollY >= 120 \? 1 : 0\)/,
+  "Touch header condensation must use one threshold instead of scroll-bound rerenders",
+);
+assert.match(
+  stage,
+  /bufferingRef\.current = true;[\s\S]*?playAttemptIdRef\.current \+= 1;[\s\S]*?playAttemptRef\.current = false;/,
+  "A buffering watchdog must invalidate any pending play lock before retrying",
+);
+assert.match(
+  stage,
+  /const retryPlaybackFromGesture[\s\S]*?void video\.play\(\)\.then/,
+  "Playback recovery must call play synchronously from the user gesture handler",
 );
 assert.match(
   stage,

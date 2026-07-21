@@ -24,10 +24,13 @@ export function SiteHeader() {
 
   useEffect(() => {
     let frame = 0;
+    const coarsePointerQuery = window.matchMedia("(pointer: coarse)");
 
     const sync = () => {
       frame = 0;
-      const next = Math.round(clamp01(window.scrollY / 180) * 20) / 20;
+      const next = coarsePointerQuery.matches
+        ? (window.scrollY >= 120 ? 1 : 0)
+        : Math.round(clamp01(window.scrollY / 180) * 20) / 20;
       setCondense((current) => (current === next ? current : next));
     };
 
@@ -39,9 +42,11 @@ export function SiteHeader() {
 
     sync();
     window.addEventListener("scroll", requestSync, { passive: true });
+    coarsePointerQuery.addEventListener("change", requestSync);
 
     return () => {
       window.removeEventListener("scroll", requestSync);
+      coarsePointerQuery.removeEventListener("change", requestSync);
       if (frame) {
         window.cancelAnimationFrame(frame);
       }

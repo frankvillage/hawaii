@@ -1,6 +1,11 @@
 const MAX_CATCHUP_RATE = 3;
 const MAX_ELAPSED_MS = 50;
 const MAX_FORWARD_PLAYBACK_RATE = 3;
+const MOBILE_FORWARD_TOLERANCE_SECONDS = 0.12;
+const MOBILE_FORWARD_LEAD_SECONDS = 0.45;
+const MOBILE_SCROLL_GRACE_MS = 700;
+const MOBILE_REVERSE_THRESHOLD_SECONDS = MOBILE_FORWARD_TOLERANCE_SECONDS;
+const MOBILE_REVERSE_IDLE_MS = 180;
 
 type TimelineRange = {
   start: number;
@@ -42,6 +47,40 @@ export function advanceScrubTime(
 }
 
 export type JourneyTransport = "play-forward" | "seek-backward" | "settled";
+export type MobileJourneyTransport = JourneyTransport | "hold-reverse";
+
+type MobileTransportState = {
+  currentTime: number;
+  targetTime: number;
+  scrollIdleMs: number;
+  scrollDirection: number;
+};
+
+export function mobileTransportForState({
+  currentTime,
+  targetTime,
+  scrollIdleMs,
+  scrollDirection,
+}: MobileTransportState): MobileJourneyTransport {
+  const current = finiteNonNegative(currentTime);
+  const target = finiteNonNegative(targetTime);
+  const idleMs = finiteNonNegative(scrollIdleMs);
+  const difference = target - current;
+
+  if (scrollDirection < 0 && difference < -MOBILE_REVERSE_THRESHOLD_SECONDS) {
+    return idleMs < MOBILE_REVERSE_IDLE_MS ? "hold-reverse" : "seek-backward";
+  }
+  if (difference > MOBILE_FORWARD_TOLERANCE_SECONDS) return "play-forward";
+  if (
+    scrollDirection > 0 &&
+    idleMs < MOBILE_SCROLL_GRACE_MS &&
+    difference > -MOBILE_FORWARD_LEAD_SECONDS
+  ) {
+    return "play-forward";
+  }
+
+  return "settled";
+}
 
 export function transportForTimes(
   currentTime: number,
