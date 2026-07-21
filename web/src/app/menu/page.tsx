@@ -131,10 +131,10 @@ export default function MenuPage() {
           </div>
           <div className="flex flex-wrap gap-3">
             <Link href={bookingVenues.hawaii.internalBookingPath} className="cta">
-              Prenota Hawaii su TheFork
+              Prenota Hawaii
             </Link>
             <Link href={bookingVenues.muulab.internalBookingPath} className="cta-ghost">
-              Prenota MUULab su TheFork
+              Prenota MUULab
             </Link>
           </div>
         </div>

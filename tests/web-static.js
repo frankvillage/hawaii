@@ -251,13 +251,21 @@ assert.match(
   /frame-ancestors 'none';/,
   "CSP must continue to deny all framing of this site",
 );
-assert.match(bookingHub, /Prenota Hawaii su TheFork/);
+assert.match(bookingHub, /title: "Food"/);
+assert.match(bookingHub, /title: "Beach & Sport"/);
+assert.match(bookingHub, /title: "Eventi privati"/);
+assert.match(bookingHub, /Prenota Hawaii/);
 assert.match(bookingHub, /bookingVenues\.hawaii\.internalBookingPath/);
-assert.match(bookingHub, /Prenota MUULab su TheFork/);
+assert.match(bookingHub, /Prenota MUULab/);
 assert.match(bookingHub, /bookingVenues\.muulab\.internalBookingPath/);
 assert.match(bookingHub, /beachBookingUrl/);
 assert.match(bookingHub, /["']\/sport["']/);
 assert.match(bookingHub, /["']\/feste-private["']/);
+assert.doesNotMatch(bookingHub, /Prenota (?:Hawaii|MUULab) su TheFork/);
+assert.doesNotMatch(siteContent, /(?:label|title): "Prenota (?:Hawaii|MUULab) su TheFork"/);
+assert.doesNotMatch(productionSources, /Prenota (?:Hawaii|MUULab) su TheFork/);
+assert.match(siteContent, /label: "Prenota Hawaii"/);
+assert.match(siteContent, /label: "Prenota MUULab"/);
 assert.match(bookingForm, /Informazioni generali/);
 assert.match(bookingForm, /Serate ed eventi/);
 assert.match(bookingForm, /Feste private/);

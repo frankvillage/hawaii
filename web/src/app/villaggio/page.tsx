@@ -28,7 +28,7 @@ const anime = [
     href: "/ristorante-mare",
     image: { src: "/media/hawaii/photos/food-risotto-bollicine.jpg", alt: "Risotto agli scampi con bollicine" },
     action: {
-      label: "Prenota Hawaii su TheFork",
+      label: "Prenota Hawaii",
       href: bookingVenues.hawaii.internalBookingPath,
     },
   },
@@ -67,7 +67,7 @@ const cucine = [
     actions: [
       { label: "Menu del mare", href: "/menu#ristorante-mare" },
       {
-        label: "Prenota Hawaii su TheFork",
+        label: "Prenota Hawaii",
         href: bookingVenues.hawaii.internalBookingPath,
       },
     ],
@@ -84,7 +84,7 @@ const cucine = [
     actions: [
       { label: "Menu della braceria", href: "/menu#muulab" },
       {
-        label: "Prenota MUULab su TheFork",
+        label: "Prenota MUULab",
         href: bookingVenues.muulab.internalBookingPath,
       },
     ],

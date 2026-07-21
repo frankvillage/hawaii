@@ -371,7 +371,7 @@ export const homeJourney = {
         ],
       },
       action: {
-        label: "Prenota Hawaii su TheFork",
+        label: "Prenota Hawaii",
         href: bookingVenues.hawaii.internalBookingPath,
       },
     },
@@ -452,7 +452,7 @@ export const homeJourney = {
         ],
       },
       action: {
-        label: "Prenota MUULab su TheFork",
+        label: "Prenota MUULab",
         href: bookingVenues.muulab.internalBookingPath,
       },
     },
@@ -482,7 +482,7 @@ export const homeJourney = {
         ],
       },
       action: {
-        label: "Prenota MUULab su TheFork",
+        label: "Prenota MUULab",
         href: bookingVenues.muulab.internalBookingPath,
       },
     },
@@ -566,7 +566,7 @@ export const chapters: Chapter[] = [
     atmosphere: ["colazione", "bancone", "caffe", "ospitalita"],
     primaryAction: { label: "Scopri il ristorante", href: "/ristorante-mare" },
     secondaryAction: {
-      label: "Prenota Hawaii su TheFork",
+      label: "Prenota Hawaii",
       href: bookingVenues.hawaii.internalBookingPath,
     },
     gradient:
@@ -604,7 +604,7 @@ export const chapters: Chapter[] = [
     detail: "Crudi, primi, cucina espressa e carta vini accompagnano il lato piu conviviale della giornata.",
     atmosphere: ["sala", "cucina", "piatti di mare", "vino"],
     primaryAction: {
-      label: "Prenota Hawaii su TheFork",
+      label: "Prenota Hawaii",
       href: bookingVenues.hawaii.internalBookingPath,
     },
     secondaryAction: { label: "Scopri il menu", href: "/menu" },
@@ -660,7 +660,7 @@ export const chapters: Chapter[] = [
     detail: "Un capitolo piu raccolto, materico e serale rispetto al ristorante di mare.",
     atmosphere: ["brace", "carne", "cucina a vista", "cena"],
     primaryAction: {
-      label: "Prenota MUULab su TheFork",
+      label: "Prenota MUULab",
       href: bookingVenues.muulab.internalBookingPath,
     },
     secondaryAction: { label: "Scopri il menu", href: "/menu" },
@@ -750,7 +750,7 @@ export const pages: Record<string, EntityPage> = {
     intro:
       "Il pescato del giorno arriva dal mare Adriatico, passa per le mani della brigata di cucina e si sposa con le materie prime più fresche del territorio. Chiedi al maître i piatti del giorno.",
     primaryAction: {
-      label: "Prenota Hawaii su TheFork",
+      label: "Prenota Hawaii",
       href: bookingVenues.hawaii.internalBookingPath,
     },
     secondaryAction: { label: "Guarda il menù", href: "/menu#ristorante-mare" },
@@ -824,7 +824,7 @@ export const pages: Record<string, EntityPage> = {
     intro:
       "MUULab Riviera è l'anima serale del villaggio: si sale per l'aperitivo al tramonto e si resta per la cena, tra brace, crudi di carne e una carta vini che attraversa mezza Europa.",
     primaryAction: {
-      label: "Prenota MUULab su TheFork",
+      label: "Prenota MUULab",
       href: bookingVenues.muulab.internalBookingPath,
     },
     secondaryAction: { label: "Guarda il menù", href: "/menu#muulab" },
@@ -1040,12 +1040,12 @@ export const quickBooking = {
       external: true,
     },
     {
-      label: "Prenota Hawaii su TheFork",
+      label: "Prenota Hawaii",
       detail: "Pranzo e cena di mare",
       href: bookingVenues.hawaii.internalBookingPath,
     },
     {
-      label: "Prenota MUULab su TheFork",
+      label: "Prenota MUULab",
       detail: "Sunset e cena alla brace",
       href: bookingVenues.muulab.internalBookingPath,
     },
@@ -1084,12 +1084,12 @@ export const bookingOptions = [
     external: true,
   },
   {
-    title: "Prenota Hawaii su TheFork",
+    title: "Prenota Hawaii",
     description: "Pranzo o cena di pesce al piano terra.",
     href: bookingVenues.hawaii.internalBookingPath,
   },
   {
-    title: "Prenota MUULab su TheFork",
+    title: "Prenota MUULab",
     description: "MUULab Riviera, sunset e dinner con vista mare.",
     href: bookingVenues.muulab.internalBookingPath,
   },
@@ -1134,7 +1134,7 @@ export const venueMenus: VenueMenu[] = [
     description:
       "Crudi, primi e griglia di pesce a pranzo e a cena, con i fritti al cono per la spiaggia e la pizza la sera.",
     action: {
-      label: "Prenota Hawaii su TheFork",
+      label: "Prenota Hawaii",
       href: bookingVenues.hawaii.internalBookingPath,
     },
     photos: [
@@ -1257,7 +1257,7 @@ export const venueMenus: VenueMenu[] = [
     description:
       "Crudi di carne, tagli alla brace e cocktail: MUULab Riviera vive la sera della terrazza, dal tramonto alla cena.",
     action: {
-      label: "Prenota MUULab su TheFork",
+      label: "Prenota MUULab",
       href: bookingVenues.muulab.internalBookingPath,
     },
     photos: [

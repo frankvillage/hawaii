@@ -4,37 +4,58 @@ import { BookingInquiryForm } from "@/components/forms/booking-inquiry-form";
 import { beachBookingUrl, bookingVenues } from "@/lib/booking-config";
 import { buildMetadata } from "@/lib/seo";
 
-const bookingDestinations = [
+const bookingGroups = [
   {
-    label: "Prenota Hawaii su TheFork",
-    description: "Ristorante sul mare, con prenotazione dedicata e assistenza diretta.",
-    href: bookingVenues.hawaii.internalBookingPath,
+    id: "food",
+    title: "Food",
+    description: "Due cucine, due atmosfere, lo stesso mare.",
+    destinations: [
+      {
+        label: "Prenota Hawaii",
+        description: "Pesce, pizza e cocktail bar al piano terra.",
+        href: bookingVenues.hawaii.internalBookingPath,
+      },
+      {
+        label: "Prenota MUULab",
+        description: "Brace, cucina a vista e tramonto sulla terrazza.",
+        href: bookingVenues.muulab.internalBookingPath,
+      },
+    ],
   },
   {
-    label: "Prenota MUULab su TheFork",
-    description: "Terrazza, brace e tramonto con il canale dedicato MUULab Riviera.",
-    href: bookingVenues.muulab.internalBookingPath,
+    id: "beach-sport",
+    title: "Beach & Sport",
+    description: "Dal lettino al campo, scegli il tuo ritmo.",
+    destinations: [
+      {
+        label: "Prenota spiaggia",
+        description: "Palma, ombrellone e servizi beach sul portale Spiagge.it.",
+        href: beachBookingUrl,
+        external: true,
+      },
+      {
+        label: "Prenota sport",
+        description: "Padel, outdoor gym e attività sul mare.",
+        href: "/sport",
+      },
+    ],
   },
   {
-    label: "Prenota spiaggia",
-    description: "Palma, ombrellone e servizi beach sul portale Spiagge.it.",
-    href: beachBookingUrl,
-    external: true,
-  },
-  {
-    label: "Prenota sport",
-    description: "Padel, outdoor gym e attività sul mare dalla pagina Sport.",
-    href: "/sport",
-  },
-  {
-    label: "Richiedi una serata o un evento",
-    description: "Raccontaci il format, la data e il numero di ospiti.",
-    href: "/eventi",
-  },
-  {
-    label: "Richiedi una festa privata",
-    description: "Costruiamo insieme spazi, menu e allestimento.",
-    href: "/feste-private",
+    id: "private-events",
+    title: "Eventi privati",
+    description: "Occasioni da costruire intorno ai tuoi ospiti.",
+    destinations: [
+      {
+        label: "Richiedi una serata o un evento",
+        description: "Raccontaci il format, la data e il numero di ospiti.",
+        href: "/eventi",
+      },
+      {
+        label: "Richiedi una festa privata",
+        description: "Costruiamo insieme spazi, menu e allestimento.",
+        href: "/feste-private",
+      },
+    ],
   },
 ] as const;
 
@@ -60,22 +81,42 @@ export default function BookingPage() {
               Spiaggia, tavolo mare, terrazza, sport o una richiesta piu ampia.
               Ogni percorso ha il suo accesso.
             </p>
-            <div className="mt-10 grid gap-4">
-              {bookingDestinations.map((option) => (
-                <Link
-                  key={option.href}
-                  href={option.href}
-                  target={"external" in option ? "_blank" : undefined}
-                  rel={"external" in option ? "noopener noreferrer" : undefined}
-                  className="rounded-[1.6rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)] p-5 transition hover:border-white/25 hover:bg-[rgba(255,255,255,0.06)]"
-                >
-                  <strong className="block font-serif text-2xl text-[#16292d]">
-                    {option.label}
-                  </strong>
-                  <p className="mt-2 text-sm leading-7 text-[#4c5453]">
-                    {option.description}
-                  </p>
-                </Link>
+            <div className="mt-12 grid gap-10">
+              {bookingGroups.map((group, groupIndex) => (
+                <section key={group.id} data-booking-group={group.id}>
+                  <div className="flex items-end gap-4 border-b border-[#16292d]/15 pb-4">
+                    <span className="pb-1 text-[0.62rem] tracking-[0.2em] text-[#96703d]">
+                      0{groupIndex + 1}
+                    </span>
+                    <div>
+                      <h2 className="font-serif text-3xl text-[#16292d]">{group.title}</h2>
+                      <p className="mt-1 text-sm leading-6 text-[#68706e]">
+                        {group.description}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                    {group.destinations.map((option) => (
+                      <Link
+                        key={option.href}
+                        href={option.href}
+                        target={"external" in option ? "_blank" : undefined}
+                        rel={"external" in option ? "noopener noreferrer" : undefined}
+                        className="group min-h-40 rounded-[1.4rem] border border-[#1c2b2e]/10 bg-white p-5 shadow-[0_12px_34px_rgba(23,32,34,0.06)] transition hover:-translate-y-0.5 hover:border-[#96703d]/35 hover:shadow-[0_16px_42px_rgba(23,32,34,0.1)]"
+                      >
+                        <strong
+                          data-booking-label
+                          className="block font-serif text-2xl leading-tight text-[#16292d] transition group-hover:text-[#0b555c]"
+                        >
+                          {option.label}
+                        </strong>
+                        <p className="mt-3 text-sm leading-6 text-[#4c5453]">
+                          {option.description}
+                        </p>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           </div>

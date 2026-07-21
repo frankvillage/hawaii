@@ -192,7 +192,7 @@ async function expectPropagatedBookingLinks(browser) {
     assert.equal(await globalWhatsapp.getAttribute("href"), "https://wa.me/393516900701");
 
     const restaurantCta = page
-      .getByRole("link", { name: "Prenota Hawaii su TheFork", exact: true })
+      .getByRole("link", { name: "Prenota Hawaii", exact: true })
       .first();
     assert.equal(
       normalizePath(await restaurantCta.getAttribute("href")),
@@ -202,7 +202,7 @@ async function expectPropagatedBookingLinks(browser) {
 
   await expectPageLinks(browser, "/terrazza", async (page) => {
     const muulabCta = page
-      .getByRole("link", { name: "Prenota MUULab su TheFork", exact: true })
+      .getByRole("link", { name: "Prenota MUULab", exact: true })
       .first();
     assert.equal(
       normalizePath(await muulabCta.getAttribute("href")),
@@ -242,6 +242,39 @@ async function expectPropagatedBookingLinks(browser) {
   });
 }
 
+async function expectBookingHubGroups(browser) {
+  await expectPageLinks(browser, "/prenotazioni", async (page) => {
+    const groups = await page.locator("[data-booking-group]").evaluateAll((nodes) =>
+      nodes.map((node) => ({
+        id: node.getAttribute("data-booking-group"),
+        heading: node.querySelector("h2")?.textContent?.trim(),
+        links: [...node.querySelectorAll("[data-booking-label]")].map(
+          (label) => label.textContent?.trim(),
+        ),
+      })),
+    );
+
+    assert.deepEqual(groups.map(({ id }) => id), ["food", "beach-sport", "private-events"]);
+    assert.deepEqual(groups.map(({ heading }) => heading), [
+      "Food",
+      "Beach & Sport",
+      "Eventi privati",
+    ]);
+    assert.deepEqual(groups[0].links, ["Prenota Hawaii", "Prenota MUULab"]);
+
+    const hawaii = page.getByRole("link", { name: "Prenota Hawaii", exact: true });
+    const muulab = page.getByRole("link", { name: "Prenota MUULab", exact: true });
+    assert.equal(
+      normalizePath(await hawaii.getAttribute("href")),
+      internalPath("/prenotazioni/ristorante"),
+    );
+    assert.equal(
+      normalizePath(await muulab.getAttribute("href")),
+      internalPath("/prenotazioni/muulab"),
+    );
+  });
+}
+
 async function main() {
   const browser = await chromium.launch({ headless: true });
 
@@ -251,6 +284,7 @@ async function main() {
     }
     await expectVenueRestaurantSchema(browser, venues[0], venues[1]);
     await expectVenueRestaurantSchema(browser, venues[1], venues[0]);
+    await expectBookingHubGroups(browser);
     await expectPropagatedBookingLinks(browser);
   } finally {
     await browser.close();
