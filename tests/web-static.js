@@ -22,6 +22,18 @@ const productionRunner = fs.readFileSync(
   path.join(root, "tests", "run-web-production.js"),
   "utf8",
 );
+const arubaBuildPath = path.join(root, "scripts", "build-static-aruba.sh");
+const arubaHeadersPath = path.join(root, "deploy", "aruba", ".htaccess.example");
+const arubaReadinessPath = path.join(root, "tests", "aruba-static-readiness.js");
+const arubaGuidePath = path.join(root, "docs", "deploy", "aruba-static-readiness.md");
+const arubaBuild = fs.existsSync(arubaBuildPath) ? fs.readFileSync(arubaBuildPath, "utf8") : "";
+const arubaHeaders = fs.existsSync(arubaHeadersPath)
+  ? fs.readFileSync(arubaHeadersPath, "utf8")
+  : "";
+const arubaReadiness = fs.existsSync(arubaReadinessPath)
+  ? fs.readFileSync(arubaReadinessPath, "utf8")
+  : "";
+const arubaGuide = fs.existsSync(arubaGuidePath) ? fs.readFileSync(arubaGuidePath, "utf8") : "";
 const verifyJob = pagesWorkflow.match(/\n  verify:\n([\s\S]*?)\n  deploy:/)?.[1] || "";
 const layoutPath = path.join(root, "web", "src", "app", "layout.tsx");
 const stagePath = path.join(
@@ -218,6 +230,18 @@ assert.match(pagesWorkflow, /needs:\s*verify/);
 assert.match(productionRunner, /server\.listen\(0, "127\.0\.0\.1"/);
 assert.match(productionRunner, /tests\/web-smoke\.js/);
 assert.match(productionRunner, /tests\/webkit-mobile-playback\.js/);
+assert.match(productionRunner, /tests\/desktop-video-playback\.js/);
+assert.match(arubaBuild, /--exclude src\/app\/api/);
+assert.match(arubaBuild, /NEXT_PUBLIC_BASE_PATH=""/);
+assert.match(arubaBuild, /output\/aruba-static/);
+assert.match(arubaBuild, /aruba-static-readiness\.js/);
+assert.match(arubaHeaders, /Accept-Ranges/);
+assert.match(arubaHeaders, /Content-Security-Policy/);
+assert.match(arubaHeaders, /X-Content-Type-Options/);
+assert.match(arubaReadiness, /journey-desktop\.mp4/);
+assert.match(arubaReadiness, /\/hawaii\//);
+assert.match(arubaGuide, /form/i);
+assert.match(arubaGuide, /non inviano|non consegnano/i);
 assert.match(
   theFork,
   /hawaii-thefork-consent-v1/,
@@ -258,6 +282,9 @@ assert.match(bookingHub, /Prenota Hawaii/);
 assert.match(bookingHub, /bookingVenues\.hawaii\.internalBookingPath/);
 assert.match(bookingHub, /Prenota MUULab/);
 assert.match(bookingHub, /bookingVenues\.muulab\.internalBookingPath/);
+assert.match(bookingHub, /food-gnocchi-mare\.jpg/);
+assert.match(bookingHub, /muulab-carpaccio-nero\.jpg/);
+assert.match(bookingHub, /data-booking-image/);
 assert.match(bookingHub, /beachBookingUrl/);
 assert.match(bookingHub, /["']\/sport["']/);
 assert.match(bookingHub, /["']\/feste-private["']/);

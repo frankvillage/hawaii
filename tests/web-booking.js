@@ -251,6 +251,10 @@ async function expectBookingHubGroups(browser) {
         links: [...node.querySelectorAll("[data-booking-label]")].map(
           (label) => label.textContent?.trim(),
         ),
+        images: [...node.querySelectorAll("[data-booking-image]")].map((image) => ({
+          alt: image.getAttribute("alt"),
+          src: image.getAttribute("src"),
+        })),
       })),
     );
 
@@ -261,6 +265,11 @@ async function expectBookingHubGroups(browser) {
       "Eventi privati",
     ]);
     assert.deepEqual(groups[0].links, ["Prenota Hawaii", "Prenota MUULab"]);
+    assert.equal(groups[0].images.length, 2);
+    assert.match(groups[0].images[0].src || "", /food-gnocchi-mare\.jpg/);
+    assert.match(groups[0].images[1].src || "", /muulab-carpaccio-nero\.jpg/);
+    assert.match(groups[0].images[0].alt || "", /Hawaii/);
+    assert.match(groups[0].images[1].alt || "", /MUULab/);
 
     const hawaii = page.getByRole("link", { name: "Prenota Hawaii", exact: true });
     const muulab = page.getByRole("link", { name: "Prenota MUULab", exact: true });

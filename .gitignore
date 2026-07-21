@@ -29,6 +29,7 @@ web/.git/
 # Generated QA/output
 tmp/
 output/playwright/
+output/aruba-static/
 presentation/rendered/
 .playwright-cli/
 .superpowers/

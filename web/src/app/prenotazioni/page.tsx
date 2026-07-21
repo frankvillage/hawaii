@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { BookingInquiryForm } from "@/components/forms/booking-inquiry-form";
@@ -14,11 +15,19 @@ const bookingGroups = [
         label: "Prenota Hawaii",
         description: "Pesce, pizza e cocktail bar al piano terra.",
         href: bookingVenues.hawaii.internalBookingPath,
+        image: {
+          src: "/media/hawaii/photos/food-gnocchi-mare.jpg",
+          alt: "Piatto di pesce del ristorante Hawaii",
+        },
       },
       {
         label: "Prenota MUULab",
         description: "Brace, cucina a vista e tramonto sulla terrazza.",
         href: bookingVenues.muulab.internalBookingPath,
+        image: {
+          src: "/media/hawaii/photos/muulab-carpaccio-nero.jpg",
+          alt: "Carpaccio di manzo di MUULab Riviera",
+        },
       },
     ],
   },
@@ -102,17 +111,33 @@ export default function BookingPage() {
                         href={option.href}
                         target={"external" in option ? "_blank" : undefined}
                         rel={"external" in option ? "noopener noreferrer" : undefined}
-                        className="group min-h-40 rounded-[1.4rem] border border-[#1c2b2e]/10 bg-white p-5 shadow-[0_12px_34px_rgba(23,32,34,0.06)] transition hover:-translate-y-0.5 hover:border-[#96703d]/35 hover:shadow-[0_16px_42px_rgba(23,32,34,0.1)]"
+                        className={`group min-h-40 rounded-[1.4rem] border border-[#1c2b2e]/10 bg-white shadow-[0_12px_34px_rgba(23,32,34,0.06)] transition hover:-translate-y-0.5 hover:border-[#96703d]/35 hover:shadow-[0_16px_42px_rgba(23,32,34,0.1)] ${
+                          "image" in option ? "overflow-hidden" : "p-5"
+                        }`}
                       >
-                        <strong
-                          data-booking-label
-                          className="block font-serif text-2xl leading-tight text-[#16292d] transition group-hover:text-[#0b555c]"
-                        >
-                          {option.label}
-                        </strong>
-                        <p className="mt-3 text-sm leading-6 text-[#4c5453]">
-                          {option.description}
-                        </p>
+                        {"image" in option ? (
+                          <div className="relative aspect-[4/3] overflow-hidden">
+                            <Image
+                              data-booking-image
+                              src={option.image.src}
+                              alt={option.image.alt}
+                              fill
+                              sizes="(max-width: 639px) 100vw, (max-width: 1279px) 50vw, 25vw"
+                              className="object-cover transition duration-700 group-hover:scale-[1.025]"
+                            />
+                          </div>
+                        ) : null}
+                        <div className={"image" in option ? "p-5" : ""}>
+                          <strong
+                            data-booking-label
+                            className="block font-serif text-2xl leading-tight text-[#16292d] transition group-hover:text-[#0b555c]"
+                          >
+                            {option.label}
+                          </strong>
+                          <p className="mt-3 text-sm leading-6 text-[#4c5453]">
+                            {option.description}
+                          </p>
+                        </div>
                       </Link>
                     ))}
                   </div>
