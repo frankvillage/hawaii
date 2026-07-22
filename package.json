@@ -13,6 +13,7 @@
     "test:web:static": "node tests/web-static.js",
     "test:web:smoke": "node tests/web-smoke.js",
     "test:web:video:desktop": "node tests/desktop-video-playback.js",
+    "test:web:video:iphone": "node tests/webkit-iphone-touch-playback.js",
     "build:web:aruba": "bash scripts/build-static-aruba.sh",
     "test:web:aruba": "node tests/aruba-static-readiness.js output/aruba-static",
     "test:web:production": "node tests/run-web-production.js pages-preview",
