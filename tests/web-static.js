@@ -1,10 +1,139 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 
 const root = process.cwd();
+
+function writeExecutable(filePath, contents) {
+  fs.writeFileSync(filePath, contents);
+  fs.chmodSync(filePath, 0o755);
+}
+
+function createPagesBuildFixture() {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "hawaii-pages-build-test-"));
+  const webDir = path.join(fixtureRoot, "web");
+  const outputDir = path.join(fixtureRoot, "pages-preview", "hawaii");
+  const fakeNpmPath = path.join(fixtureRoot, "fake-npm");
+  const apiPath = path.join(webDir, "src", "app", "api", "test", "route.ts");
+
+  fs.mkdirSync(path.join(webDir, "node_modules", ".bin"), { recursive: true });
+  fs.mkdirSync(path.dirname(apiPath), { recursive: true });
+  fs.mkdirSync(outputDir, { recursive: true });
+  writeExecutable(path.join(webDir, "node_modules", ".bin", "next"), "#!/bin/sh\nexit 0\n");
+  fs.writeFileSync(apiPath, "source-api-marker\n");
+  fs.writeFileSync(path.join(webDir, "page.txt"), "fixture-source\n");
+  fs.writeFileSync(path.join(outputDir, "previous.txt"), "previous-artifact\n");
+  writeExecutable(
+    fakeNpmPath,
+    [
+      "#!/usr/bin/env bash",
+      "set -euo pipefail",
+      "if [[ -e src/app/api ]]; then",
+      '  echo "Source API routes leaked into the static build copy" >&2',
+      "  exit 91",
+      "fi",
+      'case "${FAKE_BUILD_MODE:-success}" in',
+      "  success)",
+      "    mkdir -p out",
+      "    cat > out/index.html <<'EOF'",
+      '"/media/one.jpg"',
+      "'/media/two.jpg'",
+      "(/media/three.jpg)",
+      "EOF",
+      "    printf '%s\\n' 'fresh-artifact' > out/fresh.txt",
+      "    ;;",
+      "  fail)",
+      "    exit 23",
+      "    ;;",
+      "  memory)",
+      "    node -e 'const block = Buffer.alloc(48 * 1024 * 1024, 1); setTimeout(() => block.length, 10000)'",
+      "    ;;",
+      "  *)",
+      "    exit 92",
+      "    ;;",
+      "esac",
+      "",
+    ].join("\n"),
+  );
+
+  return { apiPath, fakeNpmPath, fixtureRoot, outputDir, webDir };
+}
+
+function runPagesBuildFixture(fixture, mode, rssLimitMb = "256") {
+  return spawnSync("bash", [pagesPreviewBuildPath], {
+    cwd: root,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      FAKE_BUILD_MODE: mode,
+      PAGES_BUILD_NPM: fixture.fakeNpmPath,
+      PAGES_BUILD_OUTPUT_DIR: fixture.outputDir,
+      PAGES_BUILD_RSS_LIMIT_MB: rssLimitMb,
+      PAGES_BUILD_RSS_POLL_SECONDS: "0.05",
+      PAGES_BUILD_WEB_DIR: fixture.webDir,
+    },
+    timeout: 8_000,
+  });
+}
+
+function pagesBuildSiblingTemps(outputDir) {
+  const parent = path.dirname(outputDir);
+  const prefix = `.${path.basename(outputDir)}.`;
+  return fs.readdirSync(parent).filter((entry) => entry.startsWith(prefix));
+}
+
+function assertPagesBuildSuccessBehavior() {
+  const fixture = createPagesBuildFixture();
+  try {
+    const result = runPagesBuildFixture(fixture, "success");
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const html = fs.readFileSync(path.join(fixture.outputDir, "index.html"), "utf8");
+    assert.match(html, /"\/hawaii\/media\/one\.jpg/);
+    assert.match(html, /'\/hawaii\/media\/two\.jpg/);
+    assert.match(html, /\(\/hawaii\/media\/three\.jpg/);
+    assert.equal(fs.existsSync(path.join(fixture.outputDir, "previous.txt")), false);
+    assert.equal(fs.readFileSync(fixture.apiPath, "utf8"), "source-api-marker\n");
+    assert.deepEqual(pagesBuildSiblingTemps(fixture.outputDir), []);
+  } finally {
+    fs.rmSync(fixture.fixtureRoot, { force: true, recursive: true });
+  }
+}
+
+function assertPagesBuildFailureBehavior() {
+  const fixture = createPagesBuildFixture();
+  try {
+    const result = runPagesBuildFixture(fixture, "fail");
+    assert.equal(result.status, 23, result.stderr || result.stdout);
+    assert.equal(
+      fs.readFileSync(path.join(fixture.outputDir, "previous.txt"), "utf8"),
+      "previous-artifact\n",
+    );
+    assert.deepEqual(pagesBuildSiblingTemps(fixture.outputDir), []);
+  } finally {
+    fs.rmSync(fixture.fixtureRoot, { force: true, recursive: true });
+  }
+}
+
+function assertPagesBuildMemoryBehavior() {
+  const fixture = createPagesBuildFixture();
+  try {
+    const result = runPagesBuildFixture(fixture, "memory", "20");
+    assert.equal(result.status, 137, result.stderr || result.stdout);
+    assert.match(result.stderr, /RSS limit exceeded/);
+    assert.equal(
+      fs.readFileSync(path.join(fixture.outputDir, "previous.txt"), "utf8"),
+      "previous-artifact\n",
+    );
+    assert.deepEqual(pagesBuildSiblingTemps(fixture.outputDir), []);
+  } finally {
+    fs.rmSync(fixture.fixtureRoot, { force: true, recursive: true });
+  }
+}
+
 function readSourceTree(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const entryPath = path.join(directory, entry.name);
@@ -250,15 +379,33 @@ assert.match(
   /NODE_OPTIONS="\$\{NODE_OPTIONS:\+\$NODE_OPTIONS \}--max-old-space-size=2048"/,
   "The Pages build must append the 2GB cap after any caller-provided Node options",
 );
-assert.match(pagesPreviewBuild, /npm run build -- --webpack/);
+assert.match(
+  pagesPreviewBuild,
+  /RSS_LIMIT_MB="\$\{PAGES_BUILD_RSS_LIMIT_MB:-2048\}"/,
+  "The complete Pages build process tree must default to a 2GB RSS ceiling",
+);
+assert.match(pagesPreviewBuild, /ps -axo pid=,ppid=,rss=/);
+assert.match(pagesPreviewBuild, /terminate_process_tree/);
+assert.match(pagesPreviewBuild, /"\$NPM_BIN" run build -- --webpack/);
 assert.ok(pagesPreviewBuild.includes(`-e 's|"/media/|"/hawaii/media/|g'`));
 assert.ok(pagesPreviewBuild.includes(`-e "s|'/media/|'/hawaii/media/|g"`));
 assert.ok(pagesPreviewBuild.includes(`-e 's|(/media/|(/hawaii/media/|g'`));
-assert.match(pagesPreviewBuild, /OUTPUT_DIR="\$ROOT_DIR\/pages-preview\/hawaii"/);
 assert.match(
   pagesPreviewBuild,
-  /rsync -a --delete "\$TMP_ROOT\/web\/out\/" "\$OUTPUT_DIR\/"/,
+  /WEB_DIR="\$\{PAGES_BUILD_WEB_DIR:-\$ROOT_DIR\/web\}"/,
 );
+assert.match(
+  pagesPreviewBuild,
+  /OUTPUT_DIR="\$\{PAGES_BUILD_OUTPUT_DIR:-\$ROOT_DIR\/pages-preview\/hawaii\}"/,
+);
+assert.match(pagesPreviewBuild, /NPM_BIN="\$\{PAGES_BUILD_NPM:-npm\}"/);
+assert.match(pagesPreviewBuild, /STAGE_DIR="\$\(mktemp -d /);
+assert.match(
+  pagesPreviewBuild,
+  /rsync -a --delete "\$TMP_ROOT\/web\/out\/" "\$STAGE_DIR\/"/,
+);
+assert.match(pagesPreviewBuild, /mv "\$OUTPUT_DIR" "\$BACKUP_DIR"/);
+assert.match(pagesPreviewBuild, /mv "\$STAGE_DIR" "\$OUTPUT_DIR"/);
 assert.match(pagesPreviewBuild, /trap cleanup EXIT/);
 assert.match(pagesPreviewBuild, /trap 'exit 129' HUP/);
 assert.match(pagesPreviewBuild, /trap 'exit 130' INT/);
@@ -268,6 +415,9 @@ assert.doesNotMatch(
   /(?:rm|mv)[^\n]*src\/app\/api/,
   "The Pages preview builder must never remove or move the source API routes",
 );
+assertPagesBuildSuccessBehavior();
+assertPagesBuildFailureBehavior();
+assertPagesBuildMemoryBehavior();
 assert.match(arubaBuild, /--exclude src\/app\/api/);
 assert.match(arubaBuild, /NEXT_PUBLIC_BASE_PATH=""/);
 assert.match(arubaBuild, /output\/aruba-static/);
