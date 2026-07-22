@@ -17,7 +17,7 @@ La homepage deve mantenere il video come elemento narrativo controllato dallo sc
 - Testi, CTA, indicatore di scena e hotspot visibili non cambiano opacita o posizione durante caricamento, riproduzione, arresto o cambio scena.
 - CTA e hotspot visibili restano interattivi mentre il video avanza.
 - Su mobile restano visibili e interattivi testi, CTA, menu, prenotazioni e Soul Rail. Gli hotspot ambientali continuano a essere nascosti sotto `768px`, come gia approvato, per non coprire visual e contenuti.
-- Su mobile titolo ed eyebrow usano un'opacita visuale del 92%, la descrizione dell'82% e le CTA del 100%. Il contrasto resta conforme grazie agli scrim esistenti, senza introdurre pannelli opachi.
+- Su mobile titolo ed eyebrow usano colori con alpha al 92%, la descrizione all'82% e le CTA al 100%. Non viene applicata `opacity` a contenitori parent, per evitare di attenuare focus, ombre o figli interattivi. Il contrasto resta conforme grazie agli scrim esistenti, senza introdurre pannelli opachi.
 - Il contenuto testuale cambia solo quando il video entra nell'intervallo temporale della scena successiva.
 - Nessun pannello o overlay tecnico deve apparire nell'esperienza ordinaria.
 - L'attivazione di una CTA segue subito la destinazione prevista. Su touch, gli hotspot ambientali mantengono il foglio informativo intermedio gia esistente.
@@ -26,15 +26,16 @@ La homepage deve mantenere il video come elemento narrativo controllato dallo sc
 
 - Su mobile un indicatore sottile sul bordo destro combina la label `Scorri`, una linea verticale e un punto luminoso discendente.
 - L'indicatore e `aria-hidden`, non intercetta input e non compete con CTA, WhatsApp o Soul Rail.
-- Scompare mentre lo scroll e attivo e ricompare con opacita ridotta dopo una breve pausa, finche la homepage immersiva e nel viewport.
+- Scompare mentre lo scroll e attivo e ricompare con opacita ridotta dopo 1.8 secondi di inattivita, finche la homepage immersiva e nel viewport e il progresso e inferiore al 98.5%.
 - Con `prefers-reduced-motion: reduce` l'indicatore resta statico; l'override del solo video non riattiva la sua animazione.
 
 ### Hotspot desktop senza collisioni
 
-- Da `768px` in su il punto dell'hotspot resta ancorato alla coordinata editoriale dell'immagine, mentre label e scheda possono essere riposizionate.
+- Da `768px` in su il punto dell'hotspot parte dalla coordinata editoriale dell'immagine. Una validazione sugli aspect ratio supportati segnala coordinate incompatibili; a runtime il punto puo spostarsi entro un raggio massimo di 24 CSS pixel per evitare bordi, controlli, copy o altri punti.
 - Un collision resolver misura header, testo di scena, indicatore scena, Soul Rail, WhatsApp, margini sicuri, hotspot gia collocati e viewport.
 - Per ogni hotspot valuta in ordine candidati a destra, sinistra, sopra e sotto l'ancora. Sceglie la prima posizione interamente contenuta e priva di intersezioni.
 - Se nessun candidato e valido, colloca la label in una corsia laterale libera e mantiene il collegamento visivo con il punto originale.
+- La corsia laterale usa packing deterministico dall'alto verso il basso, touch target minimo 44x44 e distanza minima di 8 pixel. Se le label complete non entrano, passa alla modalita compatta: punti numerati collision-free nella corsia e label completa mostrata nella singola scheda attiva su hover, focus o click.
 - Il resolver si esegue solo al montaggio, al cambio scena, dopo il caricamento font e su `ResizeObserver`; non gira durante ogni frame o evento scroll.
 - Il parallax viene rimosso da label e schede hotspot per non invalidare il layout risolto. Il punto ancorato puo mantenere un effetto luminoso senza traslazione.
 - La scheda espansa usa lo stesso sistema di aree vietate e viene posizionata solo dopo hover o focus; una sola scheda puo essere aperta alla volta.
@@ -45,9 +46,10 @@ La homepage deve mantenere il video come elemento narrativo controllato dallo sc
 - La timeline canonica resta espressa nel tempo del video forward, indipendentemente dalla direzione di scroll.
 - Lo scroll verso il basso usa `journey-mobile.mp4` o `journey-desktop.mp4`. Lo scroll verso l'alto usa `journey-mobile-reverse.mp4` o `journey-desktop-reverse.mp4`.
 - Gli asset reverse non hanno sorgente assegnata e non vengono richiesti finche l'utente non inverte realmente lo scroll dopo essere avanzato nella timeline.
-- Al primo reverse, il frame forward resta visibile mentre il secondo video viene caricato e sincronizzato con `reverseTime = duration - forwardTime`.
-- Il layer reverse diventa visibile solo dopo il primo frame presentato, rilevato con `requestVideoFrameCallback` quando disponibile e con `playing` piu `timeupdate` come fallback.
-- Quando la direzione torna forward, il layer forward viene sincronizzato con `forwardTime = duration - reverseTime` e riappare solo dopo un frame presentato.
+- Al primo reverse, il frame forward resta visibile mentre il secondo video viene caricato. La sincronizzazione avviene per indice di presentazione: `reverseFrame = frameCount - 1 - forwardFrame`, con timestamp limitato all'ultimo frame valido `(frameCount - 1) / fps`.
+- Il layer reverse diventa visibile solo dopo il primo frame presentato, rilevato con `requestVideoFrameCallback` quando disponibile. Il fallback Safari attende decode e seek completati, verifica il frame con un draw su canvas offscreen e concede il compositing dopo due `requestAnimationFrame` consecutivi.
+- Quando la direzione torna forward, la conversione inversa usa lo stesso mapping per indice e il layer forward riappare solo dopo un frame presentato.
+- Ogni cambio direzione incrementa un transition token. Callback di load, seek o frame appartenenti a token precedenti vengono ignorati; durante inversioni rapide resta visibile l'ultimo layer valido finche il layer richiesto dal token piu recente non e pronto.
 - Un solo layer riproduce in ogni momento; l'altro resta in pausa. La transizione non mostra poster, frame neri o immagini statiche intermedie.
 - Se un asset reverse non e disponibile, il player conserva l'ultimo frame e riallinea il forward al target senza attivare un fallback permanente dell'intera esperienza.
 
@@ -103,13 +105,17 @@ La homepage deve mantenere il video come elemento narrativo controllato dallo sc
 - Test dell'overlay durante caricamento, riproduzione, arresto e cambio scena: opacita, trasformazione e interattivita rimangono costanti.
 - Test di CTA durante `data-media-state="moving"`, hotspot desktop interattivi e hotspot mobile ancora nascosti.
 - Test del collision resolver con viewport 768, 1024, 1366, 1440 e 1920 pixel, entrambe le aree testo e tutti i bordi: zero intersezioni e zero overflow.
-- Test browser dopo resize, cambio font e cambio scena; label e schede devono restare nei limiti e non coprire gli ostacoli.
+- Le fixture includono altezze e aspect ratio desktop comuni, zoom browser 100-200%, text scaling, safe area, no-fit, modalita compatta e tutti gli stati di scheda espansa.
+- Test browser dopo resize, cambio font e cambio scena; punti, label e schede devono restare nei limiti e non coprire gli ostacoli.
 - Test reverse con inversioni multiple: tempo canonico monotono nella direzione corretta, frame forward/reverse equivalenti, un solo layer in play e nessun flash durante il passaggio.
 - Test rete lenta del primo reverse: il frame corrente resta visibile fino alla presentazione del nuovo layer e il file reverse non viene richiesto prima dell'inversione.
+- Test reverse con inversioni rapide, callback obsolete, 404/decode error, background/resume e assenza di `requestVideoFrameCallback`; registrazione di memoria, decoder attivi e richieste di rete.
 - Test che l'override riattivi soltanto il video e mantenga disabilitate le animazioni decorative.
+- Test computed-style e contrasto sui frame piu chiari e piu scuri per alpha 92%/82%/100%, senza attenuazione parent.
+- Test cue mobile: timeout 1.8 secondi, fine journey, ingresso/uscita viewport, safe area, input non intercettato e variante reduced-motion statica.
 - Test accessibilita del comando: attivazione da tastiera, focus visibile e non coperto, area minima 44x44, contrasto, `aria-hidden` sul video e posizione nelle safe area in entrambe le orientazioni iPhone.
 - Regressione completa: rete lenta, fallback per errore MP4 reale, desktop continuo, prenotazioni e build statica.
-- Accettazione finale su Safari fisico: Riduci movimento on/off, Risparmio energetico on/off, cache fredda/calda e ritorno da background. La verifica automatica WebKit non viene presentata come sostituto del dispositivo reale.
+- Accettazione finale su Safari fisico: Riduci movimento on/off, Risparmio energetico on/off, cache fredda/calda, reverse con cambi rapidi, 404 reverse e ritorno da background. La verifica automatica WebKit non viene presentata come sostituto del dispositivo reale.
 
 ## Reversibilita
 
