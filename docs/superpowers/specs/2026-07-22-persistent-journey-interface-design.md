@@ -58,7 +58,7 @@ La homepage deve mantenere il video come elemento narrativo controllato dallo sc
 - Durata, frame rate, dimensioni, color space e crop devono corrispondere esattamente alla rispettiva versione forward.
 - Encoding H.264 `avc1`, `yuv420p`, faststart, senza audio e senza traccia timecode; keyframe interval massimo un secondo.
 - Il profilo mobile resta compatibile con Safari iPhone. Bitrate e peso devono essere uguali o inferiori all'asset forward equivalente.
-- Gli asset reverse sono prodotti dalla stessa master timeline e validati frame-to-frame sui punti di inizio, meta e fine.
+- In assenza dei master originali nel repository, gli asset reverse sono derivati dai due MP4 forward pubblicati. La seconda compressione viene controllata con frame count, metadata e confronto SSIM per segmento; quando saranno disponibili i master, lo stesso generatore potra essere rieseguito a qualita superiore senza cambiare il controller.
 
 ### Riduci movimento
 
