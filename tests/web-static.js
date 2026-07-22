@@ -22,11 +22,15 @@ const productionRunner = fs.readFileSync(
   path.join(root, "tests", "run-web-production.js"),
   "utf8",
 );
+const pagesPreviewBuildPath = path.join(root, "scripts", "build-pages-preview.sh");
 const arubaBuildPath = path.join(root, "scripts", "build-static-aruba.sh");
 const arubaHeadersPath = path.join(root, "deploy", "aruba", ".htaccess.example");
 const arubaReadinessPath = path.join(root, "tests", "aruba-static-readiness.js");
 const arubaGuidePath = path.join(root, "docs", "deploy", "aruba-static-readiness.md");
 const arubaBuild = fs.existsSync(arubaBuildPath) ? fs.readFileSync(arubaBuildPath, "utf8") : "";
+const pagesPreviewBuild = fs.existsSync(pagesPreviewBuildPath)
+  ? fs.readFileSync(pagesPreviewBuildPath, "utf8")
+  : "";
 const arubaHeaders = fs.existsSync(arubaHeadersPath)
   ? fs.readFileSync(arubaHeadersPath, "utf8")
   : "";
@@ -233,6 +237,33 @@ assert.match(productionRunner, /tests\/webkit-mobile-playback\.js/);
 assert.match(productionRunner, /tests\/desktop-video-playback\.js/);
 assert.match(productionRunner, /tests\/webkit-iphone-touch-playback\.js/);
 assert.match(productionRunner, /tests\/webkit-slow-mobile-video\.js/);
+assert.match(pagesPreviewBuild, /TMP_ROOT="\$\(mktemp -d /);
+assert.match(
+  pagesPreviewBuild,
+  /rsync -a[\s\S]*--exclude node_modules[\s\S]*--exclude \.next[\s\S]*--exclude out[\s\S]*--exclude src\/app\/api[\s\S]*"\$WEB_DIR\/" "\$TMP_ROOT\/web\/"/,
+);
+assert.match(pagesPreviewBuild, /ln -s "\$WEB_DIR\/node_modules" "\$TMP_ROOT\/web\/node_modules"/);
+assert.match(pagesPreviewBuild, /STATIC_EXPORT=1/);
+assert.match(pagesPreviewBuild, /NEXT_PUBLIC_BASE_PATH=\/hawaii/);
+assert.match(pagesPreviewBuild, /NODE_OPTIONS="\$\{NODE_OPTIONS:---max-old-space-size=2048\}"/);
+assert.match(pagesPreviewBuild, /npm run build -- --webpack/);
+assert.ok(pagesPreviewBuild.includes(`-e 's|"/media/|"/hawaii/media/|g'`));
+assert.ok(pagesPreviewBuild.includes(`-e "s|'/media/|'/hawaii/media/|g"`));
+assert.ok(pagesPreviewBuild.includes(`-e 's|(/media/|(/hawaii/media/|g'`));
+assert.match(pagesPreviewBuild, /OUTPUT_DIR="\$ROOT_DIR\/pages-preview\/hawaii"/);
+assert.match(
+  pagesPreviewBuild,
+  /rsync -a --delete "\$TMP_ROOT\/web\/out\/" "\$OUTPUT_DIR\/"/,
+);
+assert.match(pagesPreviewBuild, /trap cleanup EXIT/);
+assert.match(pagesPreviewBuild, /trap 'exit 129' HUP/);
+assert.match(pagesPreviewBuild, /trap 'exit 130' INT/);
+assert.match(pagesPreviewBuild, /trap 'exit 143' TERM/);
+assert.doesNotMatch(
+  pagesPreviewBuild,
+  /(?:rm|mv)[^\n]*src\/app\/api/,
+  "The Pages preview builder must never remove or move the source API routes",
+);
 assert.match(arubaBuild, /--exclude src\/app\/api/);
 assert.match(arubaBuild, /NEXT_PUBLIC_BASE_PATH=""/);
 assert.match(arubaBuild, /output\/aruba-static/);
