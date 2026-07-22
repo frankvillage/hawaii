@@ -151,6 +151,10 @@ async function main() {
         const journeyVideo = document.querySelector('[data-testid="journey-video"]');
         return journeyVideo && Number.isFinite(journeyVideo.duration) && journeyVideo.duration > 0;
       });
+      await slowPage.waitForFunction(() => {
+        const journeyVideo = document.querySelector('[data-testid="journey-video"]');
+        return journeyVideo && !journeyVideo.paused && journeyVideo.currentTime >= 0.5;
+      });
 
       const samples = [];
       const frameHashes = [];
