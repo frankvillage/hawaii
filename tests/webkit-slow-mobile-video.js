@@ -188,6 +188,13 @@ async function main() {
       await errorPage.goto(testUrl("media-error"), { waitUntil: "domcontentloaded" });
       await errorPage.waitForFunction(() => {
         const stage = document.querySelector('[data-testid="hero-stage"]');
+        return stage?.dataset.mediaMode === "fallback" ||
+          Boolean(document.querySelector('[data-testid="journey-video"]'));
+      });
+      const errorVideo = errorPage.locator('[data-testid="journey-video"]');
+      if (await errorVideo.count()) await errorVideo.dispatchEvent("error");
+      await errorPage.waitForFunction(() => {
+        const stage = document.querySelector('[data-testid="hero-stage"]');
         return stage?.dataset.mediaMode === "fallback" &&
           stage.dataset.fallbackReason === "media-error";
       });

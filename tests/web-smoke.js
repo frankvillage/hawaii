@@ -338,10 +338,13 @@ async function main() {
     const fallbackMobilePage = await openPage({ ...devices["iPhone 13"] });
     await fallbackMobilePage.route("**/*.mp4*", (route) => route.abort("failed"));
     await fallbackMobilePage.goto(baseUrl, { waitUntil: "domcontentloaded" });
-    await fallbackMobilePage
-      .locator('[data-testid="journey-video"] source')
-      .last()
-      .dispatchEvent("error");
+    await fallbackMobilePage.waitForFunction(() => {
+      const stage = document.querySelector('[data-testid="hero-stage"]');
+      return stage?.dataset.mediaMode === "fallback" ||
+        Boolean(document.querySelector('[data-testid="journey-video"]'));
+    });
+    const fallbackVideo = fallbackMobilePage.locator('[data-testid="journey-video"]');
+    if (await fallbackVideo.count()) await fallbackVideo.dispatchEvent("error");
     await fallbackMobilePage.waitForFunction(
       () => {
         const stage = document.querySelector('[data-testid="hero-stage"]');
