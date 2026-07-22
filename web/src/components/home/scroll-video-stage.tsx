@@ -344,13 +344,14 @@ export function ScrollVideoStage() {
     journeyFrameRef.current = window.requestAnimationFrame(tick);
   }, [activateFallback]);
 
-  const primePlaybackFromGesture = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+  const primePlaybackFromGesture = useCallback((isTouchGesture: boolean) => {
     const video = videoRef.current;
     const isRecovery = bufferingRef.current || waitingForGestureRef.current;
-    const isTouchPrime = event.pointerType === "touch" && video?.paused;
+    const isTouchPrime = isTouchGesture && video?.paused;
     if (
       (!isRecovery && !isTouchPrime) ||
       !video ||
+      playAttemptRef.current ||
       mediaModeRef.current !== "video"
     ) {
       return;
@@ -387,6 +388,17 @@ export function ScrollVideoStage() {
       },
     );
   }, [activateFallback]);
+
+  const primePointerPlayback = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      primePlaybackFromGesture(event.pointerType === "touch");
+    },
+    [primePlaybackFromGesture],
+  );
+
+  const primeTouchPlayback = useCallback(() => {
+    primePlaybackFromGesture(true);
+  }, [primePlaybackFromGesture]);
 
   const completePlaybackGesture = useCallback(() => {
     scrollDirtyRef.current = true;
@@ -646,9 +658,12 @@ export function ScrollVideoStage() {
         ref={stageRef}
         data-testid="scroll-video-stage"
         className="journey-stage sticky top-0 h-[100svh] overflow-hidden"
-        onPointerDown={primePlaybackFromGesture}
+        onPointerDown={primePointerPlayback}
+        onTouchStart={primeTouchPlayback}
         onPointerUp={completePlaybackGesture}
         onPointerCancel={completePlaybackGesture}
+        onTouchEnd={completePlaybackGesture}
+        onTouchCancel={completePlaybackGesture}
         onMouseMove={handlePointerMove}
         onMouseLeave={resetPointer}
       >

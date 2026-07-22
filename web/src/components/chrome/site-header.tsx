@@ -13,7 +13,7 @@ function clamp01(value: number) {
 
 export function SiteHeader() {
   const [isOpen, setIsOpen] = useState(false);
-  /* 0 = top of page, 1 = condensed. Quantized to avoid re-render storms. */
+  /* 0 = top of page, 1 = condensed. Touch keeps one stable size. */
   const [condense, setCondense] = useState(0);
   const pathname = usePathname();
 
@@ -29,7 +29,7 @@ export function SiteHeader() {
     const sync = () => {
       frame = 0;
       const next = coarsePointerQuery.matches
-        ? (window.scrollY >= 120 ? 1 : 0)
+        ? 0
         : Math.round(clamp01(window.scrollY / 180) * 20) / 20;
       setCondense((current) => (current === next ? current : next));
     };

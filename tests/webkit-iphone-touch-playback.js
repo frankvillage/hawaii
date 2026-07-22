@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { createHash } = require("node:crypto");
 const { devices, webkit } = require("@playwright/test");
 
 const baseUrl = process.env.WEB_BASE_URL ?? "http://127.0.0.1:3000";
@@ -17,7 +18,7 @@ async function main() {
       let outsideGestureRejections = 0;
 
       window.addEventListener(
-        "pointerdown",
+        "touchstart",
         () => {
           pointerGestureActive = true;
           queueMicrotask(() => {
@@ -45,12 +46,13 @@ async function main() {
     });
 
     const stage = page.locator('[data-testid="scroll-video-stage"]');
-    await stage.dispatchEvent("pointerdown", {
+    const video = page.locator('[data-testid="journey-video"]');
+    const headerBar = page.locator("header > div").first().locator(":scope > div").first();
+    const initialHeaderHeight = (await headerBar.boundingBox())?.height ?? 0;
+    const initialFrameHash = createHash("sha256").update(await video.screenshot()).digest("hex");
+    await stage.dispatchEvent("touchstart", {
       bubbles: true,
-      buttons: 1,
-      isPrimary: true,
-      pointerId: 1,
-      pointerType: "touch",
+      cancelable: true,
     });
     await page.evaluate(() => {
       document.documentElement.style.scrollBehavior = "auto";
@@ -59,12 +61,9 @@ async function main() {
       const journeyTop = window.scrollY + journey.getBoundingClientRect().top;
       window.scrollTo({ top: journeyTop + scrollable * 0.04, behavior: "auto" });
     });
-    await stage.dispatchEvent("pointerup", {
+    await stage.dispatchEvent("touchend", {
       bubbles: true,
-      buttons: 0,
-      isPrimary: true,
-      pointerId: 1,
-      pointerType: "touch",
+      cancelable: true,
     });
 
     const samples = [];
@@ -82,13 +81,15 @@ async function main() {
       mediaState: document.querySelector('[data-testid="hero-stage"]')?.dataset.mediaState,
       outsideGestureRejections: window.__outsideGesturePlayRejections?.() ?? 0,
     }));
+    const finalFrameHash = createHash("sha256").update(await video.screenshot()).digest("hex");
+    const finalHeaderHeight = (await headerBar.boundingBox())?.height ?? 0;
     const deltas = samples.slice(1).map((time, index) => time - samples[index]);
 
     assert.equal(state.mediaMode, "video", `iPhone must keep the MP4 active: ${JSON.stringify(state)}`);
     assert.equal(
       state.outsideGestureRejections,
       0,
-      `iPhone playback must start inside pointerdown: ${JSON.stringify(state)}`,
+      `iPhone playback must start inside touchstart: ${JSON.stringify(state)}`,
     );
     assert.notEqual(
       state.mediaState,
@@ -102,6 +103,15 @@ async function main() {
     assert.ok(
       deltas.every((delta) => delta >= -0.05 && delta < 0.35),
       `iPhone playback must remain continuous without timeline jumps: ${samples.join(", ")}`,
+    );
+    assert.notEqual(
+      finalFrameHash,
+      initialFrameHash,
+      "iPhone must paint a different video frame after the swipe",
+    );
+    assert.ok(
+      Math.abs(finalHeaderHeight - initialHeaderHeight) <= 1,
+      `iPhone scrolling must keep a stable header height: ${initialHeaderHeight} -> ${finalHeaderHeight}`,
     );
 
     console.log(`webkit iPhone touch playback passed ${JSON.stringify({ samples, state })}`);

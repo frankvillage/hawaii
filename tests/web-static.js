@@ -190,8 +190,8 @@ assert.match(
 );
 assert.match(
   siteHeader,
-  /coarsePointerQuery\.matches\s*\?\s*\(window\.scrollY >= 120 \? 1 : 0\)/,
-  "Touch header condensation must use one threshold instead of scroll-bound rerenders",
+  /coarsePointerQuery\.matches\s*\?\s*0\s*:/,
+  "Touch scrolling must keep the header at one stable size",
 );
 assert.match(
   stage,
@@ -200,7 +200,7 @@ assert.match(
 );
 assert.match(
   stage,
-  /const primePlaybackFromGesture[\s\S]*?event\.pointerType === "touch"[\s\S]*?void video\.play\(\)\.then/,
+  /const primePlaybackFromGesture[\s\S]*?isTouchGesture[\s\S]*?void video\.play\(\)\.then/,
   "Touch playback must be primed synchronously from the pointer gesture handler",
 );
 assert.match(
