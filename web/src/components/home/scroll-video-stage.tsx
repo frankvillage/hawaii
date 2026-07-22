@@ -442,19 +442,6 @@ export function ScrollVideoStage() {
   }, [requestJourneyFrame, stopScrub]);
 
   useEffect(() => {
-    if (mediaMode !== "video") return;
-
-    const watchdog = window.setTimeout(() => {
-      const video = videoRef.current;
-      if (!video || video.readyState < HTMLMediaElement.HAVE_METADATA) {
-        activateFallback("metadata-timeout");
-      }
-    }, 3500);
-
-    return () => window.clearTimeout(watchdog);
-  }, [activateFallback, mediaMode]);
-
-  useEffect(() => {
     window.dispatchEvent(
       new CustomEvent(JOURNEY_CONFIRMED_EVENT, {
         detail: { index: activeIndex },

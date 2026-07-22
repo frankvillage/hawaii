@@ -232,6 +232,7 @@ assert.match(productionRunner, /tests\/web-smoke\.js/);
 assert.match(productionRunner, /tests\/webkit-mobile-playback\.js/);
 assert.match(productionRunner, /tests\/desktop-video-playback\.js/);
 assert.match(productionRunner, /tests\/webkit-iphone-touch-playback\.js/);
+assert.match(productionRunner, /tests\/webkit-slow-mobile-video\.js/);
 assert.match(arubaBuild, /--exclude src\/app\/api/);
 assert.match(arubaBuild, /NEXT_PUBLIC_BASE_PATH=""/);
 assert.match(arubaBuild, /output\/aruba-static/);

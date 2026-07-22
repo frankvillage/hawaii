@@ -150,6 +150,7 @@ async function main() {
     await run("tests/web-smoke.js", env);
     await run("tests/desktop-video-playback.js", env);
     await run("tests/webkit-iphone-touch-playback.js", env);
+    await run("tests/webkit-slow-mobile-video.js", env);
     try {
       await run("tests/webkit-mobile-playback.js", env);
     } catch (error) {
