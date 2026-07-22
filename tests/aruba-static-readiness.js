@@ -26,6 +26,8 @@ requireFile("404.html");
 requireFile("prenotazioni/index.html");
 requireFile("media/hawaii/journey-desktop.mp4");
 requireFile("media/hawaii/journey-mobile.mp4");
+requireFile("media/hawaii/journey-desktop-reverse.mp4");
+requireFile("media/hawaii/journey-mobile-reverse.mp4");
 requireFile(".htaccess");
 
 const text = collectTextFiles(root)
@@ -35,5 +37,7 @@ const text = collectTextFiles(root)
 assert.doesNotMatch(text, /["'(]\/hawaii\//, "Aruba root export must not retain the Pages base path");
 assert.match(text, /\/media\/hawaii\/journey-desktop\.mp4/);
 assert.match(text, /\/media\/hawaii\/journey-mobile\.mp4/);
+assert.match(text, /\/media\/hawaii\/journey-desktop-reverse\.mp4/);
+assert.match(text, /\/media\/hawaii\/journey-mobile-reverse\.mp4/);
 
 console.log("aruba static readiness checks passed");

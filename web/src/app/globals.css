@@ -275,6 +275,28 @@ button {
   animation-delay: calc(0.34s + var(--marker-i, 0) * 0.12s);
 }
 
+.journey-marker[data-hotspot-mode="compact"] a {
+  width: 44px;
+  height: 44px;
+  justify-content: center;
+  padding: 0;
+}
+
+.journey-marker[data-hotspot-mode="compact"] .journey-dot,
+.journey-marker[data-hotspot-mode="compact"] .journey-hairline {
+  display: none;
+}
+
+.journey-marker[data-hotspot-mode="compact"] .journey-pill {
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(232, 200, 158, 0.6);
+  border-radius: 999px;
+  padding: 0;
+}
+
 .journey-minicard {
   opacity: 0;
   transform: translateY(6px);

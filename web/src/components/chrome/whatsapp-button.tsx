@@ -10,6 +10,7 @@ export function WhatsAppButton() {
 
   return (
     <a
+      data-testid="whatsapp-button"
       href={bookingVenues.hawaii.whatsappUrl}
       target="_blank"
       rel="noopener noreferrer"

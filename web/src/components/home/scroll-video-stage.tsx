@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { JourneyScrollCue } from "@/components/home/journey-scroll-cue";
 import {
@@ -11,6 +11,10 @@ import {
   shouldEnableJourneyVideo,
   writeJourneyVideoOverride,
 } from "@/lib/journey-media-preference";
+import {
+  resolveHotspotLayout,
+  type ResolvedHotspot,
+} from "@/lib/journey-hotspot-layout";
 
 import {
   JOURNEY_CONFIRMED_EVENT,
@@ -19,13 +23,16 @@ import {
 } from "@/lib/journey-playback";
 import {
   advanceScrubTime,
-  mobileTransportForState,
   playbackRateForDistance,
   sceneIndexForTimelineProgress,
   timelineProgressForSceneIndex,
   targetTimeForProgress,
   transportForTimes,
 } from "@/lib/journey-scroll-scrub";
+import {
+  forwardTimeToReverseTime,
+  reverseTimeToForwardTime,
+} from "@/lib/journey-reverse-time";
 import {
   journeyScrollCueState,
   type JourneyScrollCueMode,
@@ -50,13 +57,27 @@ const RING_RADIUS = 15;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 const JOURNEY_FPS = 25;
 const JOURNEY_FRAME_SECONDS = 1 / JOURNEY_FPS;
+const JOURNEY_FRAME_COUNT = 1430;
+const REVERSE_TIMELINE = { fps: JOURNEY_FPS, frameCount: JOURNEY_FRAME_COUNT };
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 function mediaUrl(src: string) {
+  if (!BASE_PATH || src === BASE_PATH || src.startsWith(`${BASE_PATH}/`)) {
+    return src;
+  }
   return `${BASE_PATH}${src}`;
 }
 
+function reverseMediaUrl(isDesktop: boolean) {
+  return mediaUrl(
+    isDesktop
+      ? "/media/hawaii/journey-desktop-reverse.mp4"
+      : "/media/hawaii/journey-mobile-reverse.mp4",
+  );
+}
+
 type JourneyMediaMode = "video" | "stills" | "fallback";
+type JourneyVideoDirection = "forward" | "reverse";
 
 type JourneyNavigateDetail = {
   index: number;
@@ -67,6 +88,10 @@ export function ScrollVideoStage() {
   const wrapperRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const reverseVideoRef = useRef<HTMLVideoElement>(null);
+  const activeVideoDirectionRef = useRef<JourneyVideoDirection>("forward");
+  const reverseSourceAttachedRef = useRef(false);
+  const reverseFailedRef = useRef(false);
   const journeyFrameRef = useRef(0);
   const scrollDirtyRef = useRef(true);
   const lastScrubTickRef = useRef(0);
@@ -90,6 +115,7 @@ export function ScrollVideoStage() {
   const targetTimeRef = useRef(0);
   const durationRef = useRef(homeJourney.media.duration);
   const reducedMotionRef = useRef(false);
+  const videoEnabledRef = useRef(false);
   const sessionVideoOverrideRef = useRef(false);
   const mediaModeRef = useRef<JourneyMediaMode>("stills");
 
@@ -102,6 +128,10 @@ export function ScrollVideoStage() {
   const [motionPreferenceResolved, setMotionPreferenceResolved] = useState(false);
   const [sessionVideoOverride, setSessionVideoOverride] = useState(false);
   const [cueMode, setCueMode] = useState<JourneyScrollCueMode>("hidden");
+  const [visibleVideoDirection, setVisibleVideoDirection] =
+    useState<JourneyVideoDirection>("forward");
+  const [reverseSourceAttached, setReverseSourceAttached] = useState(false);
+  const [resolvedHotspots, setResolvedHotspots] = useState<ResolvedHotspot[]>([]);
   const [fallbackReason, setFallbackReason] = useState("");
   const [navigationSource, setNavigationSource] = useState<NavigationSource | "initial">(
     "initial",
@@ -109,6 +139,8 @@ export function ScrollVideoStage() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [panelSceneIndex, setPanelSceneIndex] = useState(0);
   const [sheetHotspot, setSheetHotspot] = useState<JourneyHotspot | null>(null);
+  const activeScene = homeJourney.scenes[activeIndex] ?? homeJourney.scenes[0];
+  const panelScene = homeJourney.scenes[panelSceneIndex] ?? activeScene;
 
   const playbackState =
     mediaMode === "fallback"
@@ -139,6 +171,10 @@ export function ScrollVideoStage() {
       videoRef.current.pause();
       videoRef.current.playbackRate = 1;
     }
+    if (reverseVideoRef.current) {
+      reverseVideoRef.current.pause();
+      reverseVideoRef.current.playbackRate = 1;
+    }
     setIsScrubbing(false);
   }, []);
 
@@ -163,13 +199,17 @@ export function ScrollVideoStage() {
       videoRef.current.pause();
       videoRef.current.playbackRate = 1;
     }
+    if (reverseVideoRef.current) {
+      reverseVideoRef.current.pause();
+      reverseVideoRef.current.playbackRate = 1;
+    }
     setIsScrubbing(false);
   }, []);
 
   const requestJourneyFrame = useCallback(() => {
     if (journeyFrameRef.current) return;
 
-    if (!reducedMotionRef.current && mediaModeRef.current === "video") {
+    if (videoEnabledRef.current && mediaModeRef.current === "video") {
       setIsScrubbing(true);
     }
     const tick = (timestamp: number) => {
@@ -190,22 +230,75 @@ export function ScrollVideoStage() {
         wrapper.style.setProperty("--journey-progress", nextProgress.toFixed(4));
         wrapper.dataset.scrollProgress = nextProgress.toFixed(4);
         wrapper.dataset.targetTime = nextTargetTime.toFixed(3);
-        if (reducedMotionRef.current || mediaModeRef.current !== "video") {
+        if (!videoEnabledRef.current || mediaModeRef.current !== "video") {
           setActiveIndex((current) => (current === nextIndex ? current : nextIndex));
         }
       }
 
-      const video = videoRef.current;
-      if (!video || reducedMotionRef.current || mediaModeRef.current !== "video") {
+      const forwardVideo = videoRef.current;
+      const reverseVideo = reverseVideoRef.current;
+      if (!forwardVideo || !reverseVideo || !videoEnabledRef.current || mediaModeRef.current !== "video") {
         lastScrubTickRef.current = 0;
         setIsScrubbing(false);
         return;
       }
+
+      const activeDirection = activeVideoDirectionRef.current;
+      let video = activeDirection === "reverse" ? reverseVideo : forwardVideo;
 
       if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
         lastScrubTickRef.current = 0;
         setIsScrubbing(false);
         return;
+      }
+
+      const canonicalCurrentTime =
+        activeDirection === "reverse"
+          ? reverseTimeToForwardTime(video.currentTime, REVERSE_TIMELINE)
+          : video.currentTime;
+      const wantsReverse =
+        !reverseFailedRef.current &&
+        !railScrollingRef.current &&
+        scrollDirectionRef.current < 0 &&
+        targetTimeRef.current < canonicalCurrentTime - JOURNEY_FRAME_SECONDS;
+      const desiredDirection: JourneyVideoDirection = wantsReverse ? "reverse" : "forward";
+
+      if (desiredDirection !== activeDirection) {
+        const nextVideo = desiredDirection === "reverse" ? reverseVideo : forwardVideo;
+
+        if (desiredDirection === "reverse" && !reverseSourceAttachedRef.current) {
+          const isDesktop = window.matchMedia("(min-aspect-ratio: 3/4)").matches;
+          reverseSourceAttachedRef.current = true;
+          setReverseSourceAttached(true);
+          nextVideo.src = reverseMediaUrl(isDesktop);
+          nextVideo.load();
+        }
+
+        video.pause();
+        if (nextVideo.readyState < HTMLMediaElement.HAVE_METADATA) {
+          journeyFrameRef.current = window.requestAnimationFrame(tick);
+          return;
+        }
+
+        const mappedTime =
+          desiredDirection === "reverse"
+            ? forwardTimeToReverseTime(canonicalCurrentTime, REVERSE_TIMELINE)
+            : canonicalCurrentTime;
+        if (Math.abs(nextVideo.currentTime - mappedTime) > JOURNEY_FRAME_SECONDS) {
+          nextVideo.currentTime = mappedTime;
+          journeyFrameRef.current = window.requestAnimationFrame(tick);
+          return;
+        }
+        if (nextVideo.seeking || nextVideo.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+          journeyFrameRef.current = window.requestAnimationFrame(tick);
+          return;
+        }
+
+        activeVideoDirectionRef.current = desiredDirection;
+        setVisibleVideoDirection(desiredDirection);
+        video = nextVideo;
+        lastMediaTimeRef.current = nextVideo.currentTime;
+        lastMediaAdvanceAtRef.current = timestamp;
       }
 
       if (waitingForGestureRef.current) {
@@ -232,21 +325,22 @@ export function ScrollVideoStage() {
       seekStartedAtRef.current = 0;
 
       const usableDuration = Math.max(durationRef.current - JOURNEY_FRAME_SECONDS, 0);
-      const visibleProgress = usableDuration > 0 ? video.currentTime / usableDuration : 0;
+      const direction = activeVideoDirectionRef.current;
+      const visibleCanonicalTime =
+        direction === "reverse"
+          ? reverseTimeToForwardTime(video.currentTime, REVERSE_TIMELINE)
+          : video.currentTime;
+      const directionalTargetTime =
+        direction === "reverse"
+          ? forwardTimeToReverseTime(targetTimeRef.current, REVERSE_TIMELINE)
+          : targetTimeRef.current;
+      const visibleProgress = usableDuration > 0 ? visibleCanonicalTime / usableDuration : 0;
       const visibleIndex = sceneIndexForTimelineProgress(visibleProgress, homeJourney.scenes);
-      const scrollIdleMs = Math.max(timestamp - lastScrollAtRef.current, 0);
-      const transport = isCoarsePointerRef.current
-        ? mobileTransportForState({
-            currentTime: video.currentTime,
-            targetTime: targetTimeRef.current,
-            scrollIdleMs,
-            scrollDirection: scrollDirectionRef.current,
-          })
-        : transportForTimes(
-            video.currentTime,
-            targetTimeRef.current,
-            JOURNEY_FRAME_SECONDS,
-          );
+      const transport = transportForTimes(
+        video.currentTime,
+        directionalTargetTime,
+        JOURNEY_FRAME_SECONDS,
+      );
 
       setActiveIndex((current) => (current === visibleIndex ? current : visibleIndex));
 
@@ -256,7 +350,7 @@ export function ScrollVideoStage() {
         const nextPlaybackRate = isCoarsePointerRef.current
           ? 1
           : playbackRateForDistance(
-              targetTimeRef.current - video.currentTime,
+              directionalTargetTime - video.currentTime,
               maxPlaybackRateRef.current,
             );
         if (Math.abs(video.playbackRate - nextPlaybackRate) >= 0.05) {
@@ -316,15 +410,6 @@ export function ScrollVideoStage() {
         return;
       }
 
-      if (transport === "hold-reverse") {
-        playAttemptIdRef.current += 1;
-        video.pause();
-        if (video.playbackRate !== 1) video.playbackRate = 1;
-        playAttemptRef.current = false;
-        journeyFrameRef.current = window.requestAnimationFrame(tick);
-        return;
-      }
-
       if (transport === "settled") {
         playAttemptIdRef.current += 1;
         video.pause();
@@ -340,8 +425,8 @@ export function ScrollVideoStage() {
         : 1000 / 60;
       lastScrubTickRef.current = timestamp;
       const nextTime = isCoarsePointerRef.current
-        ? targetTimeRef.current
-        : advanceScrubTime(video.currentTime, targetTimeRef.current, elapsed);
+        ? directionalTargetTime
+        : advanceScrubTime(video.currentTime, directionalTargetTime, elapsed);
 
       try {
         playAttemptIdRef.current += 1;
@@ -364,7 +449,10 @@ export function ScrollVideoStage() {
   }, [activateFallback]);
 
   const primePlaybackFromGesture = useCallback((isTouchGesture: boolean) => {
-    const video = videoRef.current;
+    const video =
+      activeVideoDirectionRef.current === "reverse"
+        ? reverseVideoRef.current
+        : videoRef.current;
     const isRecovery = bufferingRef.current || waitingForGestureRef.current;
     const isTouchPrime = isTouchGesture && video?.paused;
     if (
@@ -434,6 +522,9 @@ export function ScrollVideoStage() {
     video.load();
     const playPromise = video.play();
 
+    activeVideoDirectionRef.current = "forward";
+    setVisibleVideoDirection("forward");
+    videoEnabledRef.current = true;
     sessionVideoOverrideRef.current = true;
     writeJourneyVideoOverride(window.sessionStorage);
     setSessionVideoOverride(true);
@@ -461,10 +552,6 @@ export function ScrollVideoStage() {
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     const coarsePointerQuery = window.matchMedia("(pointer: coarse)");
-    const storedOverride = readJourneyVideoOverride(window.sessionStorage);
-    sessionVideoOverrideRef.current = storedOverride;
-    setSessionVideoOverride(storedOverride);
-
     const syncMotionPreference = () => {
       const reduced = mediaQuery.matches;
       reducedMotionRef.current = reduced;
@@ -476,6 +563,7 @@ export function ScrollVideoStage() {
         prefersReducedMotion: reduced,
         sessionOverride: sessionVideoOverrideRef.current,
       });
+      videoEnabledRef.current = videoEnabled;
 
       if (!videoEnabled) {
         mediaModeRef.current = "stills";
@@ -492,14 +580,20 @@ export function ScrollVideoStage() {
     };
     const syncPlaybackRate = () => {
       isCoarsePointerRef.current = coarsePointerQuery.matches;
-      maxPlaybackRateRef.current = coarsePointerQuery.matches ? 1 : 3;
+      maxPlaybackRateRef.current = coarsePointerQuery.matches ? 1 : 1.25;
     };
 
-    syncMotionPreference();
-    syncPlaybackRate();
     mediaQuery.addEventListener("change", syncMotionPreference);
     coarsePointerQuery.addEventListener("change", syncPlaybackRate);
+    const initialSyncFrame = window.requestAnimationFrame(() => {
+      const storedOverride = readJourneyVideoOverride(window.sessionStorage);
+      sessionVideoOverrideRef.current = storedOverride;
+      setSessionVideoOverride(storedOverride);
+      syncMotionPreference();
+      syncPlaybackRate();
+    });
     return () => {
+      window.cancelAnimationFrame(initialSyncFrame);
       mediaQuery.removeEventListener("change", syncMotionPreference);
       coarsePointerQuery.removeEventListener("change", syncPlaybackRate);
     };
@@ -597,6 +691,83 @@ export function ScrollVideoStage() {
     };
   }, [requestJourneyFrame]);
 
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    let layoutFrame = 0;
+    let disposed = false;
+
+    const measure = () => {
+      layoutFrame = 0;
+      if (disposed || window.innerWidth < 768) {
+        setResolvedHotspots([]);
+        return;
+      }
+
+      const stageRect = stage.getBoundingClientRect();
+      const toLocalRect = (rect: DOMRect) => ({
+        x: rect.left - stageRect.left,
+        y: rect.top - stageRect.top,
+        width: rect.width,
+        height: rect.height,
+      });
+      const obstacleSelectors = [
+        '[data-testid="site-header"]',
+        '[data-testid="journey-persistent-copy"]',
+        '[data-testid="scene-marker"]',
+        '[data-testid="soul-rail"]',
+        '[data-testid="whatsapp-button"]',
+      ];
+      const obstacles = obstacleSelectors.flatMap((selector) => {
+        const element = document.querySelector<HTMLElement>(selector);
+        return element ? [toLocalRect(element.getBoundingClientRect())] : [];
+      });
+      const links = Array.from(stage.querySelectorAll<HTMLElement>("[data-hotspot-item]"));
+      const hotspots = activeScene.hotspots.map((hotspot, index) => {
+        const linkRect = links[index]?.querySelector("a")?.getBoundingClientRect();
+        return {
+          id: `${activeScene.id}-${index}`,
+          anchor: {
+            x: (hotspot.x / 100) * stageRect.width,
+            y: (hotspot.y / 100) * stageRect.height,
+          },
+          width: Math.max(linkRect?.width ?? 180, 44),
+          height: Math.max(linkRect?.height ?? 44, 44),
+        };
+      });
+      const safeMargin = 12;
+
+      setResolvedHotspots(
+        resolveHotspotLayout({
+          viewport: {
+            x: safeMargin,
+            y: safeMargin,
+            width: Math.max(stageRect.width - safeMargin * 2, 1),
+            height: Math.max(stageRect.height - safeMargin * 2, 1),
+          },
+          obstacles,
+          hotspots,
+        }),
+      );
+    };
+    const scheduleMeasure = () => {
+      window.cancelAnimationFrame(layoutFrame);
+      layoutFrame = window.requestAnimationFrame(measure);
+    };
+
+    const resizeObserver = new ResizeObserver(scheduleMeasure);
+    resizeObserver.observe(stage);
+    scheduleMeasure();
+    void document.fonts?.ready.then(scheduleMeasure);
+
+    return () => {
+      disposed = true;
+      window.cancelAnimationFrame(layoutFrame);
+      resizeObserver.disconnect();
+    };
+  }, [activeIndex, activeScene]);
+
   useEffect(() => {
     const navigate = (event: Event) => {
       const detail = (event as CustomEvent<JourneyNavigateDetail>).detail;
@@ -636,8 +807,6 @@ export function ScrollVideoStage() {
   useEffect(() => () => stopScrub(), [stopScrub]);
 
   const confirmedIndex = activeIndex;
-  const activeScene = homeJourney.scenes[activeIndex] ?? homeJourney.scenes[0];
-  const panelScene = homeJourney.scenes[panelSceneIndex] ?? activeScene;
   const sceneFraction = 1;
 
   const activeStill = activeScene.still ?? homeJourney.media.poster;
@@ -714,6 +883,8 @@ export function ScrollVideoStage() {
       data-fallback-reason={fallbackReason}
       data-motion-preference-resolved={String(motionPreferenceResolved)}
       data-session-video-override={String(sessionVideoOverride)}
+      data-video-direction={visibleVideoDirection}
+      data-reverse-source-attached={String(reverseSourceAttached)}
       data-nav-source={navigationSource}
       data-target-time="0.000"
       data-scroll-progress="0.0000"
@@ -738,7 +909,9 @@ export function ScrollVideoStage() {
           ref={videoRef}
           data-testid="journey-video"
           className={`absolute inset-0 h-full w-full object-cover ${
-            mediaMode === "video" ? "opacity-100" : "pointer-events-none opacity-0"
+            mediaMode === "video" && visibleVideoDirection === "forward"
+              ? "opacity-100"
+              : "pointer-events-none opacity-0"
           }`}
           muted
           playsInline
@@ -760,22 +933,50 @@ export function ScrollVideoStage() {
           }}
           onError={() => activateFallback("media-error")}
         >
-          {mediaMode === "video" && !sessionVideoOverride ? (
+          {mediaMode === "video" ? (
             <>
               <source
                 src={mediaUrl(homeJourney.media.src)}
                 type="video/mp4"
                 media="(min-aspect-ratio: 3/4)"
-                onError={() => activateFallback("media-error")}
               />
               <source
                 src={mediaUrl(homeJourney.media.mobileSrc)}
                 type="video/mp4"
-                onError={() => activateFallback("media-error")}
               />
             </>
           ) : null}
         </video>
+
+        <video
+          ref={reverseVideoRef}
+          data-testid="journey-video-reverse"
+          data-source-attached={String(reverseSourceAttached)}
+          className={`absolute inset-0 h-full w-full object-cover ${
+            mediaMode === "video" && visibleVideoDirection === "reverse"
+              ? "opacity-100"
+              : "pointer-events-none opacity-0"
+          }`}
+          muted
+          playsInline
+          preload="none"
+          aria-hidden="true"
+          onLoadedMetadata={() => requestJourneyFrame()}
+          onError={() => {
+            reverseFailedRef.current = true;
+            reverseSourceAttachedRef.current = false;
+            setReverseSourceAttached(false);
+            reverseVideoRef.current?.pause();
+            activeVideoDirectionRef.current = "forward";
+            const forwardVideo = videoRef.current;
+            if (forwardVideo && forwardVideo.readyState >= HTMLMediaElement.HAVE_METADATA) {
+              forwardVideo.currentTime = targetTimeRef.current;
+            }
+            setVisibleVideoDirection("forward");
+            scrollDirtyRef.current = true;
+            requestJourneyFrame();
+          }}
+        />
 
         {mediaMode !== "video" ? (
           <Image
@@ -870,29 +1071,46 @@ export function ScrollVideoStage() {
           </div>
 
           <div
+            data-hotspot-layout={
+              resolvedHotspots.length === activeScene.hotspots.length ? "resolved" : "measuring"
+            }
             className="pointer-events-none absolute inset-0"
             style={hotspotLayerStyle}
           >
             {activeScene.hotspots.map((hotspot, index) => {
-              const mirrored = hotspot.x > 50;
+              const resolved = resolvedHotspots.find(
+                ({ id }) => id === `${activeScene.id}-${index}`,
+              );
+              const mirrored = resolved
+                ? resolved.rect.x + resolved.rect.width / 2 < resolved.anchor.x
+                : hotspot.x > 50;
 
               return (
                 <div
                   key={`${activeScene.id}-${hotspot.label}`}
+                  data-hotspot-item
+                  data-hotspot-mode={resolved?.mode ?? "measuring"}
                   data-mirrored={mirrored}
                   className="journey-marker absolute"
                   style={
-                    {
-                      left: `${hotspot.x}%`,
-                      "--hotspot-y": `${hotspot.y}%`,
-                      "--marker-i": index,
-                      /* Anchor the DOT on (x, y): the pill grows inward
-                         (mirrored past 62%), so markers near the edges can
-                         never run off screen. 13px = row padding + dot half. */
-                      transform: `${
-                        mirrored ? "translate(calc(-100% + 13px), -50%)" : "translate(-13px, -50%)"
-                      } translate3d(calc(var(--pointer-x) * 0.4), calc(var(--pointer-y) * 0.4), 0)`,
-                    } as React.CSSProperties
+                    resolved
+                      ? ({
+                          left: `${resolved.rect.x}px`,
+                          top: `${resolved.rect.y}px`,
+                          "--marker-i": index,
+                          transform: "none",
+                        } as React.CSSProperties)
+                      : ({
+                          left: `${hotspot.x}%`,
+                          "--hotspot-y": `${hotspot.y}%`,
+                          "--marker-i": index,
+                          opacity: 0,
+                          transform: `${
+                            mirrored
+                              ? "translate(calc(-100% + 13px), -50%)"
+                              : "translate(-13px, -50%)"
+                          }`,
+                        } as React.CSSProperties)
                   }
                 >
                   <Link
@@ -909,25 +1127,9 @@ export function ScrollVideoStage() {
                       className="journey-pill inline-flex whitespace-nowrap rounded-[3px] bg-[rgba(6,6,7,0.55)] px-3 py-1.5 text-[0.66rem] uppercase tracking-[0.18em] text-[#f7f2ea] backdrop-blur-[3px]"
                       style={{ textShadow: "0 1px 8px rgba(6,6,7,0.7)" }}
                     >
-                      {hotspot.label}
+                      {resolved?.mode === "compact" ? index + 1 : hotspot.label}
                     </span>
                   </Link>
-
-                  <div
-                    className={`journey-minicard absolute top-full mt-2 hidden w-[216px] rounded-2xl border border-[rgba(245,239,230,0.16)] bg-[rgba(17,18,19,0.78)] p-4 backdrop-blur-xl md:block ${
-                      mirrored ? "right-2" : "left-2"
-                    }`}
-                  >
-                    <p className="text-[12.5px] leading-5 text-[#e0e0db]">{captionFor(hotspot)}</p>
-                    <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-white/10 pt-3">
-                      <span className="text-[0.66rem] uppercase tracking-[0.2em] text-[#e8c89e]">
-                        Apri
-                      </span>
-                      <span aria-hidden className="text-[0.8rem] text-[#e8c89e]">
-                        →
-                      </span>
-                    </div>
-                  </div>
                 </div>
               );
             })}

@@ -320,8 +320,8 @@ assert.doesNotMatch(
 );
 assert.match(
   stage,
-  /preload="auto"/,
-  "The continuous journey should buffer ahead for responsive scroll scrubbing",
+  /preload=\{mediaMode === "video" \? "auto" : "none"\}/,
+  "The journey should buffer only after video playback is eligible",
 );
 assert.match(stage, /advanceScrubTime/, "The homepage should use bounded continuous scrubbing");
 assert.doesNotMatch(
@@ -375,11 +375,32 @@ assert.match(
   /const primePlaybackFromGesture[\s\S]*?isTouchGesture[\s\S]*?void video\.play\(\)\.then/,
   "Touch playback must be primed synchronously from the pointer gesture handler",
 );
-assert.match(
-  stage,
-  /const overlaysInteractive = !isMoving;[\s\S]*const hotspotsInteractive = !isMoving;/,
-  "Faded journey controls must become inert while the decoded frame catches up",
-);
+assert.doesNotMatch(stage, /inert=\{!.*Interactive\}/);
+assert.match(stage, /data-testid="journey-persistent-copy"/);
+assert.match(stage, /journey-video-reverse/);
+assert.match(stage, /reverseSourceAttachedRef\.current = true/);
+assert.match(stage, /!railScrollingRef\.current/);
+
+for (const variant of ["mobile", "desktop"]) {
+  const forwardPath = path.join(root, "web", "public", "media", "hawaii", `journey-${variant}.mp4`);
+  const reversePath = path.join(
+    root,
+    "web",
+    "public",
+    "media",
+    "hawaii",
+    `journey-${variant}-reverse.mp4`,
+  );
+  assert.ok(fs.existsSync(reversePath), `Missing ${variant} reverse journey asset`);
+  assert.ok(
+    fs.statSync(reversePath).size <= fs.statSync(forwardPath).size,
+    `${variant} reverse journey asset must not exceed its forward counterpart`,
+  );
+  const header = fs.readFileSync(reversePath).subarray(0, 128).toString("latin1");
+  assert.ok(header.includes("ftyp"), `${variant} reverse journey asset must be an MP4`);
+  const probe = fs.readFileSync(reversePath).subarray(0, 1024 * 1024).toString("latin1");
+  assert.ok(probe.indexOf("moov") > -1, `${variant} reverse journey asset must use faststart`);
+}
 assert.doesNotMatch(
   productionSources,
   /(?:from|import\()\s*["'][^"']*journey-segment-(?:controller|machine)/,
