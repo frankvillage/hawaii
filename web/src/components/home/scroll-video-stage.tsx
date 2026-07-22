@@ -683,8 +683,13 @@ export function ScrollVideoStage() {
               src={homeJourney.media.src}
               type="video/mp4"
               media="(min-aspect-ratio: 3/4)"
+              onError={() => activateFallback("media-error")}
             />
-            <source src={homeJourney.media.mobileSrc} type="video/mp4" />
+            <source
+              src={homeJourney.media.mobileSrc}
+              type="video/mp4"
+              onError={() => activateFallback("media-error")}
+            />
           </video>
         ) : (
           <Image
