@@ -338,6 +338,10 @@ async function main() {
     const fallbackMobilePage = await openPage({ ...devices["iPhone 13"] });
     await fallbackMobilePage.route("**/*.mp4*", (route) => route.abort("failed"));
     await fallbackMobilePage.goto(baseUrl, { waitUntil: "domcontentloaded" });
+    await fallbackMobilePage
+      .locator('[data-testid="journey-video"] source')
+      .last()
+      .dispatchEvent("error");
     await fallbackMobilePage.waitForFunction(
       () => {
         const stage = document.querySelector('[data-testid="hero-stage"]');
@@ -345,7 +349,7 @@ async function main() {
           stage.dataset.fallbackReason === "media-error";
       },
       undefined,
-      { timeout: 10000 },
+      { timeout: 3500 },
     );
     assert.equal(
       await fallbackMobilePage.locator('[data-testid="journey-canvas"]').count(),
