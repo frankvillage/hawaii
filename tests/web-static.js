@@ -19,10 +19,12 @@ function createPagesBuildFixture() {
   const outputDir = path.join(fixtureRoot, "pages-preview", "hawaii");
   const fakeNpmPath = path.join(fixtureRoot, "fake-npm");
   const apiPath = path.join(webDir, "src", "app", "api", "test", "route.ts");
+  const tempDir = path.join(fixtureRoot, "tmp");
 
   fs.mkdirSync(path.join(webDir, "node_modules", ".bin"), { recursive: true });
   fs.mkdirSync(path.dirname(apiPath), { recursive: true });
   fs.mkdirSync(outputDir, { recursive: true });
+  fs.mkdirSync(tempDir);
   writeExecutable(path.join(webDir, "node_modules", ".bin", "next"), "#!/bin/sh\nexit 0\n");
   fs.writeFileSync(apiPath, "source-api-marker\n");
   fs.writeFileSync(path.join(webDir, "page.txt"), "fixture-source\n");
@@ -60,10 +62,16 @@ function createPagesBuildFixture() {
     ].join("\n"),
   );
 
-  return { apiPath, fakeNpmPath, fixtureRoot, outputDir, webDir };
+  return { apiPath, fakeNpmPath, fixtureRoot, outputDir, tempDir, webDir };
 }
 
-function runPagesBuildFixture(fixture, mode, rssLimitMb = "256") {
+function runPagesBuildFixture(fixture, mode, options = {}) {
+  const {
+    extraEnv = {},
+    rssHeadroomMb = "16",
+    rssLimitMb = "512",
+    rssPollSeconds = "0.05",
+  } = options;
   return spawnSync("bash", [pagesPreviewBuildPath], {
     cwd: root,
     encoding: "utf8",
@@ -72,9 +80,12 @@ function runPagesBuildFixture(fixture, mode, rssLimitMb = "256") {
       FAKE_BUILD_MODE: mode,
       PAGES_BUILD_NPM: fixture.fakeNpmPath,
       PAGES_BUILD_OUTPUT_DIR: fixture.outputDir,
+      PAGES_BUILD_RSS_HEADROOM_MB: rssHeadroomMb,
       PAGES_BUILD_RSS_LIMIT_MB: rssLimitMb,
-      PAGES_BUILD_RSS_POLL_SECONDS: "0.05",
+      PAGES_BUILD_RSS_POLL_SECONDS: rssPollSeconds,
       PAGES_BUILD_WEB_DIR: fixture.webDir,
+      TMPDIR: fixture.tempDir,
+      ...extraEnv,
     },
     timeout: 8_000,
   });
@@ -98,6 +109,7 @@ function assertPagesBuildSuccessBehavior() {
     assert.equal(fs.existsSync(path.join(fixture.outputDir, "previous.txt")), false);
     assert.equal(fs.readFileSync(fixture.apiPath, "utf8"), "source-api-marker\n");
     assert.deepEqual(pagesBuildSiblingTemps(fixture.outputDir), []);
+    assert.deepEqual(fs.readdirSync(fixture.tempDir), []);
   } finally {
     fs.rmSync(fixture.fixtureRoot, { force: true, recursive: true });
   }
@@ -113,6 +125,7 @@ function assertPagesBuildFailureBehavior() {
       "previous-artifact\n",
     );
     assert.deepEqual(pagesBuildSiblingTemps(fixture.outputDir), []);
+    assert.deepEqual(fs.readdirSync(fixture.tempDir), []);
   } finally {
     fs.rmSync(fixture.fixtureRoot, { force: true, recursive: true });
   }
@@ -121,14 +134,40 @@ function assertPagesBuildFailureBehavior() {
 function assertPagesBuildMemoryBehavior() {
   const fixture = createPagesBuildFixture();
   try {
-    const result = runPagesBuildFixture(fixture, "memory", "20");
+    const result = runPagesBuildFixture(fixture, "memory", {
+      rssHeadroomMb: "200",
+      rssLimitMb: "256",
+    });
     assert.equal(result.status, 137, result.stderr || result.stdout);
-    assert.match(result.stderr, /RSS limit exceeded/);
+    const breach = result.stderr.match(
+      /RSS safety threshold exceeded: (\d+)KB > 57344KB \(256MB hard ceiling, 200MB headroom\)/,
+    );
+    assert.ok(breach, result.stderr);
+    assert.ok(Number(breach[1]) < 256 * 1024, "The fixture must breach headroom before its hard limit");
     assert.equal(
       fs.readFileSync(path.join(fixture.outputDir, "previous.txt"), "utf8"),
       "previous-artifact\n",
     );
     assert.deepEqual(pagesBuildSiblingTemps(fixture.outputDir), []);
+    assert.deepEqual(fs.readdirSync(fixture.tempDir), []);
+  } finally {
+    fs.rmSync(fixture.fixtureRoot, { force: true, recursive: true });
+  }
+}
+
+function assertPagesBuildInvalidConfigCleanup() {
+  const fixture = createPagesBuildFixture();
+  try {
+    const result = runPagesBuildFixture(fixture, "success", {
+      rssLimitMb: "invalid",
+    });
+    assert.equal(result.status, 2, result.stderr || result.stdout);
+    assert.match(result.stderr, /PAGES_BUILD_RSS_LIMIT_MB must be a positive integer/);
+    assert.deepEqual(
+      fs.readdirSync(fixture.tempDir),
+      [],
+      "Invalid RSS config must not leak a temp build",
+    );
   } finally {
     fs.rmSync(fixture.fixtureRoot, { force: true, recursive: true });
   }
@@ -379,11 +418,23 @@ assert.match(
   /NODE_OPTIONS="\$\{NODE_OPTIONS:\+\$NODE_OPTIONS \}--max-old-space-size=2048"/,
   "The Pages build must append the 2GB cap after any caller-provided Node options",
 );
+assertPagesBuildInvalidConfigCleanup();
 assert.match(
   pagesPreviewBuild,
   /RSS_LIMIT_MB="\$\{PAGES_BUILD_RSS_LIMIT_MB:-2048\}"/,
   "The complete Pages build process tree must default to a 2GB RSS ceiling",
 );
+assert.match(
+  pagesPreviewBuild,
+  /RSS_HEADROOM_MB="\$\{PAGES_BUILD_RSS_HEADROOM_MB:-256\}"/,
+  "The Pages build must reserve 256MB below its hard RSS ceiling",
+);
+assert.match(
+  pagesPreviewBuild,
+  /RSS_POLL_SECONDS="\$\{PAGES_BUILD_RSS_POLL_SECONDS:-0\.1\}"/,
+  "The Pages build must sample process-tree RSS every 0.1 seconds by default",
+);
+assert.match(pagesPreviewBuild, /RSS_TERMINATION_MB=\$\(\(RSS_LIMIT_MB - RSS_HEADROOM_MB\)\)/);
 assert.match(pagesPreviewBuild, /ps -axo pid=,ppid=,rss=/);
 assert.match(pagesPreviewBuild, /terminate_process_tree/);
 assert.match(pagesPreviewBuild, /"\$NPM_BIN" run build -- --webpack/);
@@ -410,6 +461,11 @@ assert.match(pagesPreviewBuild, /trap cleanup EXIT/);
 assert.match(pagesPreviewBuild, /trap 'exit 129' HUP/);
 assert.match(pagesPreviewBuild, /trap 'exit 130' INT/);
 assert.match(pagesPreviewBuild, /trap 'exit 143' TERM/);
+assert.ok(
+  pagesPreviewBuild.indexOf("trap cleanup EXIT") <
+    pagesPreviewBuild.indexOf('TMP_ROOT="$(mktemp -d '),
+  "Cleanup must be registered before the temporary build directory is created",
+);
 assert.doesNotMatch(
   pagesPreviewBuild,
   /(?:rm|mv)[^\n]*src\/app\/api/,

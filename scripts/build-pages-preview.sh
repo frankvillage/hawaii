@@ -7,8 +7,9 @@ WEB_DIR="${PAGES_BUILD_WEB_DIR:-$ROOT_DIR/web}"
 OUTPUT_DIR="${PAGES_BUILD_OUTPUT_DIR:-$ROOT_DIR/pages-preview/hawaii}"
 NPM_BIN="${PAGES_BUILD_NPM:-npm}"
 RSS_LIMIT_MB="${PAGES_BUILD_RSS_LIMIT_MB:-2048}"
-RSS_POLL_SECONDS="${PAGES_BUILD_RSS_POLL_SECONDS:-1}"
-TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/hawaii-pages.XXXXXX")"
+RSS_HEADROOM_MB="${PAGES_BUILD_RSS_HEADROOM_MB:-256}"
+RSS_POLL_SECONDS="${PAGES_BUILD_RSS_POLL_SECONDS:-0.1}"
+TMP_ROOT=""
 OUTPUT_PARENT="$(dirname "$OUTPUT_DIR")"
 OUTPUT_NAME="$(basename "$OUTPUT_DIR")"
 STAGE_DIR=""
@@ -17,18 +18,6 @@ ACTIVE_BUILD_PID=""
 SWAP_STARTED=0
 SWAP_COMPLETE=0
 HAD_OUTPUT=0
-
-case "$RSS_LIMIT_MB" in
-  ""|*[!0-9]*)
-    echo "PAGES_BUILD_RSS_LIMIT_MB must be a positive integer" >&2
-    exit 2
-    ;;
-esac
-if (( RSS_LIMIT_MB < 1 )); then
-  echo "PAGES_BUILD_RSS_LIMIT_MB must be at least 1" >&2
-  exit 2
-fi
-RSS_LIMIT_KB=$((RSS_LIMIT_MB * 1024))
 
 process_tree_rows() {
   local root_pid="$1"
@@ -118,13 +107,47 @@ cleanup() {
   if (( SWAP_COMPLETE == 1 )) && [[ -n "$BACKUP_DIR" ]]; then
     rm -rf "$BACKUP_DIR"
   fi
-  rm -rf "$TMP_ROOT"
+  if [[ -n "$TMP_ROOT" ]]; then
+    rm -rf "$TMP_ROOT"
+  fi
   return "$exit_status"
 }
 trap cleanup EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
+
+case "$RSS_LIMIT_MB" in
+  ""|*[!0-9]*)
+    echo "PAGES_BUILD_RSS_LIMIT_MB must be a positive integer" >&2
+    exit 2
+    ;;
+esac
+if (( RSS_LIMIT_MB < 1 )); then
+  echo "PAGES_BUILD_RSS_LIMIT_MB must be at least 1" >&2
+  exit 2
+fi
+
+case "$RSS_HEADROOM_MB" in
+  ""|*[!0-9]*)
+    echo "PAGES_BUILD_RSS_HEADROOM_MB must be a non-negative integer" >&2
+    exit 2
+    ;;
+esac
+if (( RSS_HEADROOM_MB >= RSS_LIMIT_MB )); then
+  echo "PAGES_BUILD_RSS_HEADROOM_MB must be smaller than PAGES_BUILD_RSS_LIMIT_MB" >&2
+  exit 2
+fi
+
+if ! [[ "$RSS_POLL_SECONDS" =~ ^([0-9]+([.][0-9]+)?|[.][0-9]+)$ ]] ||
+  ! awk -v interval="$RSS_POLL_SECONDS" 'BEGIN { exit !(interval > 0) }'; then
+  echo "PAGES_BUILD_RSS_POLL_SECONDS must be a positive decimal number" >&2
+  exit 2
+fi
+
+RSS_TERMINATION_MB=$((RSS_LIMIT_MB - RSS_HEADROOM_MB))
+RSS_TERMINATION_KB=$((RSS_TERMINATION_MB * 1024))
+TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/hawaii-pages.XXXXXX")"
 
 if [[ ! -x "$WEB_DIR/node_modules/.bin/next" ]]; then
   echo "Missing web dependencies. Run: cd web && npm install" >&2
@@ -152,8 +175,8 @@ ACTIVE_BUILD_PID=$!
 MEMORY_BREACH=0
 while kill -0 "$ACTIVE_BUILD_PID" 2>/dev/null; do
   CURRENT_RSS_KB="$(process_tree_rss_kb "$ACTIVE_BUILD_PID")"
-  if (( CURRENT_RSS_KB > RSS_LIMIT_KB )); then
-    echo "RSS limit exceeded: ${CURRENT_RSS_KB}KB > ${RSS_LIMIT_KB}KB; terminating build process tree" >&2
+  if (( CURRENT_RSS_KB > RSS_TERMINATION_KB )); then
+    echo "RSS safety threshold exceeded: ${CURRENT_RSS_KB}KB > ${RSS_TERMINATION_KB}KB (${RSS_LIMIT_MB}MB hard ceiling, ${RSS_HEADROOM_MB}MB headroom); terminating build process tree" >&2
     MEMORY_BREACH=1
     terminate_process_tree "$ACTIVE_BUILD_PID"
     break
