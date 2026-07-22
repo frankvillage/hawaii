@@ -99,7 +99,7 @@ Expected: FAIL because `journey-media-preference.ts` does not exist.
 
 - [ ] **Step 3: Implement minimal pure helpers**
 
-Export typed `videoEnabled`, `isRecoverablePlayError`, `readSessionOverride`, and `writeSessionOverride`. Storage helpers catch security/quota errors and never throw.
+Export typed `videoEnabled`, `isRecoverablePlayError`, `readSessionOverride`, and `writeSessionOverride`. Storage helpers catch security/quota errors and never throw. Add `tests/journey-media-preference.test.mjs` explicitly to the `test:web:journey` script.
 
 - [ ] **Step 4: Run GREEN and static tests**
 
@@ -134,7 +134,10 @@ The test must assert:
 - during `moving`, copy opacity/transform and CTA pointer behavior equal the settled values;
 - mobile `.journey-marker` remains `display:none`;
 - video is muted, `playsInline` and `aria-hidden="true"`;
-- override survives reload in the same context/session and storage failure does not break the current activation.
+- override survives reload in the same context/session and storage failure does not break the current activation;
+- runtime changes of `prefers-reduced-motion` recalculate eligibility without video flash or loss of the session override;
+- Enter/Space activation, visible unobscured focus, minimum 44x44 target and portrait/landscape safe-area placement;
+- computed text alpha and contrast on representative brightest/darkest journey frames.
 
 - [ ] **Step 2: Run RED**
 
@@ -192,7 +195,7 @@ Expected: FAIL because the component/helper does not exist.
 
 - [ ] **Step 3: Implement cue**
 
-Implement the pure state helper in `journey-scroll-cue-state.ts`, then render `Scorri`, line and dot on mobile right safe edge. Use `pointer-events:none`, `aria-hidden="true"`, safe-area inset and no backdrop filter. Update visibility from existing progress/scroll timestamps without adding a second scroll listener. Add the pure test to `test:web:journey`.
+Implement the pure state helper in `journey-scroll-cue-state.ts`, then render `Scorri`, line and dot on mobile right safe edge. Use `pointer-events:none`, `aria-hidden="true"`, safe-area inset and no backdrop filter. Update visibility from existing progress/scroll timestamps without adding a second scroll listener. Add the pure test explicitly to `test:web:journey`; the browser test uses `elementFromPoint` to prove input reaches the layer below the cue.
 
 - [ ] **Step 4: Verify visual and reduced-motion behavior**
 
@@ -238,13 +241,15 @@ Expected: FAIL because resolver does not exist.
 
 - [ ] **Step 3: Implement resolver**
 
-Use immutable rects, 8px separation, 24px bounded anchor relocation, ordered candidate positions, then deterministic two-side lane packing. Export authored-coordinate validation and small geometry helpers for tests; no DOM access in this file.
+Use immutable rects, 8px separation, 24px bounded anchor relocation, ordered candidate positions, then deterministic two-side lane packing. Export authored-coordinate validation and small geometry helpers for tests; no DOM access in this file. Add `tests/journey-hotspot-layout.test.mjs` explicitly to `test:web:journey`.
 
 - [ ] **Step 4: Run GREEN**
 
 Run: `node --no-warnings --experimental-strip-types --test tests/journey-hotspot-layout.test.mjs && npm run test:web:journey`
 
 Expected: all fixtures pass with zero overlaps/overflow.
+
+Run authored-coordinate validation against every hotspot in `homeJourney` for each supported aspect ratio. Fail with scene and hotspot identifiers for invalid coordinates or unresolved placement.
 
 - [ ] **Step 5: Commit**
 
@@ -265,7 +270,7 @@ git commit -m "Add deterministic hotspot collision resolver"
 
 - [ ] **Step 1: Write failing browser collision test**
 
-First require the integration marker `data-hotspot-layout="resolved"`, which guarantees RED fails before integration instead of relying on accidental current overlap. For every scene and supported viewport, collect rects for header, copy, marker, rail, WhatsApp, interactive hotspot parents and the single active card. Assert no peer intersection and no viewport overflow before/after resize and font readiness. Assert mobile hotspot count visible is zero.
+First require the integration marker `data-hotspot-layout="resolved"`, which guarantees RED fails before integration instead of relying on accidental current overlap. For every scene and supported viewport, collect rects for header, copy, marker, rail, WhatsApp, interactive hotspot parents and the single active card. Assert no peer intersection and no viewport overflow before/after resize and font readiness. Repeat with root font scaling and browser/CSS zoom equivalents at 100/125/150/200%. Assert mobile hotspot count visible is zero.
 
 - [ ] **Step 2: Run RED**
 
@@ -309,7 +314,7 @@ Expected: FAIL because helper does not exist.
 
 - [ ] **Step 3: Implement helpers**
 
-Export `timeToFrame`, `frameToTime`, `forwardFrameToReverseFrame`, `forwardTimeToReverseTime`, and inverse equivalents. Keep frame rounding policy explicit and symmetric.
+Export `timeToFrame`, `frameToTime`, `forwardFrameToReverseFrame`, `forwardTimeToReverseTime`, and inverse equivalents. Keep frame rounding policy explicit and symmetric. Add `tests/journey-reverse-time.test.mjs` explicitly to `test:web:journey`.
 
 - [ ] **Step 4: Run GREEN**
 
@@ -368,7 +373,9 @@ Expected: two valid assets, each no larger than the corresponding forward file; 
 
 - [ ] **Step 5: Verify frame equivalence**
 
-Verify all 1430 output PTS values are CFR 25 and strictly increasing; duration is 57.2s; dimensions, SAR, BT.709 metadata and profile/level match the compatibility budget; no audio/timecode exists; keyframe gaps are <=1s. For every generated segment, compare all decoded frames against the corresponding reversed source chunk and require aggregate SSIM >=0.965. Also compare start, midpoint, every scene boundary and end by pixel screenshot to catch ordering mistakes.
+Verify all 1430 output PTS values are CFR 25 and strictly increasing; duration is 57.2s; dimensions, SAR, BT.709 metadata and profile/level match the compatibility budget; no audio/timecode exists; keyframe gaps are <=1s. For every generated segment, compare all decoded frames against the corresponding reversed source chunk and require aggregate SSIM >=0.965.
+
+For complete ordering validation, decode the forward and final reverse assets to one 64x36 grayscale signature per frame (about 3.3MB for 1430 frames). Compare reverse signature `i` with forward signature `1429-i` for every frame. Require normalized grayscale MAE <=0.08 for every frame, <=0.04 at the 95th percentile and <=0.025 globally; fail with exact indices for any threshold violation. Also verify fixed one-to-one sequence length/order so no output frame can be skipped or reused. Full-resolution screenshots at start, midpoint, every scene boundary and end remain a secondary visual check.
 
 - [ ] **Step 6: Verify the Aruba package**
 
@@ -498,9 +505,11 @@ Run the iPhone WebKit, slow-media, collision, reverse and desktop scripts sequen
 
 - [ ] **Step 4: Complete physical Safari matrix**
 
-On a real iPhone verify: Riduci movimento on/off; Risparmio energetico on/off; cache fredda/calda; portrait/landscape safe areas; forward and reverse with rapid changes; CTA while video is moving; background/resume; and simulated reverse 404 through the diagnostic route/test build. Record whether video pixels, canonical scene, Soul Rail and copy stay synchronized.
+Before the physical pass, add a dedicated reversible diagnostic commit that maps the reverse URL to a guaranteed missing asset only when the public query contains `reverse-test=404`; ordinary visitors are unaffected. On a real iPhone verify: Riduci movimento on/off; Risparmio energetico on/off; cache fredda/calda; portrait/landscape safe areas; forward and reverse with rapid changes; CTA while video is moving; background/resume; and reverse failure through `?reverse-test=404`. Record whether video pixels, canonical scene, Soul Rail and copy stay synchronized.
 
 Expected: no static fallback for policy rejection, no text glitch, no hidden CTA, no black frame, smooth forward/reverse and no hotspot on mobile. Any failure blocks final acceptance and returns to systematic debugging.
+
+After the 404 case passes, revert the diagnostic-only commit, rebuild and redeploy with explicit approval. Verify the public URL no longer changes reverse behavior for `?reverse-test=404`.
 
 - [ ] **Step 5: Document reversible rollout**
 
