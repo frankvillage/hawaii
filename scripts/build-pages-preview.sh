@@ -33,7 +33,7 @@ ln -s "$WEB_DIR/node_modules" "$TMP_ROOT/web/node_modules"
   cd "$TMP_ROOT/web"
   STATIC_EXPORT=1 \
   NEXT_PUBLIC_BASE_PATH=/hawaii \
-  NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=2048}" \
+  NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--max-old-space-size=2048" \
   npm run build -- --webpack
 )
 

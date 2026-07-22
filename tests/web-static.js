@@ -245,7 +245,11 @@ assert.match(
 assert.match(pagesPreviewBuild, /ln -s "\$WEB_DIR\/node_modules" "\$TMP_ROOT\/web\/node_modules"/);
 assert.match(pagesPreviewBuild, /STATIC_EXPORT=1/);
 assert.match(pagesPreviewBuild, /NEXT_PUBLIC_BASE_PATH=\/hawaii/);
-assert.match(pagesPreviewBuild, /NODE_OPTIONS="\$\{NODE_OPTIONS:---max-old-space-size=2048\}"/);
+assert.match(
+  pagesPreviewBuild,
+  /NODE_OPTIONS="\$\{NODE_OPTIONS:\+\$NODE_OPTIONS \}--max-old-space-size=2048"/,
+  "The Pages build must append the 2GB cap after any caller-provided Node options",
+);
 assert.match(pagesPreviewBuild, /npm run build -- --webpack/);
 assert.ok(pagesPreviewBuild.includes(`-e 's|"/media/|"/hawaii/media/|g'`));
 assert.ok(pagesPreviewBuild.includes(`-e "s|'/media/|'/hawaii/media/|g"`));
