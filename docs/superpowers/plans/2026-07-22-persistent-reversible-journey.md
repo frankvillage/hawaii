@@ -489,7 +489,9 @@ Report commits, asset sizes, verification evidence and remaining physical-iPhone
 ### Task 10: Blocking physical-iPhone acceptance and rollout
 
 **Files:**
-- Modify only when a physical-device finding identifies a reproducible defect.
+- Temporarily modify: `web/src/components/home/journey-video-layers.tsx`
+- Modify: `tests/webkit-reverse-playback.js`
+- Modify other files only when a physical-device finding identifies a reproducible defect.
 
 - [ ] **Step 1: Obtain explicit deploy approval**
 
@@ -505,11 +507,18 @@ Run the iPhone WebKit, slow-media, collision, reverse and desktop scripts sequen
 
 - [ ] **Step 4: Complete physical Safari matrix**
 
-Before the physical pass, add a dedicated reversible diagnostic commit that maps the reverse URL to a guaranteed missing asset only when the public query contains `reverse-test=404`; ordinary visitors are unaffected. On a real iPhone verify: Riduci movimento on/off; Risparmio energetico on/off; cache fredda/calda; portrait/landscape safe areas; forward and reverse with rapid changes; CTA while video is moving; background/resume; and reverse failure through `?reverse-test=404`. Record whether video pixels, canonical scene, Soul Rail and copy stay synchronized.
+Before the physical pass, update `JourneyVideoLayers` so only `window.location.search` containing `reverse-test=404` maps the selected reverse URL to `/media/hawaii/__missing-reverse-test__.mp4`; ordinary URLs remain unchanged. Extend `tests/webkit-reverse-playback.js` to verify both query paths, then commit exactly:
+
+```bash
+git add web/src/components/home/journey-video-layers.tsx tests/webkit-reverse-playback.js
+git commit -m "Add temporary reverse failure diagnostic"
+```
+
+Record the diagnostic commit SHA and obtain explicit user approval before pushing this temporary build to shared Pages. On a real iPhone verify: Riduci movimento on/off; Risparmio energetico on/off; cache fredda/calda; portrait/landscape safe areas; forward and reverse with rapid changes; CTA while video is moving; background/resume; and reverse failure through `?reverse-test=404`. Record whether video pixels, canonical scene, Soul Rail and copy stay synchronized.
 
 Expected: no static fallback for policy rejection, no text glitch, no hidden CTA, no black frame, smooth forward/reverse and no hotspot on mobile. Any failure blocks final acceptance and returns to systematic debugging.
 
-After the 404 case passes, revert the diagnostic-only commit, rebuild and redeploy with explicit approval. Verify the public URL no longer changes reverse behavior for `?reverse-test=404`.
+After the 404 case passes, run `git revert --no-edit <diagnostic-commit-sha>`, rebuild and rerun the full exact artifact suite. Obtain explicit approval for the cleanup deploy, push it, and verify the public URL no longer changes reverse behavior for `?reverse-test=404`.
 
 - [ ] **Step 5: Document reversible rollout**
 
