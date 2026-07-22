@@ -14,26 +14,30 @@ La homepage deve mantenere il video come elemento narrativo controllato dallo sc
 
 ### Interfaccia persistente
 
-- Testi, CTA, indicatore di scena e hotspot non cambiano opacita o posizione in base allo stato di riproduzione.
-- CTA e hotspot restano interattivi mentre il video avanza.
+- Testi, CTA, indicatore di scena e hotspot visibili non cambiano opacita o posizione durante caricamento, riproduzione, arresto o cambio scena.
+- CTA e hotspot visibili restano interattivi mentre il video avanza.
+- Su mobile restano visibili e interattivi testi, CTA, menu, prenotazioni e Soul Rail. Gli hotspot ambientali continuano a essere nascosti sotto `768px`, come gia approvato, per non coprire visual e contenuti.
 - Il contenuto testuale cambia solo quando il video entra nell'intervallo temporale della scena successiva.
 - Nessun pannello o overlay tecnico deve apparire nell'esperienza ordinaria.
-- L'attivazione di una CTA o di un hotspot interrompe normalmente la navigazione corrente e apre la destinazione prevista.
+- L'attivazione di una CTA segue subito la destinazione prevista. Su touch, gli hotspot ambientali mantengono il foglio informativo intermedio gia esistente.
 
 ### Riduci movimento
 
 - Se `prefers-reduced-motion: reduce` e attivo, la prima visualizzazione conserva le immagini statiche per rispettare la preferenza di sistema.
 - Sopra la scena viene offerto un comando discreto `Attiva esperienza video`.
-- Il comando costituisce un consenso esplicito, passa alla modalita video e tenta la riproduzione nello stesso evento utente.
+- Il video resta montato ma invisibile con `preload="none"`, cosi il comando puo chiamare `video.play()` in modo sincrono nello stesso evento utente, prima di qualsiasi `await`, timer o effect.
+- Il comando costituisce un consenso esplicito e passa alla modalita video soltanto attraverso quel gesto reale.
 - La scelta viene memorizzata in `sessionStorage`, quindi vale soltanto per la scheda/sessione corrente ed e reversibile chiudendo la scheda.
 - Dopo l'override, le altre animazioni decorative continuano a rispettare `prefers-reduced-motion`; viene riattivato soltanto il video narrativo.
+- La regola di precedenza e `videoEnabled = !prefersReducedMotion || sessionOverride`. Prima che la preferenza sia risolta, la pagina mostra il poster e non avvia richieste video automatiche.
+- Cambi della preferenza durante la sessione ricalcolano la modalita; l'override resta valido nella scheda. Errori o indisponibilita di `sessionStorage` non bloccano l'azione corrente.
 
 ### Safari e rifiuto della riproduzione
 
-- Un rifiuto di `play()` con politica di autoplay non deve sostituire il video con immagini statiche.
+- Rifiuti `NotAllowedError` e `AbortError` non devono sostituire il video con immagini statiche e non incrementano alcun contatore di fallback.
 - Il player resta in modalita video e presenta un comando esplicito `Avvia il video`.
 - Il comando chiama `video.play()` direttamente da un click/tap reale.
-- Errori media non recuperabili continuano a usare le immagini statiche come fallback.
+- Anche un nuovo rifiuto del comando mantiene disponibile il retry. Solo errori sorgente, decode o formato non supportato confermati continuano a usare le immagini statiche come fallback.
 
 ## Struttura tecnica
 
@@ -46,18 +50,22 @@ La homepage deve mantenere il video come elemento narrativo controllato dallo sc
 ## Accessibilita
 
 - Il comando di override e un vero `button`, raggiungibile da tastiera e con focus visibile.
+- Il comando ha un'area interattiva minima di 44x44 CSS pixel, contrasto verificato e posizione compatibile con le safe area in orientamento verticale e orizzontale.
 - Il testo spiega l'azione senza chiedere di modificare le impostazioni del dispositivo.
 - `prefers-reduced-motion` continua a disattivare transizioni, parallax e animazioni decorative.
-- Il video rimane muto e `playsInline`.
+- Il video rimane muto, `playsInline` e decorativo (`aria-hidden="true"`), poiche le informazioni equivalenti sono presenti nei testi di scena.
 
 ## Verifica
 
 - Test WebKit iPhone con `reducedMotion: reduce`: immagini statiche iniziali, pulsante presente, tap, video montato e tempo in avanzamento.
-- Test con primo `play()` rifiutato: il video non entra in fallback e il comando di avvio resta disponibile.
-- Test dell'overlay durante la riproduzione: opacita, trasformazione e interattivita rimangono costanti.
-- Test di CTA e hotspot durante `data-media-state="moving"`.
+- Test con piu `play()` consecutivi rifiutati e retry rifiutato: il video non entra in fallback e il comando di avvio resta disponibile.
+- Test dell'override dopo reload nella stessa sessione, con `sessionStorage` disponibile e indisponibile.
+- Test dell'overlay durante caricamento, riproduzione, arresto e cambio scena: opacita, trasformazione e interattivita rimangono costanti.
+- Test di CTA durante `data-media-state="moving"`, hotspot desktop interattivi e hotspot mobile ancora nascosti.
+- Test che l'override riattivi soltanto il video e mantenga disabilitate le animazioni decorative.
 - Regressione completa: rete lenta, fallback per errore MP4 reale, desktop continuo, prenotazioni e build statica.
+- Accettazione finale su Safari fisico: Riduci movimento on/off, Risparmio energetico on/off, cache fredda/calda e ritorno da background. La verifica automatica WebKit non viene presentata come sostituto del dispositivo reale.
 
 ## Reversibilita
 
-L'intervento resta confinato al controller della homepage e ai relativi test. Nessun asset viene sostituito o cancellato; il comportamento precedente puo essere ripristinato revertendo il commit dedicato.
+L'intervento comprende controller della homepage, eventuale stile dedicato, stato di sessione e test. Tutte le modifiche applicative confluiscono in un commit dedicato, senza sostituire asset o introdurre migrazioni; il comportamento precedente puo essere ripristinato con un singolo revert.
