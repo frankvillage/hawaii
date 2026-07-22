@@ -200,8 +200,8 @@ assert.match(
 );
 assert.match(
   stage,
-  /const retryPlaybackFromGesture[\s\S]*?void video\.play\(\)\.then/,
-  "Playback recovery must call play synchronously from the user gesture handler",
+  /const primePlaybackFromGesture[\s\S]*?event\.pointerType === "touch"[\s\S]*?void video\.play\(\)\.then/,
+  "Touch playback must be primed synchronously from the pointer gesture handler",
 );
 assert.match(
   stage,

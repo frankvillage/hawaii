@@ -344,10 +344,12 @@ export function ScrollVideoStage() {
     journeyFrameRef.current = window.requestAnimationFrame(tick);
   }, [activateFallback]);
 
-  const retryPlaybackFromGesture = useCallback(() => {
+  const primePlaybackFromGesture = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     const video = videoRef.current;
+    const isRecovery = bufferingRef.current || waitingForGestureRef.current;
+    const isTouchPrime = event.pointerType === "touch" && video?.paused;
     if (
-      (!bufferingRef.current && !waitingForGestureRef.current) ||
+      (!isRecovery && !isTouchPrime) ||
       !video ||
       mediaModeRef.current !== "video"
     ) {
@@ -370,7 +372,6 @@ export function ScrollVideoStage() {
         if (attemptId !== playAttemptIdRef.current) return;
         playAttemptRef.current = false;
         playRejectionCountRef.current = 0;
-        requestJourneyFrame();
       },
       () => {
         if (attemptId !== playAttemptIdRef.current) return;
@@ -385,7 +386,12 @@ export function ScrollVideoStage() {
         setIsScrubbing(false);
       },
     );
-  }, [activateFallback, requestJourneyFrame]);
+  }, [activateFallback]);
+
+  const completePlaybackGesture = useCallback(() => {
+    scrollDirtyRef.current = true;
+    requestJourneyFrame();
+  }, [requestJourneyFrame]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -640,7 +646,9 @@ export function ScrollVideoStage() {
         ref={stageRef}
         data-testid="scroll-video-stage"
         className="journey-stage sticky top-0 h-[100svh] overflow-hidden"
-        onPointerDown={retryPlaybackFromGesture}
+        onPointerDown={primePlaybackFromGesture}
+        onPointerUp={completePlaybackGesture}
+        onPointerCancel={completePlaybackGesture}
         onMouseMove={handlePointerMove}
         onMouseLeave={resetPointer}
       >
