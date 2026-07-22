@@ -25,11 +25,12 @@ La homepage deve mantenere il video come elemento narrativo controllato dallo sc
 
 - Se `prefers-reduced-motion: reduce` e attivo, la prima visualizzazione conserva le immagini statiche per rispettare la preferenza di sistema.
 - Sopra la scena viene offerto un comando discreto `Attiva esperienza video`.
-- Il video resta montato ma invisibile con `preload="none"`, cosi il comando puo chiamare `video.play()` in modo sincrono nello stesso evento utente, prima di qualsiasi `await`, timer o effect.
+- L'elemento video resta montato ma invisibile e senza sorgenti durante lo stato reduced motion. `preload="none"` completa la protezione, ma l'assenza di `src` e `<source>` impedisce richieste automatiche.
+- Nello stesso handler reale il comando assegna la sorgente mobile o desktop, chiama `load()` e quindi `video.play()` in modo sincrono, prima di qualsiasi `await`, timer, effect o aggiornamento React dipendente.
 - Il comando costituisce un consenso esplicito e passa alla modalita video soltanto attraverso quel gesto reale.
 - La scelta viene memorizzata in `sessionStorage`, quindi vale soltanto per la scheda/sessione corrente ed e reversibile chiudendo la scheda.
 - Dopo l'override, le altre animazioni decorative continuano a rispettare `prefers-reduced-motion`; viene riattivato soltanto il video narrativo.
-- La regola di precedenza e `videoEnabled = !prefersReducedMotion || sessionOverride`. Prima che la preferenza sia risolta, la pagina mostra il poster e non avvia richieste video automatiche.
+- La regola di precedenza e `videoEnabled = !prefersReducedMotion || sessionOverride`. Prima che la preferenza sia risolta, la pagina mostra il poster, mantiene il video senza sorgenti e non avvia richieste video automatiche.
 - Cambi della preferenza durante la sessione ricalcolano la modalita; l'override resta valido nella scheda. Errori o indisponibilita di `sessionStorage` non bloccano l'azione corrente.
 
 ### Safari e rifiuto della riproduzione
@@ -57,12 +58,13 @@ La homepage deve mantenere il video come elemento narrativo controllato dallo sc
 
 ## Verifica
 
-- Test WebKit iPhone con `reducedMotion: reduce`: immagini statiche iniziali, pulsante presente, tap, video montato e tempo in avanzamento.
+- Test WebKit iPhone con `reducedMotion: reduce`: immagini statiche iniziali, video montato ma invisibile e senza sorgenti, pulsante presente, tap, sorgente assegnata e `play()` invocato sincronicamente, video visibile. Prima di verificare l'avanzamento temporale il test porta lo scroll a un target maggiore di zero.
 - Test con piu `play()` consecutivi rifiutati e retry rifiutato: il video non entra in fallback e il comando di avvio resta disponibile.
 - Test dell'override dopo reload nella stessa sessione, con `sessionStorage` disponibile e indisponibile.
 - Test dell'overlay durante caricamento, riproduzione, arresto e cambio scena: opacita, trasformazione e interattivita rimangono costanti.
 - Test di CTA durante `data-media-state="moving"`, hotspot desktop interattivi e hotspot mobile ancora nascosti.
 - Test che l'override riattivi soltanto il video e mantenga disabilitate le animazioni decorative.
+- Test accessibilita del comando: attivazione da tastiera, focus visibile e non coperto, area minima 44x44, contrasto, `aria-hidden` sul video e posizione nelle safe area in entrambe le orientazioni iPhone.
 - Regressione completa: rete lenta, fallback per errore MP4 reale, desktop continuo, prenotazioni e build statica.
 - Accettazione finale su Safari fisico: Riduci movimento on/off, Risparmio energetico on/off, cache fredda/calda e ritorno da background. La verifica automatica WebKit non viene presentata come sostituto del dispositivo reale.
 
