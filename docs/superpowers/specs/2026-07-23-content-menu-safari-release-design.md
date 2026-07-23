@@ -11,8 +11,8 @@ Applicare le correzioni annotate dal cliente prima della pubblicazione su GitHub
 - L'effetto prospettico resta disponibile per poster e immagini statiche.
 - CTA, menu di scena e Soul Rail restano sopra i layer video e cliccabili su tablet prima, durante e dopo lo scroll.
 - Gli eventi pointer/touch del player non devono cancellare o bloccare il click dei controlli interattivi.
-- La verifica bloccante copre viewport tablet 768x1024 e 1024x768, CTA primaria/menu/Soul Rail e stato `moving`.
-- Dopo il deploy e richiesta la conferma su Safari desktop fisico per crop e zoom; l'automazione non viene presentata come sostituto.
+- La verifica bloccante copre viewport tablet 768x1024 e 1024x768 negli stati iniziale, `moving` e settled dopo lo scroll: la CTA naviga, il menu di scena si apre e il Soul Rail cambia destinazione.
+- Dopo il deploy e richiesta la conferma su Safari desktop fisico per crop e zoom; l'automazione non viene presentata come sostituto. Se ricompare zoom/crop o i controlli tablet restano bloccati, il rilascio non viene accettato e si pubblica un commit di revert dell'intervallo successivo all'ultimo commit remoto pre-release, senza force-push.
 
 ## Pagina Villaggio
 
@@ -31,10 +31,10 @@ Applicare le correzioni annotate dal cliente prima della pubblicazione su GitHub
   - MUULab Riviera -> `#muulab`
   - Cocktail -> `#cocktail`
   - Carta vini -> `#carta-vini`
-- `#cocktail` viene applicato alla categoria MUULab `Cocktail e aperitivo`; `#carta-vini` alla card Hawaii `Bevande, birre e cantina`.
+- `#cocktail` viene applicato alla categoria MUULab `Cocktail e aperitivo`; `#carta-vini` a una sezione Hawaii dedicata e popolata dalla carta pubblicata sul sito Hawaii esistente.
 - La navigazione usa anchor native univoche, focus visibile e `scroll-margin`; con riduzione movimento resta immediata.
 - Le categorie `Fritti al cono` e `Special panini` vengono eliminate.
-- La card `Bevande, birre e cantina` contiene un pulsante `Carta dei vini` collegato al PDF ufficiale MUULab, che include la carta completa.
+- La card `Bevande, birre e cantina` contiene un pulsante `Carta dei vini` collegato all'anchor interno `#carta-vini`; la carta Hawaii non usa il PDF MUULab.
 - Accanto a `Prenota MUULab` viene aggiunto `Menu MUULab completo`, con apertura sicura del PDF ufficiale:
   `https://www.muulab.it/wp-content/uploads/easy-pdf-restaurant-menu/menu-files/muulab.-menu-general.pdf`
 - I link esterni usano `target="_blank"` e `rel="noopener noreferrer"`.
