@@ -41,7 +41,7 @@
 - Modify: `tests/web-smoke.js`
 
 - [ ] Aggiungere negative check su source e artifact per `Fritti al cono`, `Special panini`, sandwich, hot dog, bao, `Il Giovedì in terrazza`, `18:00 — 01:00`, `Prenota terrazza`, `champagne e crudi` e `musica dal vivo`.
-- [ ] Verificare copy esatto `Giovedi Posh` e CTA verso il WhatsApp Hawaii configurato.
+- [ ] Verificare copy esatto `Giovedì Posh` e CTA verso il WhatsApp Hawaii configurato.
 - [ ] Verificare ordine Beach/Restaurant/Sport/MUULab/Nightlife, `/terrazza` e span esclusivo Eventi.
 - [ ] Verificare mapping esatto delle quattro anchor, click native, focus visibile, `scroll-margin` e comportamento reduced-motion.
 - [ ] Verificare PDF MUULab con `target="_blank"` e `rel="noopener noreferrer"`.
@@ -62,7 +62,7 @@
 - [ ] Rendere le quattro card Menu anchor link accessibili.
 - [ ] Aggiungere `#cocktail`, la sezione `#carta-vini` Hawaii con i vini pubblicati sul sito esistente e il pulsante interno nella card bevande.
 - [ ] Aggiungere `Menu MUULab completo` con il PDF ufficiale accanto a `Prenota MUULab`.
-- [ ] Sostituire ovunque il vecchio giovedi con `Giovedi Posh`, senza orario e con CTA WhatsApp.
+- [ ] Sostituire ovunque il vecchio giovedì con `Giovedì Posh`, senza orario e con CTA WhatsApp.
 - [ ] Eseguire test statici, booking, journey, lint, TypeScript e build.
 - [ ] Commit: `Update village menus and recurring events`.
 

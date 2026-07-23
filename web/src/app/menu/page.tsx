@@ -3,7 +3,11 @@ import Link from "next/link";
 
 import { bookingVenues } from "@/lib/booking-config";
 import { buildMetadata } from "@/lib/seo";
-import { menuHighlights, venueMenus } from "@/lib/site-content";
+import {
+  hawaiiWineSections,
+  menuHighlights,
+  venueMenus,
+} from "@/lib/site-content";
 
 export const metadata = buildMetadata({
   title: "Menu | Hawaii Pescara",
@@ -25,13 +29,15 @@ export default function MenuPage() {
         </p>
         <div className="mt-10 grid gap-4 lg:grid-cols-2">
           {menuHighlights.map((item) => (
-            <article
+            <Link
               key={item.title}
-              className="rounded-[1.6rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)] p-5"
+              data-testid="menu-highlight-link"
+              href={item.href}
+              className="block rounded-[1.6rem] border border-[#1c2b2e]/10 bg-white p-5 shadow-[0_14px_40px_rgba(23,32,34,0.07)] transition hover:border-[#96703d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#96703d]"
             >
               <strong className="block font-serif text-2xl text-[#16292d]">{item.title}</strong>
               <p className="mt-2 text-sm leading-7 text-[#4c5453]">{item.detail}</p>
-            </article>
+            </Link>
           ))}
         </div>
 
@@ -55,14 +61,23 @@ export default function MenuPage() {
                   {menu.title}
                 </h2>
                 <p className="mt-4 text-base leading-8 text-[#4c5453]">{menu.description}</p>
-                {menu.action ? (
-                  <Link
-                    href={menu.action.href}
-                    className="cta-ghost mt-6"
-                  >
-                    {menu.action.label}
-                  </Link>
-                ) : null}
+                <div className="mt-6 flex flex-wrap gap-3">
+                  {menu.action ? (
+                    <Link href={menu.action.href} className="cta-ghost">
+                      {menu.action.label}
+                    </Link>
+                  ) : null}
+                  {menu.documentAction ? (
+                    <a
+                      href={menu.documentAction.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="cta-ghost"
+                    >
+                      {menu.documentAction.label}
+                    </a>
+                  ) : null}
+                </div>
               </div>
 
               {menu.photos?.length ? (
@@ -88,8 +103,9 @@ export default function MenuPage() {
                 {menu.categories.map((category) => (
                   <article
                     key={`${menu.id}-${category.title}`}
+                    id={category.anchor}
                     data-testid="menu-section"
-                    className="rounded-[2rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)] p-6"
+                    className="scroll-mt-24 rounded-[2rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)] p-6"
                   >
                     <h3 className="font-serif text-2xl text-[#16292d] sm:text-3xl">
                       {category.title}
@@ -112,11 +128,55 @@ export default function MenuPage() {
                         ))}
                       </ul>
                     ) : null}
+                    {category.action ? (
+                      <Link
+                        data-testid="wine-list-link"
+                        href={category.action.href}
+                        className="cta-ghost mt-5"
+                      >
+                        {category.action.label}
+                      </Link>
+                    ) : null}
                   </article>
                 ))}
               </div>
             </section>
           ))}
+
+          <section id="carta-vini" className="scroll-mt-24">
+            <div className="max-w-2xl">
+              <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#96703d]">
+                Cantina Hawaii
+              </p>
+              <h2 className="mt-4 font-serif text-4xl text-[#16292d] sm:text-5xl">
+                Carta vini Hawaii
+              </h2>
+            </div>
+            <div className="mt-8 grid gap-5 lg:grid-cols-2">
+              {hawaiiWineSections.map((section) => (
+                <article
+                  key={section.title}
+                  className="rounded-[2rem] border border-[#1c2b2e]/10 bg-white p-6 shadow-[0_14px_40px_rgba(23,32,34,0.07)]"
+                >
+                  <h3 className="font-serif text-2xl text-[#16292d] sm:text-3xl">
+                    {section.title}
+                  </h3>
+                  <ul className="mt-4 grid gap-3 text-sm leading-7 text-[#3c4a4e]">
+                    {section.dishes.map((wine) => (
+                      <li
+                        key={wine.name}
+                        data-testid="hawaii-wine-item"
+                        className="flex items-baseline justify-between gap-4 border-b border-[#1c2b2e]/10 pb-2 last:border-b-0"
+                      >
+                        <span>{wine.name}</span>
+                        <span className="whitespace-nowrap text-[#96703d]">{wine.price}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+          </section>
         </div>
 
         <div className="mt-14 flex flex-col gap-4 rounded-[2rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)] p-6 sm:flex-row sm:items-end sm:justify-between">

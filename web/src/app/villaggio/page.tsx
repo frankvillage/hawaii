@@ -45,6 +45,20 @@ const anime = [
     },
   },
   {
+    label: "MUULab",
+    title: "La braceria in terrazza",
+    body: "Crudi di carne, tagli alla brace e cucina a vista: MUULab Riviera accende la terrazza dal tramonto.",
+    href: "/terrazza",
+    image: {
+      src: "/media/hawaii/photos/muulab-carpaccio-nero.jpg",
+      alt: "Carpaccio di manzo servito da MUULab Riviera",
+    },
+    action: {
+      label: "Prenota MUULab",
+      href: bookingVenues.muulab.internalBookingPath,
+    },
+  },
+  {
     label: "Nightlife",
     title: "Eventi e notti sul mare",
     body: "Sunset, dj set, tavoli evento e feste private fino a notte fonda.",
@@ -58,7 +72,7 @@ const cucine = [
   {
     eyebrow: "Piano terra",
     title: "Ristorante Mare",
-    body: "Il pesce raccontato con cura: crudi, tonnarelli alle vongole, riso agli scampi, griglia e fritti al cono da passeggio.",
+    body: "Il pesce raccontato con cura a pranzo e a cena: crudi, tonnarelli alle vongole, riso agli scampi e griglia.",
     photos: [
       { src: "/media/hawaii/photos/food-insalata-gambero.jpg", alt: "Insalata di mare con gambero del ristorante Hawaii" },
       { src: "/media/hawaii/photos/estate-gamberoni.jpg", alt: "Gamberoni alla griglia serviti al vassoio" },
@@ -121,8 +135,8 @@ export default function VillaggioPage() {
             Il villaggio sul mare di Pescara.
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-8 text-[#e5e5e0]">
-            Spiaggia, ristorante di mare, pizza, braceria in terrazza, sport ed
-            eventi: tutto nello stesso fronte mare, dal primo sole alla notte.
+            Spiaggia, ristorante di mare con pesce a pranzo e a cena, sport,
+            MUULab ed eventi: cinque anime sullo stesso fronte mare.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link
@@ -143,16 +157,20 @@ export default function VillaggioPage() {
 
       <section data-testid="classic-section" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[#96703d]">
-          Le quattro anime
+          Le cinque anime
         </p>
         <h2 className="mt-4 max-w-[18ch] font-serif text-3xl text-[#16292d] sm:text-4xl">
-          Un solo posto, quattro modi di viverlo.
+          Un solo posto, cinque modi di viverlo.
         </h2>
         <div className="mt-8 grid gap-5 sm:grid-cols-2">
           {anime.map((item) => (
             <article
               key={item.label}
-              className="group overflow-hidden rounded-[2rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)]"
+              data-testid="village-soul-card"
+              data-soul={item.label}
+              className={`group overflow-hidden rounded-[2rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)] ${
+                item.label === "Nightlife" ? "sm:col-span-2" : ""
+              }`}
             >
               <Link href={item.href} className="relative block aspect-[16/9] overflow-hidden">
                 <Image
@@ -209,7 +227,7 @@ export default function VillaggioPage() {
             Le cucine
           </p>
           <h2 className="mt-4 max-w-[20ch] font-serif text-3xl text-[#16292d] sm:text-4xl">
-            Mare a pranzo, brace e pizza la sera.
+            Mare a pranzo e a cena, brace e pizza la sera.
           </h2>
           <div className="mt-10 grid gap-12">
             {cucine.map((cucina) => (

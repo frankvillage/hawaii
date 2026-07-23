@@ -41,8 +41,8 @@ Applicare le correzioni annotate dal cliente prima della pubblicazione su GitHub
 
 ## Eventi
 
-- Ogni riferimento al vecchio `Giovedi in terrazza` viene eliminato da homepage, pagina terrazza, pagina eventi, sommari e FAQ.
-- Il format ricorrente diventa `Giovedi Posh`.
+- Ogni riferimento al vecchio `Giovedì in terrazza` viene eliminato da homepage, pagina terrazza, pagina eventi, sommari e FAQ.
+- Il format ricorrente diventa `Giovedì Posh`.
 - Copy approvato: `La serata del giovedi negli spazi esterni di Hawaii, con dj set e tavoli sotto le stelle. In caso di pioggia, Posh si sposta in veranda.`
 - Non viene pubblicato un orario non confermato.
 - La CTA porta alle informazioni eventi via WhatsApp, non alla prenotazione della terrazza.

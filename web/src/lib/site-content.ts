@@ -105,6 +105,8 @@ export type MenuCategory = {
   title: string;
   note?: string;
   dishes: MenuDish[];
+  anchor?: string;
+  action?: Action;
 };
 
 export type VenueMenu = {
@@ -114,6 +116,7 @@ export type VenueMenu = {
   description: string;
   categories: MenuCategory[];
   action?: Action;
+  documentAction?: Action;
   photos?: MediaAsset[];
   /* Official venue wordmark, shown above the carte. */
   logo?: MediaAsset;
@@ -326,17 +329,9 @@ export const homeJourney = {
           href: "/menu#ristorante-mare",
           x: 80,
           y: 30,
-          caption: "Fritti al cono e sandwich, sotto la palma",
+          caption: "Servizio al tavolo e sotto l'ombrellone",
         },
       ],
-      menu: {
-        anchor: "ristorante-mare",
-        items: [
-          { name: "Fritto di calamari e gamberi al cono", price: "€ 10" },
-          { name: "Fritto di alici", price: "€ 8" },
-          { name: "Club sandwich al salmone", price: "€ 13" },
-        ],
-      },
       action: { label: "Prenota ombrellone", href: beachBookingUrl, external: true },
     },
     {
@@ -424,7 +419,7 @@ export const homeJourney = {
       eyebrow: "Aperitivo in terrazza",
       title: "Il tramonto è il momento dell'aperitivo.",
       summary:
-        "Daybed e tavoli vista mare per un aperitivo di pesce con la giusta atmosfera; il giovedì champagne, crudi e musica dal vivo.",
+        "Daybed e tavoli vista mare per un aperitivo di pesce con la giusta atmosfera; il Giovedì Posh porta il dj set al piano terra.",
       start: 0.55,
       end: 0.74,
       hotspots: [
@@ -436,11 +431,11 @@ export const homeJourney = {
           caption: "Daybed e bollicine alla golden hour",
         },
         {
-          label: "Il giovedì in terrazza",
+          label: "Giovedì Posh",
           href: "/eventi",
           x: 71,
           y: 52,
-          caption: "Champagne, crudi e musica dal tramonto",
+          caption: "Dj set all'esterno, al piano terra",
         },
       ],
       menu: {
@@ -855,7 +850,7 @@ export const pages: Record<string, EntityPage> = {
     sections: [
       {
         title: "Il tramonto in terrazza",
-        body: "Daybed, bollicine e tavoli vista mare: la golden hour è il momento più panoramico della giornata, con il giovedì dedicato a champagne, crudi e musica dal vivo.",
+        body: "Daybed, bollicine e tavoli vista mare: la golden hour è il momento più panoramico della giornata; il Giovedì Posh anima invece il piano terra.",
         bullets: [
           "vista mare a tutta terrazza",
           "cucina creativa e a vista",
@@ -932,7 +927,7 @@ export const pages: Record<string, EntityPage> = {
     title: "Vivi con noi la tua estate tra musica, food & fun.",
     lead: "Quando scende la sera il villaggio cambia ritmo: dj set, format fissi e date speciali.",
     intro:
-      "La domenica pomeriggio con dj set, il giovedì in terrazza con champagne e crudi, le serate evento annunciate sui social: ogni settimana ha i suoi appuntamenti.",
+      "La domenica pomeriggio con dj set, il Giovedì Posh al piano terra e le serate evento annunciate sui social: ogni settimana ha i suoi appuntamenti.",
     primaryAction: {
       label: "Info eventi su WhatsApp",
       href: bookingVenues.hawaii.whatsappUrl,
@@ -965,7 +960,7 @@ export const pages: Record<string, EntityPage> = {
     sections: [
       {
         title: "I format della settimana",
-        body: "Come di Domenica — pranzo à la carte che si allunga nel pomeriggio con dj set — e il giovedì in terrazza, con champagne, crudi e la musica di Mirko Alfonso e Gianluca Fratti.",
+        body: "Come di Domenica — pranzo à la carte che si allunga nel pomeriggio con dj set — e il Giovedì Posh all'esterno, al piano terra, con la veranda pronta in caso di pioggia.",
       },
       {
         title: "Special date",
@@ -1111,18 +1106,117 @@ export const menuHighlights = [
   {
     title: "Ristorante Mare",
     detail: "Pranzo e cena di pesce, à la carte, cocktail bar.",
+    href: "#ristorante-mare",
   },
   {
     title: "MUULab Riviera",
     detail: "La braceria della terrazza: brace, cucina a vista e tramonto sul mare.",
+    href: "#muulab",
   },
   {
     title: "Cocktail",
     detail: "Bar, aperitivo e ritmi che cambiano tra giorno e sera.",
+    href: "#cocktail",
   },
   {
     title: "Carta vini",
-    detail: "Abbinamenti e supporto al racconto food.",
+    detail: "Etichette abruzzesi, vini italiani, bollicine e Champagne.",
+    href: "#carta-vini",
+  },
+];
+
+export const cocktailMenuItems: MenuDish[] = [
+  { name: "Americano classic taste", price: "€ 10" },
+  { name: "Negroni classic taste", price: "€ 10" },
+  { name: "Tonic Riviera", price: "€ 10" },
+  { name: "Moscow Mule", price: "€ 10" },
+  { name: "Whiskey Sour", price: "€ 10" },
+  { name: "Vodka Red Bull", price: "€ 10" },
+];
+
+export const hawaiiWineSections: MenuCategory[] = [
+  {
+    title: "Vini",
+    dishes: [
+      { name: "Masciarelli - Castello di Semivicoli Trebbiano", price: "€ 33" },
+      { name: "Masciarelli - Castello di Semivicoli Pecorino", price: "€ 26" },
+      { name: "Masciarelli - Marina Cvetic Trebbiano", price: "€ 60" },
+      { name: "Valori - Octava Dies Pecorino Anfora", price: "€ 30" },
+      { name: "Valori - Cerasuolo d'Abruzzo", price: "€ 22" },
+      { name: "Valori - Rosato", price: "€ 23" },
+      { name: "Valori - Pecorino", price: "€ 23" },
+      { name: "Tiberio - Trebbiano", price: "€ 26" },
+      { name: "Tiberio - Pecorino", price: "€ 26" },
+      { name: "Tiberio - Cerasuolo", price: "€ 26" },
+      { name: "Valle Reale - Trebbiano DOC", price: "€ 27" },
+      { name: "Valle Reale - Vigneto di Popoli Trebbiano DOC", price: "€ 55" },
+      { name: "Valle Reale - Cerasuolo", price: "€ 27" },
+      { name: "Valle Reale - Montepulciano DOC", price: "€ 28" },
+      { name: "Ciavolich - Pecorino", price: "€ 26" },
+      { name: "Ciavolich - Cococciola", price: "€ 25" },
+      { name: "Ciavolich - Cerasuolo", price: "€ 25" },
+      { name: "Famiglia Febo - Pecorino", price: "€ 24" },
+      { name: "Famiglia Febo - Trebbiano 2019", price: "€ 25" },
+      { name: "D'Alesio - Montonico", price: "€ 24" },
+      { name: "Pasetti - Cerasuolo Superiore", price: "€ 30" },
+      { name: "Praesidium - Cerasuolo Superiore", price: "€ 31" },
+      { name: "Faraone - Cerasuolo", price: "€ 23" },
+      { name: "Marotti Campi - Luzano Verdicchio dei Castelli di Jesi", price: "€ 23" },
+      { name: "Alois Lageder - Misto Mare Bianco", price: "€ 23" },
+      { name: "Alois Lageder - Gewurztraminer", price: "€ 26" },
+      { name: "Alois Lageder - Lagrein Rose", price: "€ 25" },
+      { name: "Alois Lageder - Mimuet Pinot Nero", price: "€ 35" },
+      { name: "Vigna Astoni - Falanghina Campi Flegrei", price: "€ 40" },
+      { name: "Ferlat - Pinot Grigio Ramato", price: "€ 25" },
+      { name: "Ferlat - Friulano", price: "€ 25" },
+      { name: "Massolino - Chardonnay", price: "€ 26" },
+      { name: "Massolino - Riesling", price: "€ 30" },
+      { name: "Casina Bric - Mesdi Bianco Arneis", price: "€ 25" },
+      { name: "Muri Gries - Schiava", price: "€ 24" },
+      { name: "Patrice Colin - Chenin Blanc Vieilles Vignes", price: "€ 30" },
+      { name: "Albert de Conti - Odette Rose", price: "€ 25" },
+      { name: "Albert de Conti - Blanc Cuvee des Conti", price: "€ 25" },
+      { name: "Domaine d'Elise - Chablis", price: "€ 40" },
+      { name: "Domaine Philippe Girard - Bourgogne Aligote", price: "€ 32" },
+      { name: "Les Amoureuses - Promenade Sauvignon", price: "€ 25" },
+      { name: "Mirabeau - Forever Summer", price: "€ 27" },
+      { name: "Domaine de la Begude - Mediterranee Rose", price: "€ 25" },
+      { name: "Jeremy Quastana - Engluti", price: "€ 28" },
+      { name: "St. Urbans-Hof - Riesling Trocken", price: "€ 28" },
+      { name: "Schneider-Baden - Rose Pinot Nero", price: "€ 30" },
+    ],
+  },
+  {
+    title: "Bollicine",
+    dishes: [
+      { name: "Cherubini - Sui Generis", price: "€ 45" },
+      { name: "Cherubini - Levis Rose", price: "€ 50" },
+      { name: "Cherubini - Subsidium 60 mesi", price: "€ 60" },
+      { name: "Tenuta Volpare - Trento DOC Rose", price: "€ 40" },
+      { name: "Tenuta Volpare - Trento DOC", price: "€ 35" },
+      { name: "Ca' del Bosco - Cuvee Prestige Rose", price: "€ 63" },
+      { name: "Ca' del Bosco - Cuvee Prestige", price: "€ 50" },
+      { name: "Nicola Gatta - Cuvee Nature 30 lune", price: "€ 45" },
+      { name: "Nicola Gatta - 400", price: "€ 55" },
+      { name: "Tenuta Rocca - Alta Langa DOCG", price: "€ 35" },
+      { name: "Rossetti & Scrivani - Rose de Noirs Oltrepo Pavese", price: "€ 33" },
+      { name: "Pierremarie Chermette - Cremant Extra Brut", price: "€ 35" },
+      { name: "Croix St. Jacques - Cremant de Bourgogne Blanc de Blancs Nature", price: "€ 40" },
+      { name: "Laurent-Perrier - La Cuvee", price: "€ 60" },
+      { name: "Laurent-Perrier - Rose", price: "€ 95" },
+      { name: "Laurent-Perrier - Heritage", price: "€ 95" },
+      { name: "Assailly - Cuvee Reservee", price: "€ 65" },
+      { name: "Assailly - Cuvee Rose", price: "€ 70" },
+      { name: "Miniere - Influence Rose", price: "€ 95" },
+      { name: "Miniere - Influence", price: "€ 85" },
+      { name: "Thierry Fournier - Reservee", price: "€ 55" },
+      { name: "Thierry Fournier - Rose", price: "€ 58" },
+      { name: "Caze-Thibaut - Naturellement", price: "€ 90" },
+      { name: "R. Pouillon & Fils - Rose de Maceration", price: "€ 110" },
+      { name: "Vauversin - Rossignol Or 2019 Nature", price: "€ 105" },
+      { name: "Dom Perignon - Vintage 2017", price: "€ 290" },
+      { name: "Krug - Grande Cuvee 173eme Edition", price: "€ 330" },
+    ],
   },
 ];
 
@@ -1132,7 +1226,7 @@ export const venueMenus: VenueMenu[] = [
     eyebrow: "Hawaii — piano terra",
     title: "Ristorante Mare",
     description:
-      "Crudi, primi e griglia di pesce a pranzo e a cena, con i fritti al cono per la spiaggia e la pizza la sera.",
+      "Crudi, primi e griglia di pesce a pranzo e a cena, con la pizza la sera.",
     action: {
       label: "Prenota Hawaii",
       href: bookingVenues.hawaii.internalBookingPath,
@@ -1173,22 +1267,6 @@ export const venueMenus: VenueMenu[] = [
           { name: "Ombrina alla griglia", price: "€ 18" },
           { name: "Tonno alla griglia", price: "€ 20" },
           { name: "Pescatrice alla griglia", price: "€ 20" },
-        ],
-      },
-      {
-        title: "Fritti al cono",
-        dishes: [
-          { name: "Fritto di calamari e gamberi", price: "€ 10" },
-          { name: "Fritto di alici", price: "€ 8" },
-          { name: "Fritto di baccalà in pastella", price: "€ 8" },
-        ],
-      },
-      {
-        title: "Special panini",
-        dishes: [
-          { name: "Club sandwich al salmone, uova e lattuga", price: "€ 13" },
-          { name: "Hot dog di tonno, porro stufato e salsa ponzu", price: "€ 16" },
-          { name: "Bao alla ceviche di gamberi e chimichurri", price: "€ 14" },
         ],
       },
       {
@@ -1241,8 +1319,9 @@ export const venueMenus: VenueMenu[] = [
       },
       {
         title: "Bevande, birre e cantina",
-        note: "Acque, bibite, birre alla spina e in bottiglia, cantina regionale e bollicine: la carta completa è al tavolo.",
+        note: "Acque, bibite e birre accompagnano una selezione di etichette regionali, italiane e internazionali.",
         dishes: [],
+        action: { label: "Carta dei vini", href: "#carta-vini" },
       },
     ],
   },
@@ -1259,6 +1338,10 @@ export const venueMenus: VenueMenu[] = [
     action: {
       label: "Prenota MUULab",
       href: bookingVenues.muulab.internalBookingPath,
+    },
+    documentAction: {
+      label: "Menu MUULab completo",
+      href: "https://www.muulab.it/wp-content/uploads/easy-pdf-restaurant-menu/menu-files/muulab.-menu-general.pdf",
     },
     photos: [
       { src: "/media/hawaii/photos/muulab-vino.jpg", alt: "Vino al calice servito in terrazza da MUULab Riviera" },
@@ -1336,14 +1419,8 @@ export const venueMenus: VenueMenu[] = [
       },
       {
         title: "Cocktail e aperitivo",
-        dishes: [
-          { name: "Americano classic taste", price: "€ 10" },
-          { name: "Negroni classic taste", price: "€ 10" },
-          { name: "Tonic Riviera", price: "€ 10" },
-          { name: "Moscow Mule", price: "€ 10" },
-          { name: "Whiskey Sour", price: "€ 10" },
-          { name: "Vodka Red Bull", price: "€ 10" },
-        ],
+        anchor: "cocktail",
+        dishes: cocktailMenuItems,
       },
       {
         title: "Cantina e Coravin",
@@ -1365,12 +1442,12 @@ export const eventFormats: EventFormat[] = [
     action: { label: "Info eventi su WhatsApp", href: bookingVenues.hawaii.whatsappUrl },
   },
   {
-    title: "Il Giovedì in terrazza",
-    timing: "Giovedì · 18:00 – 01:00",
+    title: "Giovedì Posh",
+    timing: "Giovedì",
     description:
-      "Aperitivo al tramonto in terrazza con champagne e crudi di mare, accompagnato dalla musica di Mirko Alfonso e Gianluca Fratti.",
-    notes: ["sunset aperitivo", "champagne e crudi", "musica dal vivo"],
-    action: { label: "Prenota la terrazza", href: "/terrazza" },
+      "La serata del giovedì negli spazi esterni di Hawaii, con dj set e tavoli sotto le stelle. In caso di pioggia, Posh si sposta in veranda.",
+    notes: ["dj set", "tavoli sotto le stelle", "veranda in caso di pioggia"],
+    action: { label: "Info eventi su WhatsApp", href: bookingVenues.hawaii.whatsappUrl },
   },
   {
     title: "Special Date",

@@ -4,11 +4,29 @@ const assert = require("node:assert/strict");
 const { chromium, devices } = require("playwright");
 
 const baseUrl = process.env.WEB_BASE_URL || "http://127.0.0.1:3000";
+const contentOnly = process.env.SMOKE_CONTENT_ONLY === "1";
 
 async function readTextContents(page, selector) {
   return page.$$eval(selector, (nodes) =>
     nodes.map((node) => node.textContent.trim()).filter(Boolean),
   );
+}
+
+function assertRetiredContentAbsent(text, pageName) {
+  for (const pattern of [
+    /fritti al cono/i,
+    /special panini/i,
+    /sandwich/i,
+    /hot dog/i,
+    /\bbao\b/i,
+    /il gioved[iì] in terrazza/i,
+    /18:00\s*[—–-]\s*01:00/i,
+    /prenota terrazza/i,
+    /champagne e crudi/i,
+    /musica dal vivo/i,
+  ]) {
+    assert.doesNotMatch(text, pattern, `${pageName} artifact still contains ${pattern}`);
+  }
 }
 
 async function main() {
@@ -31,7 +49,14 @@ async function main() {
 
   try {
     page = await openPage();
-    await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+    await page.goto(`${baseUrl}/menu`, { waitUntil: "domcontentloaded" });
+    assert.equal(
+      await page.locator('[data-testid="menu-highlight-link"]').count(),
+      4,
+      "Menu should expose four clickable highlight cards",
+    );
+    if (!contentOnly) {
+      await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
 
     const soulRail = page.locator('[data-testid="soul-rail"]');
     await soulRail.waitFor({ state: "visible", timeout: 2500 });
@@ -370,6 +395,7 @@ async function main() {
       undefined,
       { timeout: 4500 },
     );
+    }
 
     await closePage();
     page = await openPage();
@@ -413,6 +439,7 @@ async function main() {
     );
 
     await page.goto(`${baseUrl}/menu`, { waitUntil: "networkidle" });
+    assertRetiredContentAbsent((await page.locator("body").textContent()) || "", "Menu");
     assert.ok(
       (await page.locator('[data-testid="menu-section"]').count()) >= 3,
       "Menu page should expose multiple structured menu sections ready for real content",
@@ -432,20 +459,149 @@ async function main() {
       /Tonnarello alle vongole/,
       "Menu page should publish the real Hawaii dishes",
     );
+    assert.equal(await page.locator("#cocktail").count(), 1);
+    assert.equal(await page.locator("#carta-vini").count(), 1);
+    assert.equal(
+      await page.locator('[data-testid="hawaii-wine-item"]').count(),
+      73,
+      "The Hawaii wine section must publish every deterministic wine and sparkling wine",
+    );
+    assert.equal(
+      await page.locator('[data-testid="wine-list-link"][href="#carta-vini"]').count(),
+      1,
+      "The drinks card must link internally to the full Hawaii wine list",
+    );
+
+    const expectedMenuAnchors = [
+      "#ristorante-mare",
+      "#muulab",
+      "#cocktail",
+      "#carta-vini",
+    ];
+    const menuHighlightLinks = page.locator('[data-testid="menu-highlight-link"]');
+    assert.equal(
+      await menuHighlightLinks.count(),
+      expectedMenuAnchors.length,
+      "Menu should expose four clickable highlight cards",
+    );
+    assert.deepEqual(
+      await menuHighlightLinks.evaluateAll((links) =>
+        links.map((link) => ({
+          href: link.getAttribute("href"),
+          tagName: link.tagName,
+        })),
+      ),
+      expectedMenuAnchors.map((href) => ({ href, tagName: "A" })),
+      "Menu highlight cards must use native links with exact anchor mappings",
+    );
+    for (let index = 0; index < expectedMenuAnchors.length; index += 1) {
+      const link = menuHighlightLinks.nth(index);
+      const focusState = await link.evaluate((node) => {
+        node.focus();
+        const style = getComputedStyle(node);
+        return {
+          focusVisible: node.matches(":focus-visible"),
+          outlineStyle: style.outlineStyle,
+          outlineWidth: style.outlineWidth,
+        };
+      });
+      assert.equal(
+        focusState.focusVisible,
+        true,
+        `Menu card ${expectedMenuAnchors[index]} must support keyboard focus`,
+      );
+      assert.notEqual(
+        focusState.outlineStyle,
+        "none",
+        `Menu card ${expectedMenuAnchors[index]} must expose a visible focus outline`,
+      );
+      assert.notEqual(focusState.outlineWidth, "0px");
+
+      await link.click();
+      assert.equal(new URL(page.url()).hash, expectedMenuAnchors[index]);
+      const targetScrollMargin = await page
+        .locator(expectedMenuAnchors[index])
+        .evaluate((node) => Number.parseFloat(getComputedStyle(node).scrollMarginTop));
+      assert.ok(
+        targetScrollMargin > 0,
+        `${expectedMenuAnchors[index]} must reserve space below the sticky header`,
+      );
+    }
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    assert.equal(
+      await page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior),
+      "auto",
+      "Anchor navigation must disable smooth scrolling for reduced-motion users",
+    );
+
+    const muulabPdf = page.getByRole("link", { name: "Menu MUULab completo" });
+    assert.equal(
+      await muulabPdf.getAttribute("href"),
+      "https://www.muulab.it/wp-content/uploads/easy-pdf-restaurant-menu/menu-files/muulab.-menu-general.pdf",
+    );
+    assert.equal(await muulabPdf.getAttribute("target"), "_blank");
+    assert.equal(await muulabPdf.getAttribute("rel"), "noopener noreferrer");
 
     await page.goto(`${baseUrl}/villaggio`, { waitUntil: "networkidle" });
+    assertRetiredContentAbsent((await page.locator("body").textContent()) || "", "Villaggio");
     assert.ok(
       (await page.locator('[data-testid="classic-section"]').count()) >= 4,
       "The classic view should expose the full village as editorial sections",
     );
+    const villageSoulCards = page.locator('[data-testid="village-soul-card"]');
+    assert.deepEqual(
+      await villageSoulCards.evaluateAll((cards) =>
+        cards.map((card) => card.getAttribute("data-soul")),
+      ),
+      ["Beach", "Restaurant", "Sport", "MUULab", "Nightlife"],
+      "Village cards must place MUULab immediately before Nightlife",
+    );
+    assert.deepEqual(
+      await villageSoulCards.evaluateAll((cards) =>
+        cards
+          .filter((card) => getComputedStyle(card).gridColumnEnd === "span 2")
+          .map((card) => card.getAttribute("data-soul")),
+      ),
+      ["Nightlife"],
+      "Only Nightlife should span the full village grid",
+    );
+    assert.ok(
+      (await villageSoulCards
+        .filter({ has: page.getByText("MUULab", { exact: true }) })
+        .locator('a[href="/terrazza"]')
+        .count()) >= 1,
+      "The MUULab village card must link to /terrazza",
+    );
+    assert.match((await page.locator("body").textContent()) || "", /pesce a pranzo e a cena/i);
 
     await page.goto(`${baseUrl}/eventi`, { waitUntil: "networkidle" });
+    assertRetiredContentAbsent((await page.locator("body").textContent()) || "", "Eventi");
     assert.ok(
       (await page.locator('[data-testid="event-format-card"]').count()) >= 3,
       "Events page should expose recurring formats as structured cards",
     );
+    const poshCard = page.locator('[data-testid="event-format-card"]', {
+      has: page.getByRole("heading", { name: "Giovedì Posh", exact: true }),
+    });
+    assert.equal(await poshCard.count(), 1, "Events must expose the exact Giovedì Posh copy");
+    const poshText = (await poshCard.textContent()) || "";
+    assert.doesNotMatch(poshText, /\d{1,2}:\d{2}/, "Giovedì Posh must not publish a time");
+    assert.match(
+      poshText,
+      /La serata del giovedì negli spazi esterni di Hawaii, con dj set e tavoli sotto le stelle\. In caso di pioggia, Posh si sposta in veranda\./,
+    );
+    const poshWhatsapp = poshCard.getByRole("link", { name: "Info eventi su WhatsApp" });
+    assert.equal(await poshWhatsapp.getAttribute("href"), "https://wa.me/393516900701");
+
+    await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+    assertRetiredContentAbsent((await page.locator("body").textContent()) || "", "Homepage");
+
+    await page.goto(`${baseUrl}/terrazza`, { waitUntil: "domcontentloaded" });
+    assertRetiredContentAbsent((await page.locator("body").textContent()) || "", "Terrazza");
 
     await page.goto(`${baseUrl}/faq`, { waitUntil: "networkidle" });
+    assertRetiredContentAbsent((await page.locator("body").textContent()) || "", "FAQ");
     const faqSchemaText = await page
       .locator('script[type="application/ld+json"]')
       .last()

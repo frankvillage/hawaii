@@ -274,6 +274,13 @@ const footerPath = path.join(
 const contactPagePath = path.join(root, "web", "src", "app", "contatti", "page.tsx");
 const menuPagePath = path.join(root, "web", "src", "app", "menu", "page.tsx");
 const villagePagePath = path.join(root, "web", "src", "app", "villaggio", "page.tsx");
+const eventPagePath = path.join(root, "web", "src", "app", "eventi", "page.tsx");
+const hawaiiWineListPath = path.join(
+  root,
+  "docs",
+  "content",
+  "hawaii-wine-list-2026-07-23.md",
+);
 
 const layout = fs.readFileSync(layoutPath, "utf8");
 const stage = fs.readFileSync(stagePath, "utf8");
@@ -293,6 +300,8 @@ const footer = fs.readFileSync(footerPath, "utf8");
 const contactPage = fs.readFileSync(contactPagePath, "utf8");
 const menuPage = fs.readFileSync(menuPagePath, "utf8");
 const villagePage = fs.readFileSync(villagePagePath, "utf8");
+const eventPage = fs.readFileSync(eventPagePath, "utf8");
+const hawaiiWineList = fs.readFileSync(hawaiiWineListPath, "utf8");
 const propagatedBookingSources = [
   bookingConfig,
   siteContent,
@@ -347,7 +356,7 @@ assert.doesNotMatch(
 );
 assert.match(
   globalStyles,
-  /@media \(hover: none\), \(pointer: coarse\)[\s\S]*?\.journey-stage video,[\s\S]*?transform:\s*none;[\s\S]*?transition:\s*none;[\s\S]*?will-change:\s*auto;/,
+  /\.journey-stage video\s*{[\s\S]*?object-position:\s*center;[\s\S]*?transform:\s*none;[\s\S]*?transition:\s*opacity[^;]*;[\s\S]*?@media \(hover: none\), \(pointer: coarse\)[\s\S]*?\.journey-stage video\s*{[\s\S]*?transition-duration:\s*0s;[\s\S]*?will-change:\s*auto;/,
   "Touch journey media must not allocate a continuously transformed compositor layer",
 );
 assert.doesNotMatch(
@@ -621,6 +630,132 @@ assert.match(
   /route:\s*"\/prenotazioni\/(?:ristorante|muulab)"[\s\S]{0,120}priority:\s*0\.[0-7]/,
   "Booking routes should have a lower priority than entity landing pages",
 );
+
+const retiredContentPatterns = [
+  /fritti al cono/i,
+  /special panini/i,
+  /sandwich/i,
+  /hot dog/i,
+  /\bbao\b/i,
+  /il gioved[iì] in terrazza/i,
+  /18:00\s*[—–-]\s*01:00/i,
+  /prenota terrazza/i,
+  /champagne e crudi/i,
+  /musica dal vivo/i,
+];
+for (const pattern of retiredContentPatterns) {
+  assert.doesNotMatch(
+    productionSources,
+    pattern,
+    `Retired content must not remain in production sources: ${pattern}`,
+  );
+}
+
+const villageSouls = [
+  ...villagePage.matchAll(/^\s{4}label: "(Beach|Restaurant|Sport|MUULab|Nightlife)",$/gm),
+].map((match) => match[1]);
+assert.deepEqual(
+  villageSouls,
+  ["Beach", "Restaurant", "Sport", "MUULab", "Nightlife"],
+  "Village souls must expose MUULab before Nightlife",
+);
+assert.match(
+  villagePage,
+  /label: "MUULab"[\s\S]{0,260}href: "\/terrazza"/,
+  "The MUULab village soul must lead to /terrazza",
+);
+assert.match(villagePage, /Le cinque anime/);
+assert.match(villagePage, /cinque modi di viverlo/);
+assert.match(villagePage, /pesce a pranzo e a cena/i);
+assert.match(
+  villagePage,
+  /item\.label === "Nightlife"\s*\?\s*"sm:col-span-2"/,
+  "Only the Nightlife card should span the full village grid",
+);
+
+const menuHighlightBlock =
+  siteContent.match(/export const menuHighlights = \[([\s\S]*?)\n\];/)?.[1] || "";
+for (const [title, href] of [
+  ["Ristorante Mare", "#ristorante-mare"],
+  ["MUULab Riviera", "#muulab"],
+  ["Cocktail", "#cocktail"],
+  ["Carta vini", "#carta-vini"],
+]) {
+  assert.match(
+    menuHighlightBlock,
+    new RegExp(`title: "${title}"[\\s\\S]{0,180}href: "${href}"`),
+    `${title} must map to ${href}`,
+  );
+}
+assert.match(
+  menuPage,
+  /<Link[\s\S]{0,180}data-testid="menu-highlight-link"[\s\S]{0,180}href=\{item\.href\}/,
+  "Every menu highlight must be a native anchor link",
+);
+assert.match(menuPage, /menu-highlight-link[\s\S]{0,360}focus-visible:outline/);
+assert.match(siteContent, /title: "Cocktail e aperitivo"[\s\S]{0,100}anchor: "cocktail"/);
+assert.match(
+  menuPage,
+  /id=\{category\.anchor\}[\s\S]{0,200}scroll-mt-/,
+  "Menu category anchors must reserve room below the sticky header",
+);
+assert.match(menuPage, /id="carta-vini"[\s\S]{0,120}scroll-mt-/);
+assert.match(globalStyles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*scroll-behavior: auto/);
+assert.match(
+  siteContent,
+  /title: "Bevande, birre e cantina"[\s\S]{0,320}action: \{ label: "Carta dei vini", href: "#carta-vini" \}/,
+);
+assert.match(
+  menuPage,
+  /data-testid="wine-list-link"[\s\S]{0,180}href=\{category\.action\.href\}/,
+);
+assert.match(
+  siteContent,
+  /label: "Menu MUULab completo"[\s\S]{0,180}href: "https:\/\/www\.muulab\.it\/wp-content\/uploads\/easy-pdf-restaurant-menu\/menu-files\/muulab\.-menu-general\.pdf"/,
+);
+assert.match(
+  menuPage,
+  /menu\.documentAction[\s\S]{0,520}target="_blank"[\s\S]{0,120}rel="noopener noreferrer"/,
+  "The official MUULab PDF must open in an isolated tab",
+);
+
+const approvedHawaiiWines = hawaiiWineList
+  .split("\n")
+  .filter((line) => line.startsWith("- "))
+  .map((line) => {
+    const match = line.match(/^- (.+) - EUR (\d+)$/);
+    assert.ok(match, `Invalid deterministic Hawaii wine row: ${line}`);
+    return { name: match[1], price: match[2] };
+  });
+const publishedWineBlock =
+  siteContent.match(
+    /export const hawaiiWineSections[\s\S]*?\n\];\n\nexport const venueMenus/,
+  )?.[0] || "";
+const publishedHawaiiWines = [
+  ...publishedWineBlock.matchAll(/\{ name: "([^"]+)", price: "€ (\d+)" \}/g),
+].map((match) => ({ name: match[1], price: match[2] }));
+assert.deepEqual(
+  publishedHawaiiWines,
+  approvedHawaiiWines,
+  "The Hawaii wine section must exactly match the deterministic editorial source",
+);
+
+assert.match(siteContent, /title: "Giovedì Posh"/);
+assert.match(
+  siteContent,
+  /title: "Giovedì Posh"[\s\S]{0,160}timing: "Giovedì"(?![\s\S]{0,80}\d{1,2}:\d{2})/,
+  "Giovedì Posh must not publish a time",
+);
+assert.match(
+  siteContent,
+  /La serata del giovedì negli spazi esterni di Hawaii, con dj set e tavoli sotto le stelle\. In caso di pioggia, Posh si sposta in veranda\./,
+);
+assert.match(
+  siteContent,
+  /title: "Giovedì Posh"[\s\S]{0,620}href: bookingVenues\.hawaii\.whatsappUrl/,
+  "Giovedì Posh must use the configured Hawaii WhatsApp CTA",
+);
+assert.match(eventPage, /eventFormats/);
 
 const privacyDisclosure = siteContent.match(
   /privacy:\s*\[([\s\S]*?)\n\s*\],\n\s*cookie:/,
