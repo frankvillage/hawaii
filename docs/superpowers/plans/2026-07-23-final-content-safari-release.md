@@ -40,12 +40,12 @@
 - Modify: `tests/web-static.js`
 - Modify: `tests/web-smoke.js`
 
-- [ ] Aggiungere negative check su source e artifact per `Fritti al cono`, `Special panini`, sandwich, hot dog, bao, vecchio titolo/orario, terrazza, CTA terrazza, champagne, crudi e `musica dal vivo`.
+- [ ] Aggiungere negative check su source e artifact per `Fritti al cono`, `Special panini`, sandwich, hot dog, bao, `Il Giovedì in terrazza`, `18:00 — 01:00`, `Prenota terrazza`, `champagne e crudi` e `musica dal vivo`.
 - [ ] Verificare copy esatto `Giovedi Posh` e CTA verso il WhatsApp Hawaii configurato.
 - [ ] Verificare ordine Beach/Restaurant/Sport/MUULab/Nightlife, `/terrazza` e span esclusivo Eventi.
 - [ ] Verificare mapping esatto delle quattro anchor, click native, focus visibile, `scroll-margin` e comportamento reduced-motion.
 - [ ] Verificare PDF MUULab con `target="_blank"` e `rel="noopener noreferrer"`.
-- [ ] Usare come fonte approvata della carta Hawaii la sezione Cantina di `https://www.hawaiipescara.it/menu/`, acquisita il 23 luglio 2026.
+- [ ] Usare come fonte deterministica della carta Hawaii `docs/content/hawaii-wine-list-2026-07-23.md`, fotografia della sola sezione Cantina di `https://www.hawaiipescara.it/menu/` acquisita il 23 luglio 2026.
 - [ ] Eseguire i test e confermare il RED.
 
 ### Task 4: Villaggio, Menu ed Eventi
@@ -87,8 +87,8 @@
 - [ ] Eseguire `npm --prefix web run lint -- --max-warnings=0`.
 - [ ] Eseguire `npm run build:web:aruba`.
 - [ ] Costruire l'esatto artifact con `NODE_OPTIONS=--max-old-space-size=2048 bash scripts/build-pages-preview.sh` ed eseguire `PAGES_BASE_PATH=/hawaii WEBKIT_PLAYBACK_OPTIONAL=0 npm run test:web:production`; se il sandbox locale blocca `ps`/browser, il job GitHub `verify` deve passare prima che `deploy` possa iniziare.
-- [ ] Eseguire `git fetch origin`, salvare `PRE_RELEASE_SHA=$(git rev-parse origin/claude/codex-handoff-assets-se8fjq)` e verificare che sia antenata di `HEAD`.
+- [ ] Eseguire `git fetch origin`, salvare lo SHA immutabile in `/tmp/hawaii-pages-pre-release-sha.txt` con `git rev-parse origin/claude/codex-handoff-assets-se8fjq` e verificare che il valore registrato sia antenato di `HEAD`.
 - [ ] Push fast-forward `HEAD:claude/codex-handoff-assets-se8fjq`.
 - [ ] Controllare che workflow Pages, artifact e deployment riportino lo SHA pubblicato.
 - [ ] Richiedere conferma crop/zoom su Safari desktop fisico.
-- [ ] In caso di blocker: `git revert --no-commit "$PRE_RELEASE_SHA..HEAD"`, commit `Revert blocked Pages release` e normale push fast-forward sulla branch Pages; mai force-push.
+- [ ] In caso di blocker: leggere lo SHA con `PRE_RELEASE_SHA="$(cat /tmp/hawaii-pages-pre-release-sha.txt)"`, eseguire `git revert --no-commit "$PRE_RELEASE_SHA..HEAD"`, commit `Revert blocked Pages release` e normale push fast-forward sulla branch Pages; mai force-push.
