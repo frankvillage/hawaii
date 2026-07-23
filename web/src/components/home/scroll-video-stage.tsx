@@ -53,6 +53,10 @@ function captionFor(hotspot: JourneyHotspot) {
   return hotspot.caption ?? routeCaptions[hotspot.href.split("#")[0]] ?? "";
 }
 
+function isInteractiveGestureTarget(target: EventTarget | null) {
+  return target instanceof Element && Boolean(target.closest("a, button"));
+}
+
 const RING_RADIUS = 15;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 const JOURNEY_FPS = 25;
@@ -496,12 +500,14 @@ export function ScrollVideoStage() {
 
   const primePointerPlayback = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
+      if (isInteractiveGestureTarget(event.target)) return;
       primePlaybackFromGesture(event.pointerType === "touch");
     },
     [primePlaybackFromGesture],
   );
 
-  const primeTouchPlayback = useCallback(() => {
+  const primeTouchPlayback = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    if (isInteractiveGestureTarget(event.target)) return;
     primePlaybackFromGesture(true);
   }, [primePlaybackFromGesture]);
 
@@ -908,7 +914,7 @@ export function ScrollVideoStage() {
         <video
           ref={videoRef}
           data-testid="journey-video"
-          className={`absolute inset-0 h-full w-full object-cover ${
+          className={`absolute inset-0 z-0 h-full w-full object-cover object-center ${
             mediaMode === "video" && visibleVideoDirection === "forward"
               ? "opacity-100"
               : "pointer-events-none opacity-0"
@@ -952,7 +958,7 @@ export function ScrollVideoStage() {
           ref={reverseVideoRef}
           data-testid="journey-video-reverse"
           data-source-attached={String(reverseSourceAttached)}
-          className={`absolute inset-0 h-full w-full object-cover ${
+          className={`absolute inset-0 z-0 h-full w-full object-cover object-center ${
             mediaMode === "video" && visibleVideoDirection === "reverse"
               ? "opacity-100"
               : "pointer-events-none opacity-0"
@@ -987,7 +993,7 @@ export function ScrollVideoStage() {
             priority
             sizes="100vw"
             data-testid={mediaMode === "fallback" ? "journey-fallback" : undefined}
-            className="absolute inset-0 object-cover object-center"
+            className="absolute inset-0 z-0 object-cover object-center"
           />
         ) : null}
 
@@ -1025,7 +1031,7 @@ export function ScrollVideoStage() {
 
         {/* pb-36 keeps the CTA row clear of the soul rail and the WhatsApp
             button on phones; both float over the stage's bottom band. */}
-        <div className="relative z-10 flex h-full flex-col justify-between px-4 pb-36 pt-24 sm:px-6 md:pb-6 lg:px-8 lg:pb-8">
+        <div className="relative z-30 flex h-full flex-col justify-between px-4 pb-36 pt-24 sm:px-6 md:pb-6 lg:px-8 lg:pb-8">
           <div className="flex items-start justify-end gap-4">
             <h1 className="sr-only">Hawaii Pescara — Urban Village</h1>
 
@@ -1074,7 +1080,7 @@ export function ScrollVideoStage() {
             data-hotspot-layout={
               resolvedHotspots.length === activeScene.hotspots.length ? "resolved" : "measuring"
             }
-            className="pointer-events-none absolute inset-0"
+            className="pointer-events-none absolute inset-0 z-10"
             style={hotspotLayerStyle}
           >
             {activeScene.hotspots.map((hotspot, index) => {
@@ -1138,7 +1144,7 @@ export function ScrollVideoStage() {
           <div className="grid gap-8">
             <div
               data-testid="journey-persistent-copy"
-              className={`max-w-2xl ${copyAlignClasses}`}
+              className={`relative z-20 max-w-2xl ${copyAlignClasses}`}
               style={{
                 ...overlayStyle,
                 transform: `${overlayStyle.transform} translate3d(calc(var(--pointer-x) * -0.18), calc(var(--pointer-y) * -0.18), 0)`,

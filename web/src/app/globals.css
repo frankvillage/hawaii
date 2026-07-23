@@ -32,7 +32,14 @@ body {
   --journey-progress: 0;
 }
 
-.journey-stage video,
+.journey-stage video {
+  object-fit: cover;
+  object-position: center;
+  transform: none;
+  transition: opacity 180ms ease-out;
+  will-change: opacity;
+}
+
 .journey-stage img {
   transform: translate3d(
       calc(var(--pointer-x) * 0.1),
@@ -45,7 +52,11 @@ body {
 }
 
 @media (hover: none), (pointer: coarse) {
-  .journey-stage video,
+  .journey-stage video {
+    transition-duration: 0s;
+    will-change: auto;
+  }
+
   .journey-stage img {
     transform: none;
     transition: none;
@@ -58,7 +69,12 @@ body {
   }
 }
 
-
+.journey-stage [data-testid="journey-persistent-copy"],
+.journey-stage a,
+.journey-stage button,
+.soul-rail-surface a {
+  touch-action: pan-y;
+}
 
 a,
 button {

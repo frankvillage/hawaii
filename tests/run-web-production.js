@@ -74,7 +74,7 @@ function sendFile(request, response, filePath) {
   else fs.createReadStream(filePath).pipe(response);
 }
 
-function run(script, env) {
+function run(script, env, timeoutMs = 90_000) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [path.join(root, script)], {
       cwd: root,
@@ -87,7 +87,7 @@ function run(script, env) {
       timedOut = true;
       child.kill("SIGTERM");
       forceKill = setTimeout(() => child.kill("SIGKILL"), 2_000);
-    }, 90_000);
+    }, timeoutMs);
     const cleanup = () => {
       clearTimeout(watchdog);
       if (forceKill) clearTimeout(forceKill);
@@ -98,7 +98,7 @@ function run(script, env) {
     });
     child.once("exit", (code, signal) => {
       cleanup();
-      if (timedOut) reject(new Error(`${script} exceeded the 90 second deadline`));
+      if (timedOut) reject(new Error(`${script} exceeded the ${timeoutMs}ms deadline`));
       else if (code === 0) resolve();
       else reject(new Error(`${script} exited with ${code ?? signal}`));
     });
@@ -151,6 +151,7 @@ async function main() {
     await run("tests/desktop-video-playback.js", env);
     await run("tests/webkit-iphone-touch-playback.js", env);
     await run("tests/webkit-slow-mobile-video.js", env);
+    await run("tests/tablet-interface-controls.js", env, 240_000);
     try {
       await run("tests/webkit-mobile-playback.js", env);
     } catch (error) {
