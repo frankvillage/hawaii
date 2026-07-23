@@ -518,6 +518,11 @@ async function main() {
       assert.notEqual(focusState.outlineWidth, "0px");
 
       await link.click();
+      await page.waitForFunction(
+        (expectedHash) => window.location.hash === expectedHash,
+        expectedMenuAnchors[index],
+        { timeout: 4_000 },
+      );
       assert.equal(new URL(page.url()).hash, expectedMenuAnchors[index]);
       const targetScrollMargin = await page
         .locator(expectedMenuAnchors[index])
@@ -569,7 +574,7 @@ async function main() {
     assert.ok(
       (await villageSoulCards
         .filter({ has: page.getByText("MUULab", { exact: true }) })
-        .locator('a[href="/terrazza"]')
+        .locator('a[href="/terrazza"], a[href="/terrazza/"]')
         .count()) >= 1,
       "The MUULab village card must link to /terrazza",
     );
