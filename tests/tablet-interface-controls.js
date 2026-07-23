@@ -259,6 +259,38 @@ async function waitForSettled(page, targetTime) {
   }
 }
 
+async function recoverPlaybackGestureIfNeeded(page) {
+  const mediaState = await page.waitForFunction(
+    () => {
+      const state = document.querySelector('[data-testid="hero-stage"]')?.dataset.mediaState;
+      return state === "settled" || state === "waiting-for-gesture" ? state : false;
+    },
+    undefined,
+    { timeout: 4_000 },
+  );
+  if ((await mediaState.jsonValue()) !== "waiting-for-gesture") return;
+
+  const point = await page.locator('[data-testid="scroll-video-stage"]').evaluate((stage) => {
+    const rect = stage.getBoundingClientRect();
+    const candidates = [
+      [0.95, 0.5],
+      [0.05, 0.5],
+      [0.5, 0.25],
+    ];
+    for (const [xRatio, yRatio] of candidates) {
+      const x = rect.left + rect.width * xRatio;
+      const y = rect.top + rect.height * yRatio;
+      const target = document.elementFromPoint(x, y);
+      if (target instanceof Element && stage.contains(target) && !target.closest("a, button")) {
+        return { x, y };
+      }
+    }
+    return null;
+  });
+  assert.ok(point, "Gesture recovery requires a non-interactive point inside the journey");
+  await page.touchscreen.tap(point.x, point.y);
+}
+
 async function prepareMovement(page, progress, direction) {
   const targetTime = await setJourneyProgress(page, progress);
   try {
@@ -566,6 +598,7 @@ async function exerciseTablet(browserType, browserName, viewport) {
     await waitForSettled(page, reverseStartTarget);
     const prepareReverseControl = async () => {
       const startTarget = await setJourneyProgress(page, 0.08);
+      await recoverPlaybackGestureIfNeeded(page);
       await waitForSettled(page, startTarget);
       await prepareMovement(page, 0.03, "reverse");
     };
