@@ -61,6 +61,8 @@ const RING_RADIUS = 15;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 const JOURNEY_FPS = 25;
 const JOURNEY_FRAME_SECONDS = 1 / JOURNEY_FPS;
+const JOURNEY_REVERSE_INTENT_GAP = 0.5;
+const JOURNEY_REVERSE_LOAD_TIMEOUT_MS = 4000;
 const JOURNEY_FRAME_COUNT = 1430;
 const REVERSE_TIMELINE = { fps: JOURNEY_FPS, frameCount: JOURNEY_FRAME_COUNT };
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -94,6 +96,8 @@ export function ScrollVideoStage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const reverseVideoRef = useRef<HTMLVideoElement>(null);
   const activeVideoDirectionRef = useRef<JourneyVideoDirection>("forward");
+  const reverseSwitchPendingRef = useRef(false);
+  const reverseLoadStartedAtRef = useRef(0);
   const reverseSourceAttachedRef = useRef(false);
   const reverseFailedRef = useRef(false);
   const journeyFrameRef = useRef(0);
@@ -260,12 +264,23 @@ export function ScrollVideoStage() {
         activeDirection === "reverse"
           ? reverseTimeToForwardTime(video.currentTime, REVERSE_TIMELINE)
           : video.currentTime;
+      const pendingReverseTarget =
+        reverseSwitchPendingRef.current &&
+        targetTimeRef.current < canonicalCurrentTime - JOURNEY_FRAME_SECONDS;
+      const reverseGap = canonicalCurrentTime - targetTimeRef.current;
       const wantsReverse =
         !reverseFailedRef.current &&
         !railScrollingRef.current &&
-        scrollDirectionRef.current < 0 &&
+        (
+          scrollDirectionRef.current < 0 ||
+          pendingReverseTarget ||
+          reverseGap >= JOURNEY_REVERSE_INTENT_GAP
+        ) &&
         targetTimeRef.current < canonicalCurrentTime - JOURNEY_FRAME_SECONDS;
       const desiredDirection: JourneyVideoDirection = wantsReverse ? "reverse" : "forward";
+      if (!wantsReverse && reverseSwitchPendingRef.current) {
+        reverseSwitchPendingRef.current = false;
+      }
 
       if (desiredDirection !== activeDirection) {
         const nextVideo = desiredDirection === "reverse" ? reverseVideo : forwardVideo;
@@ -273,6 +288,8 @@ export function ScrollVideoStage() {
         if (desiredDirection === "reverse" && !reverseSourceAttachedRef.current) {
           const isDesktop = window.matchMedia("(min-aspect-ratio: 3/4)").matches;
           reverseSourceAttachedRef.current = true;
+          reverseSwitchPendingRef.current = true;
+          reverseLoadStartedAtRef.current = timestamp;
           setReverseSourceAttached(true);
           nextVideo.src = reverseMediaUrl(isDesktop);
           nextVideo.load();
@@ -280,6 +297,21 @@ export function ScrollVideoStage() {
 
         video.pause();
         if (nextVideo.readyState < HTMLMediaElement.HAVE_METADATA) {
+          if (
+            desiredDirection === "reverse" &&
+            reverseLoadStartedAtRef.current > 0 &&
+            timestamp - reverseLoadStartedAtRef.current >=
+              JOURNEY_REVERSE_LOAD_TIMEOUT_MS
+          ) {
+            reverseFailedRef.current = true;
+            reverseSwitchPendingRef.current = false;
+            reverseLoadStartedAtRef.current = 0;
+            reverseSourceAttachedRef.current = false;
+            setReverseSourceAttached(false);
+            nextVideo.pause();
+            nextVideo.removeAttribute("src");
+            nextVideo.load();
+          }
           journeyFrameRef.current = window.requestAnimationFrame(tick);
           return;
         }
@@ -299,6 +331,8 @@ export function ScrollVideoStage() {
         }
 
         activeVideoDirectionRef.current = desiredDirection;
+        reverseSwitchPendingRef.current = false;
+        reverseLoadStartedAtRef.current = 0;
         setVisibleVideoDirection(desiredDirection);
         video = nextVideo;
         lastMediaTimeRef.current = nextVideo.currentTime;
@@ -662,6 +696,7 @@ export function ScrollVideoStage() {
       const delta = nextScrollY - lastScrollYRef.current;
       if (Math.abs(delta) >= 1) {
         scrollDirectionRef.current = Math.sign(delta);
+        if (delta > 0) reverseSwitchPendingRef.current = false;
       }
       lastScrollYRef.current = nextScrollY;
       lastScrollAtRef.current = performance.now();
@@ -937,7 +972,14 @@ export function ScrollVideoStage() {
               requestJourneyFrame();
             }
           }}
-          onError={() => activateFallback("media-error")}
+          onError={(event) => {
+            const video = event.currentTarget;
+            const isVideoError = event.target === video && Boolean(video.error);
+            const hasNoPlayableSource =
+              video.networkState === HTMLMediaElement.NETWORK_NO_SOURCE;
+            if (!isVideoError && !hasNoPlayableSource) return;
+            activateFallback("media-error");
+          }}
         >
           {mediaMode === "video" ? (
             <>
@@ -970,6 +1012,8 @@ export function ScrollVideoStage() {
           onLoadedMetadata={() => requestJourneyFrame()}
           onError={() => {
             reverseFailedRef.current = true;
+            reverseSwitchPendingRef.current = false;
+            reverseLoadStartedAtRef.current = 0;
             reverseSourceAttachedRef.current = false;
             setReverseSourceAttached(false);
             reverseVideoRef.current?.pause();

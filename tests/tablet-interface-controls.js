@@ -151,12 +151,9 @@ async function installTouchInstrumentation(page) {
 
 async function waitForJourney(page) {
   await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
-  await page.evaluate(() => {
-    const consent = [...document.querySelectorAll("button")].find((node) =>
-      /accetta/i.test(node.textContent || ""),
-    );
-    consent?.click();
-  });
+  const consent = page.getByRole("button", { name: "Accetta", exact: true });
+  await consent.waitFor({ state: "visible", timeout: 4_000 });
+  await consent.click();
   await page.waitForFunction(
     () => {
       const video = document.querySelector('[data-testid="journey-video"]');
@@ -211,33 +208,109 @@ async function setJourneyProgress(page, progress) {
 }
 
 async function waitForSettled(page, targetTime) {
-  await page.waitForFunction(
-    (expectedTarget) => {
+  try {
+    await page.waitForFunction(
+      (expectedTarget) => {
+        const stage = document.querySelector('[data-testid="hero-stage"]');
+        return (
+          stage?.dataset.targetTime === expectedTarget &&
+          stage.dataset.mediaState === "settled"
+        );
+      },
+      targetTime,
+      { timeout: 20_000 },
+    );
+  } catch (error) {
+    const state = await page.evaluate(() => {
       const stage = document.querySelector('[data-testid="hero-stage"]');
-      return (
-        stage?.dataset.targetTime === expectedTarget &&
-        stage.dataset.mediaState === "settled"
-      );
-    },
-    targetTime,
-    { timeout: 20_000 },
-  );
+      const forward = document.querySelector('[data-testid="journey-video"]');
+      const reverse = document.querySelector('[data-testid="journey-video-reverse"]');
+      return {
+        stage: stage ? { ...stage.dataset } : null,
+        forwardTime:
+          forward instanceof HTMLVideoElement ? forward.currentTime : null,
+        reverseTime:
+          reverse instanceof HTMLVideoElement ? reverse.currentTime : null,
+        reverseState:
+          reverse instanceof HTMLVideoElement
+            ? {
+                currentSrc: reverse.currentSrc,
+                error: reverse.error
+                  ? { code: reverse.error.code, message: reverse.error.message }
+                  : null,
+                duration: reverse.duration,
+                networkState: reverse.networkState,
+                readyState: reverse.readyState,
+                seekable:
+                  reverse.seekable.length > 0
+                    ? {
+                        end: reverse.seekable.end(reverse.seekable.length - 1),
+                        start: reverse.seekable.start(0),
+                      }
+                    : null,
+              }
+            : null,
+      };
+    });
+    throw new Error(
+      `Timed out waiting for settled target ${targetTime}: ${JSON.stringify(state)}`,
+      { cause: error },
+    );
+  }
 }
 
 async function prepareMovement(page, progress, direction) {
   const targetTime = await setJourneyProgress(page, progress);
-  await page.waitForFunction(
-    ({ expectedDirection, expectedTarget }) => {
+  try {
+    await page.waitForFunction(
+      ({ expectedDirection, expectedTarget }) => {
+        const stage = document.querySelector('[data-testid="hero-stage"]');
+        return (
+          stage?.dataset.targetTime === expectedTarget &&
+          stage.dataset.mediaState === "moving" &&
+          stage.dataset.videoDirection === expectedDirection
+        );
+      },
+      { expectedDirection: direction, expectedTarget: targetTime },
+      { timeout: 12_000 },
+    );
+  } catch (error) {
+    const state = await page.evaluate(() => {
       const stage = document.querySelector('[data-testid="hero-stage"]');
-      return (
-        stage?.dataset.targetTime === expectedTarget &&
-        stage.dataset.mediaState === "moving" &&
-        stage.dataset.videoDirection === expectedDirection
-      );
-    },
-    { expectedDirection: direction, expectedTarget: targetTime },
-    { timeout: 12_000 },
-  );
+      const forward = document.querySelector('[data-testid="journey-video"]');
+      const reverse = document.querySelector('[data-testid="journey-video-reverse"]');
+      return {
+        stage: stage ? { ...stage.dataset } : null,
+        forwardTime:
+          forward instanceof HTMLVideoElement ? forward.currentTime : null,
+        reverseTime:
+          reverse instanceof HTMLVideoElement ? reverse.currentTime : null,
+        reverseState:
+          reverse instanceof HTMLVideoElement
+            ? {
+                currentSrc: reverse.currentSrc,
+                error: reverse.error
+                  ? { code: reverse.error.code, message: reverse.error.message }
+                  : null,
+                duration: reverse.duration,
+                networkState: reverse.networkState,
+                readyState: reverse.readyState,
+                seekable:
+                  reverse.seekable.length > 0
+                    ? {
+                        end: reverse.seekable.end(reverse.seekable.length - 1),
+                        start: reverse.seekable.start(0),
+                      }
+                    : null,
+              }
+            : null,
+      };
+    });
+    throw new Error(
+      `Timed out preparing ${direction} movement to ${targetTime}: ${JSON.stringify(state)}`,
+      { cause: error },
+    );
+  }
 }
 
 async function assertVideoLayers(page, label) {
@@ -336,6 +409,31 @@ async function assertVideoLayers(page, label) {
   );
 }
 
+async function tapAtCenter(page, locator, label) {
+  const box = await locator.boundingBox();
+  assert.ok(box, `${label}: control must have a tappable bounding box`);
+  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const hit = await locator.evaluate((control, tapPoint) => {
+    const target = document.elementFromPoint(tapPoint.x, tapPoint.y);
+    return {
+      isControl: target === control || control.contains(target),
+      target:
+        target instanceof Element
+          ? target.getAttribute("data-testid") ||
+            target.getAttribute("href") ||
+            target.className ||
+            target.tagName
+          : null,
+    };
+  }, point);
+  assert.equal(
+    hit.isControl,
+    true,
+    `${label}: tap center is intercepted by ${String(hit.target)}`,
+  );
+  await page.touchscreen.tap(point.x, point.y);
+}
+
 async function tapControls(
   page,
   label,
@@ -349,19 +447,31 @@ async function tapControls(
   }));
 
   await prepareControl?.();
-  await page.locator('[data-testid="scene-primary-action"]').tap();
+  await tapAtCenter(
+    page,
+    page.locator('[data-testid="scene-primary-action"]'),
+    `${label} primary action`,
+  );
   await prepareControl?.();
-  await page.locator('[data-testid="menu-popup-trigger"]').tap();
+  await tapAtCenter(
+    page,
+    page.locator('[data-testid="menu-popup-trigger"]'),
+    `${label} popup trigger`,
+  );
   const popup = page.locator('[data-testid="menu-popup"]');
   await popup.waitFor({ state: "visible", timeout: 4_000 });
-  await page.locator('[data-testid="menu-popup-close"]').tap();
+  await tapAtCenter(
+    page,
+    page.locator('[data-testid="menu-popup-close"]'),
+    `${label} popup close`,
+  );
   await popup.waitFor({ state: "detached", timeout: 4_000 });
 
   const railLink = page.locator("[data-soul-link]").nth(railIndex);
   const railHref = await railLink.getAttribute("href");
   assert.ok(railHref?.startsWith("#"), `${label}: Soul Rail target must be an anchor`);
   await prepareControl?.();
-  await railLink.tap();
+  await tapAtCenter(page, railLink, `${label} Soul Rail`);
   await page.waitForFunction(
     (expectedHash) => {
       const stage = document.querySelector('[data-testid="hero-stage"]');
@@ -370,6 +480,14 @@ async function tapControls(
     railHref,
     { timeout: 4_000 },
   );
+  await page.evaluate(() => {
+    const root = document.documentElement;
+    const previousScrollBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    window.scrollTo({ top: window.scrollY, behavior: "auto" });
+    root.style.scrollBehavior = previousScrollBehavior;
+  });
+  await page.waitForTimeout(300);
 
   const after = await page.evaluate(() => ({
     clicks: window.__tabletInterfaceTest.controlClicks.slice(),
@@ -439,20 +557,21 @@ async function exerciseTablet(browserType, browserName, viewport) {
       state: "moving",
     });
 
-    const settledTarget = await setJourneyProgress(page, 0.52);
+    const settledTarget = await setJourneyProgress(page, 0.02);
     await waitForSettled(page, settledTarget);
     await assertVideoLayers(page, `${label} settled`);
-    await tapControls(page, `${label} settled`, 4);
+    await tapControls(page, `${label} settled`, 6);
 
-    const reverseStartTarget = await setJourneyProgress(page, 0.62);
+    const reverseStartTarget = await setJourneyProgress(page, 0.08);
     await waitForSettled(page, reverseStartTarget);
-    const reverseProgresses = [0.48, 0.36, 0.24];
-    let reverseIndex = 0;
-    const prepareReverseControl = () =>
-      prepareMovement(page, reverseProgresses[reverseIndex++], "reverse");
-    await prepareMovement(page, 0.56, "reverse");
+    const prepareReverseControl = async () => {
+      const startTarget = await setJourneyProgress(page, 0.08);
+      await waitForSettled(page, startTarget);
+      await prepareMovement(page, 0.03, "reverse");
+    };
+    await prepareMovement(page, 0.03, "reverse");
     await assertVideoLayers(page, `${label} reverse`);
-    await tapControls(page, `${label} reverse`, 6, {
+    await tapControls(page, `${label} reverse`, 4, {
       direction: "reverse",
       prepareControl: prepareReverseControl,
       state: "moving",
@@ -487,6 +606,62 @@ async function assertMobileHotspotsHidden(browserType, browserName) {
   }
 }
 
+async function assertReverseLoadRecovery() {
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({
+    deviceScaleFactor: 2,
+    hasTouch: true,
+    isMobile: true,
+    viewport: { width: 768, height: 1024 },
+  });
+  const page = await context.newPage();
+  let releaseReverseRequest;
+  const reverseRequestBlocked = new Promise((resolve) => {
+    releaseReverseRequest = resolve;
+  });
+  await page.route("**/*reverse.mp4*", async (route) => {
+    await reverseRequestBlocked;
+    await route.continue();
+  });
+
+  try {
+    await waitForJourney(page);
+    const forwardTarget = await setJourneyProgress(page, 0.08);
+    await waitForSettled(page, forwardTarget);
+    const reverseTarget = await setJourneyProgress(page, 0.03);
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-testid="hero-stage"]')?.dataset
+          .reverseSourceAttached === "true",
+      undefined,
+      { timeout: 4_000 },
+    );
+    await page.waitForFunction(
+      () => {
+        const stage = document.querySelector('[data-testid="hero-stage"]');
+        return (
+          stage?.dataset.reverseSourceAttached === "false" &&
+          stage.dataset.videoDirection === "forward" &&
+          stage.dataset.mediaMode === "video"
+        );
+      },
+      undefined,
+      { timeout: 7_000 },
+    );
+    await waitForSettled(page, reverseTarget);
+    assert.equal(
+      await page.locator('[data-testid="hero-stage"]').getAttribute("data-fallback-reason"),
+      "",
+      "A stalled reverse asset must not disable the healthy forward journey video",
+    );
+    console.log("reverse video load timeout recovery passed");
+  } finally {
+    releaseReverseRequest?.();
+    await context.close();
+    await browser.close();
+  }
+}
+
 async function main() {
   if (process.env.TABLET_SKIP_STATIC !== "1") {
     assertStaticContracts();
@@ -505,6 +680,7 @@ async function main() {
     }
     await assertMobileHotspotsHidden(browserType, browserName);
   }
+  await assertReverseLoadRecovery();
 }
 
 main().catch((error) => {

@@ -332,6 +332,11 @@ assert.match(
   /preload=\{mediaMode === "video" \? "auto" : "none"\}/,
   "The journey should buffer only after video playback is eligible",
 );
+assert.match(
+  stage,
+  /onError=\{\(event\) => \{[\s\S]{0,260}HTMLMediaElement\.NETWORK_NO_SOURCE[\s\S]{0,180}!isVideoError && !hasNoPlayableSource[\s\S]{0,100}activateFallback\("media-error"\)/,
+  "Only a real media error or exhausted sources may activate video fallback",
+);
 assert.match(stage, /advanceScrubTime/, "The homepage should use bounded continuous scrubbing");
 assert.doesNotMatch(
   stage,

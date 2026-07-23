@@ -282,6 +282,23 @@ async function main() {
     const mobilePage = await openPage({ ...devices["iPhone 13"] });
     await mobilePage.goto(baseUrl, { waitUntil: "domcontentloaded" });
     const mobileVideo = mobilePage.locator('[data-testid="journey-video"]');
+    await mobilePage.waitForFunction(
+      () => {
+        const stage = document.querySelector('[data-testid="hero-stage"]');
+        const video = document.querySelector('[data-testid="journey-video"]');
+        const poster = document.querySelector('[data-testid="scroll-video-stage"] img');
+        return (
+          stage?.dataset.motionPreferenceResolved === "true" &&
+          stage.dataset.mediaMode === "video" &&
+          video instanceof HTMLVideoElement &&
+          Number.isFinite(video.duration) &&
+          video.duration > 0 &&
+          !poster
+        );
+      },
+      undefined,
+      { timeout: 8_000 },
+    );
     await mobileVideo.waitFor({ state: "visible", timeout: 2500 });
     assert.equal(
       await mobilePage.locator('[data-testid="journey-canvas"]').count(),
@@ -363,13 +380,6 @@ async function main() {
     const fallbackMobilePage = await openPage({ ...devices["iPhone 13"] });
     await fallbackMobilePage.route("**/*.mp4*", (route) => route.abort("failed"));
     await fallbackMobilePage.goto(baseUrl, { waitUntil: "domcontentloaded" });
-    await fallbackMobilePage.waitForFunction(() => {
-      const stage = document.querySelector('[data-testid="hero-stage"]');
-      return stage?.dataset.mediaMode === "fallback" ||
-        Boolean(document.querySelector('[data-testid="journey-video"]'));
-    });
-    const fallbackVideo = fallbackMobilePage.locator('[data-testid="journey-video"]');
-    if (await fallbackVideo.count()) await fallbackVideo.dispatchEvent("error");
     await fallbackMobilePage.waitForFunction(
       () => {
         const stage = document.querySelector('[data-testid="hero-stage"]');
@@ -377,7 +387,7 @@ async function main() {
           stage.dataset.fallbackReason === "media-error";
       },
       undefined,
-      { timeout: 3500 },
+      { timeout: 8_000 },
     );
     assert.equal(
       await fallbackMobilePage.locator('[data-testid="journey-canvas"]').count(),
@@ -574,7 +584,7 @@ async function main() {
     assert.ok(
       (await villageSoulCards
         .filter({ has: page.getByText("MUULab", { exact: true }) })
-        .locator('a[href="/terrazza"], a[href="/terrazza/"]')
+        .locator('a[href$="/terrazza"], a[href$="/terrazza/"]')
         .count()) >= 1,
       "The MUULab village card must link to /terrazza",
     );
