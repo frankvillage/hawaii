@@ -7,7 +7,7 @@ const { spawn } = require("node:child_process");
 
 const root = process.cwd();
 const publicRoot = path.resolve(root, process.argv[2] || "pages-preview");
-const basePath = (process.env.PAGES_BASE_PATH || "/hawaii").replace(/\/+$/, "");
+const basePath = (process.env.PAGES_BASE_PATH ?? "/hawaii").replace(/\/+$/, "");
 
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
@@ -108,7 +108,7 @@ function run(script, env, timeoutMs = 90_000) {
 async function main() {
   const siteRoot = path.join(publicRoot, basePath.replace(/^\//, ""));
   if (!fs.existsSync(path.join(siteRoot, "index.html"))) {
-    throw new Error(`Missing static Pages artifact under ${siteRoot}`);
+    throw new Error(`Missing static artifact under ${siteRoot}`);
   }
 
   const server = http.createServer((request, response) => {

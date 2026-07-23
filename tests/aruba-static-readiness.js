@@ -23,12 +23,27 @@ function collectTextFiles(directory) {
 
 requireFile("index.html");
 requireFile("404.html");
+const releaseFile = requireFile("RELEASE.txt");
 requireFile("prenotazioni/index.html");
 requireFile("media/hawaii/journey-desktop.mp4");
 requireFile("media/hawaii/journey-mobile.mp4");
 requireFile("media/hawaii/journey-desktop-reverse.mp4");
 requireFile("media/hawaii/journey-mobile-reverse.mp4");
 requireFile(".htaccess");
+
+const release = fs.readFileSync(releaseFile, "utf8");
+assert.match(release, /^commit=[0-9a-f]{40}$/m, "Aruba release must record its git commit");
+assert.match(
+  release,
+  /^built_at_utc=\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/m,
+  "Aruba release must record a complete UTC build time",
+);
+assert.match(release, /^base_path=root$/m, "Aruba release must declare a root-domain build");
+assert.match(
+  release,
+  /^worktree=(?:clean|dirty)$/m,
+  "Aruba release must declare whether the source worktree was clean",
+);
 
 const text = collectTextFiles(root)
   .map((filePath) => fs.readFileSync(filePath, "utf8"))

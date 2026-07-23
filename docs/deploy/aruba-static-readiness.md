@@ -12,6 +12,14 @@ npm run build:web:aruba
 
 Lo script lavora in una directory temporanea, esclude le route Next.js sotto `src/app/api`, non modifica il sorgente e verifica automaticamente pagine, video e base path. Il contenuto di `output/aruba-static` e la directory da caricare nella document root Aruba.
 
+Ogni export contiene `RELEASE.txt` con commit Git, data UTC di generazione, base path root e stato `clean/dirty` del worktree. Conservare questo file sul server: permette di identificare con precisione la release attiva e rende piu sicuro il rollback. L'output precedente viene sostituito soltanto dopo che il nuovo staging ha superato la readiness.
+
+Per generare il pacchetto definitivo esclusivamente da sorgenti committati:
+
+```bash
+ARUBA_REQUIRE_CLEAN=1 npm run build:web:aruba
+```
+
 ## Requisiti hosting da confermare
 
 - Hosting Linux con Apache e supporto `.htaccess`.

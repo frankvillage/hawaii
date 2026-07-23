@@ -30,6 +30,7 @@ web/.git/
 tmp/
 output/playwright/
 output/aruba-static/
+output/.aruba-static.*/
 pages-preview/
 presentation/rendered/
 .playwright-cli/
