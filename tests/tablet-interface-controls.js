@@ -291,9 +291,35 @@ async function recoverPlaybackGestureIfNeeded(page) {
   await page.touchscreen.tap(point.x, point.y);
 }
 
-async function prepareMovement(page, progress, direction) {
+async function prepareMovement(
+  page,
+  progress,
+  direction,
+  { recoverGesture = false } = {},
+) {
   const targetTime = await setJourneyProgress(page, progress);
   try {
+    if (recoverGesture) {
+      const mediaState = await page.waitForFunction(
+        ({ expectedDirection, expectedTarget }) => {
+          const stage = document.querySelector('[data-testid="hero-stage"]');
+          if (
+            stage?.dataset.targetTime !== expectedTarget ||
+            stage.dataset.videoDirection !== expectedDirection
+          ) {
+            return false;
+          }
+          const state = stage.dataset.mediaState;
+          return state === "moving" || state === "waiting-for-gesture" ? state : false;
+        },
+        { expectedDirection: direction, expectedTarget: targetTime },
+        { timeout: 12_000 },
+      );
+      if ((await mediaState.jsonValue()) === "waiting-for-gesture") {
+        await recoverPlaybackGestureIfNeeded(page);
+      }
+    }
+
     await page.waitForFunction(
       ({ expectedDirection, expectedTarget }) => {
         const stage = document.querySelector('[data-testid="hero-stage"]');
@@ -447,17 +473,15 @@ async function assertJourneyFooterRoundTrip(page, label) {
       Math.abs(footerSeekTime - footerTargetTime) <= 0.05,
       `${label}: forward footer seek time ${footerSeekTime} must match target ${footerTargetTime}`,
     );
-    // The test-only seek bypasses the touch gesture a real tablet user provides while scrolling.
-    await recoverPlaybackGestureIfNeeded(page);
-    await waitForSettled(page, footerTargetValue);
   } catch (error) {
-    throw new Error(`${label}: footer media did not settle at target ${footerTargetTime}`, {
+    throw new Error(`${label}: footer media did not align at target ${footerTargetTime}`, {
       cause: error,
     });
   }
 
   try {
-    await prepareMovement(page, expectedProgress, "reverse");
+    // Returning from the footer makes the journey tappable again, matching a real reverse swipe.
+    await prepareMovement(page, expectedProgress, "reverse", { recoverGesture: true });
   } catch (error) {
     throw new Error(`${label}: footer round-trip reverse movement failed`, {
       cause: error,
