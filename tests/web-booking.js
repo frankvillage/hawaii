@@ -427,10 +427,12 @@ async function expectPropagatedBookingLinks(browser) {
   });
 
   await expectPageLinks(browser, "/feste-private", async (page) => {
-    const privateEventsCta = page.getByRole("link", {
-      name: "WhatsApp feste private",
-      exact: true,
-    });
+    const privateEventsCta = page
+      .getByRole("link", {
+        name: "WhatsApp feste private",
+        exact: true,
+      })
+      .first();
     assert.equal(
       await privateEventsCta.getAttribute("href"),
       whatsappUrl(
