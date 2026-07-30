@@ -936,7 +936,7 @@ export function ScrollVideoStage() {
       <div
         ref={stageRef}
         data-testid="scroll-video-stage"
-        className="journey-stage sticky top-0 h-[100svh] overflow-hidden"
+        className="journey-stage journey-viewport-stage sticky top-0 overflow-hidden"
         onPointerDown={primePointerPlayback}
         onTouchStart={primeTouchPlayback}
         onPointerUp={completePlaybackGesture}
@@ -1258,7 +1258,7 @@ export function ScrollVideoStage() {
       </div>
 
       {/* Eighteen viewport heights are distributed by each scene's video range. */}
-      <div aria-hidden="true" className="pointer-events-none relative z-0 -mt-[100svh]">
+      <div aria-hidden="true" className="pointer-events-none relative z-0 journey-viewport-track">
         {homeJourney.scenes.map((scene) => (
           <section
             key={scene.id}
@@ -1274,7 +1274,7 @@ export function ScrollVideoStage() {
           </section>
         ))}
       </div>
-      <div data-journey-tail aria-hidden="true" className="h-[100svh]" />
+      <div data-journey-tail aria-hidden="true" className="journey-viewport-tail" />
 
       {sheetHotspot ? (
         <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6">

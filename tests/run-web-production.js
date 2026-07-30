@@ -74,6 +74,54 @@ function sendFile(request, response, filePath) {
   else fs.createReadStream(filePath).pipe(response);
 }
 
+function findCssFiles(directory) {
+  if (!fs.existsSync(directory)) return [];
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) return findCssFiles(entryPath);
+    return entry.isFile() && entry.name.endsWith(".css") ? [entryPath] : [];
+  });
+}
+
+function hasCssRuleDeclaration(css, selector, declaration) {
+  const rulePattern = /([^{}]+)\{([^{}]*)\}/g;
+  for (const match of css.matchAll(rulePattern)) {
+    const selectors = match[1].split(",");
+    if (selectors.includes(selector) && match[2].includes(declaration)) return true;
+  }
+  return false;
+}
+
+function verifyJourneyViewportCssArtifact(siteRoot) {
+  const cssRoot = path.join(siteRoot, "_next", "static", "css");
+  const cssFiles = findCssFiles(cssRoot);
+  if (cssFiles.length === 0) {
+    throw new Error(`Missing compiled CSS artifacts under ${cssRoot}`);
+  }
+
+  const compiledCss = cssFiles
+    .map((filePath) => fs.readFileSync(filePath, "utf8"))
+    .join("\n")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\s+/g, "");
+  const requiredRules = [
+    [".journey-viewport-stage", "height:100svh"],
+    [".journey-viewport-stage", "height:100dvh"],
+    [".journey-viewport-track", "margin-top:-100svh"],
+    [".journey-viewport-track", "margin-top:-100dvh"],
+    [".journey-viewport-tail", "height:100svh"],
+    [".journey-viewport-tail", "height:100dvh"],
+  ];
+
+  for (const [selector, declaration] of requiredRules) {
+    if (!hasCssRuleDeclaration(compiledCss, selector, declaration)) {
+      throw new Error(
+        `Compiled CSS is missing required journey viewport rule: ${selector} { ${declaration} }`,
+      );
+    }
+  }
+}
+
 function run(script, env, timeoutMs = 90_000) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [path.join(root, script)], {
@@ -110,6 +158,7 @@ async function main() {
   if (!fs.existsSync(path.join(siteRoot, "index.html"))) {
     throw new Error(`Missing static artifact under ${siteRoot}`);
   }
+  verifyJourneyViewportCssArtifact(siteRoot);
 
   const server = http.createServer((request, response) => {
     const filePath = resolveRequest(request.url || "/");

@@ -8,6 +8,50 @@ const path = require("node:path");
 
 const root = process.cwd();
 
+function sourceBetween(source, start, end) {
+  const startIndex = source.indexOf(start);
+  const endIndex = source.indexOf(end, startIndex + start.length);
+  assert.ok(startIndex >= 0 && endIndex > startIndex, `Missing source range ${start} -> ${end}`);
+  return source.slice(startIndex, endIndex);
+}
+
+function cssRuleBody(css, selector) {
+  const uncommentedCss = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = uncommentedCss.match(
+    new RegExp(`(?:^|})\\s*${escaped}\\s*\\{([^}]*)\\}`),
+  );
+  assert.ok(match, `Missing standalone CSS rule for ${selector}`);
+  return match[1];
+}
+
+function cssBlock(css, headerPattern, description) {
+  const uncommentedCss = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const match = headerPattern.exec(uncommentedCss);
+  assert.ok(match, `Missing ${description}`);
+  const start = match.index;
+  const openingBrace = uncommentedCss.indexOf("{", start + match[0].length);
+  assert.ok(openingBrace >= 0, `Missing opening brace for ${description}`);
+
+  let depth = 1;
+  for (let index = openingBrace + 1; index < uncommentedCss.length; index += 1) {
+    if (uncommentedCss[index] === "{") depth += 1;
+    if (uncommentedCss[index] === "}") depth -= 1;
+    if (depth === 0) {
+      return {
+        body: uncommentedCss.slice(openingBrace + 1, index),
+        start,
+      };
+    }
+  }
+
+  assert.fail(`Missing closing brace for ${description}`);
+}
+
+function compactCssDeclarations(body) {
+  return body.replace(/\s+/g, "");
+}
+
 function writeExecutable(filePath, contents) {
   fs.writeFileSync(filePath, contents);
   fs.chmodSync(filePath, 0o755);
@@ -311,6 +355,71 @@ const propagatedBookingSources = [
   menuPage,
   villagePage,
 ].join("\n");
+const aperitivoScene = sourceBetween(
+  siteContent,
+  'id: "aperitivo"',
+  'id: "muulab"',
+);
+const eventiScene = sourceBetween(
+  siteContent,
+  'id: "eventi"',
+  "] satisfies JourneyScene[]",
+);
+const aperitivoHotspots = sourceBetween(
+  aperitivoScene,
+  "hotspots: [",
+  "],\n      menu:",
+);
+const eventiHotspots = sourceBetween(
+  eventiScene,
+  "hotspots: [",
+  "],\n      action:",
+);
+const aperitivoCocktailHotspot = (aperitivoHotspots.match(/\{[^{}]*\}/g) || []).find(
+  (object) => /label:\s*"Cocktail & bollicine"/.test(object),
+);
+const eventiPoshHotspot = (eventiHotspots.match(/\{[^{}]*\}/g) || []).find((object) =>
+  /label:\s*"Giovedì Posh"/.test(object),
+);
+
+assert.doesNotMatch(
+  aperitivoScene,
+  /Giovedì Posh/,
+  "The aperitivo scene must not mention Giovedì Posh",
+);
+assert.ok(
+  aperitivoCocktailHotspot,
+  "The aperitivo scene must include a Cocktail & bollicine hotspot object",
+);
+assert.match(
+  aperitivoCocktailHotspot,
+  /label:\s*"Cocktail & bollicine"/,
+  "The aperitivo cocktail hotspot must keep the Cocktail & bollicine label",
+);
+assert.match(
+  aperitivoCocktailHotspot,
+  /href:\s*"\/menu#cocktail"/,
+  "The aperitivo cocktail hotspot must link to /menu#cocktail",
+);
+assert.ok(
+  eventiPoshHotspot,
+  "The eventi scene must include a Giovedì Posh hotspot object",
+);
+assert.match(
+  eventiPoshHotspot,
+  /label:\s*"Giovedì Posh"/,
+  "The eventi hotspot must keep the Giovedì Posh label",
+);
+assert.match(
+  eventiPoshHotspot,
+  /href:\s*"\/eventi"/,
+  "The Giovedì Posh hotspot must link to /eventi",
+);
+assert.doesNotMatch(
+  eventiHotspots,
+  /label:\s*"Le serate"/,
+  "The eventi hotspots must not retain the generic Le serate label",
+);
 
 assert.doesNotMatch(
   layout,
@@ -348,10 +457,66 @@ assert.doesNotMatch(
   /journey-snap-root|scroll-snap-(?:align|stop)/,
   "The homepage must not force scene-by-scene scroll snapping",
 );
+const journeyViewportSupports = cssBlock(
+  globalStyles,
+  /@supports \(height: 100dvh\)/,
+  "@supports (height: 100dvh) journey viewport block",
+);
+const journeyViewportBaseStyles = globalStyles.slice(0, journeyViewportSupports.start);
+assert.equal(
+  compactCssDeclarations(cssRuleBody(journeyViewportBaseStyles, ".journey-viewport-stage")),
+  "height:100svh;",
+  "The base journey stage rule must contain only the 100svh fallback",
+);
+assert.equal(
+  compactCssDeclarations(cssRuleBody(journeyViewportBaseStyles, ".journey-viewport-track")),
+  "margin-top:-100svh;",
+  "The base journey track rule must contain only the -100svh fallback",
+);
+assert.equal(
+  compactCssDeclarations(cssRuleBody(journeyViewportBaseStyles, ".journey-viewport-tail")),
+  "height:100svh;",
+  "The base journey tail rule must contain only the 100svh fallback",
+);
+assert.equal(
+  compactCssDeclarations(cssRuleBody(journeyViewportSupports.body, ".journey-viewport-stage")),
+  "height:100dvh;",
+  "The supported journey stage override must contain only height: 100dvh",
+);
+assert.equal(
+  compactCssDeclarations(cssRuleBody(journeyViewportSupports.body, ".journey-viewport-track")),
+  "margin-top:-100dvh;",
+  "The supported journey track override must contain only margin-top: -100dvh",
+);
+assert.equal(
+  compactCssDeclarations(cssRuleBody(journeyViewportSupports.body, ".journey-viewport-tail")),
+  "height:100dvh;",
+  "The supported journey tail override must contain only height: 100dvh",
+);
 assert.match(
   stage,
-  /data-journey-tail[\s\S]*h-\[100svh\]/,
-  "The journey should include the final viewport that aligns track ranges with scrollable progress",
+  /<div(?=[^>]*\bdata-testid="scroll-video-stage")(?=[^>]*\bclassName="journey-stage journey-viewport-stage sticky top-0 overflow-hidden")[^>]*>/,
+  "The scroll video stage element must use the exact viewport-aware sticky class list",
+);
+assert.match(
+  stage,
+  /<div\s+aria-hidden="true"\s+className="pointer-events-none relative z-0 journey-viewport-track"\s*>/,
+  "The aria-hidden journey track div must use the exact viewport-track class list",
+);
+assert.match(
+  stage,
+  /<div\s+data-journey-tail\s+aria-hidden="true"\s+className="journey-viewport-tail"\s*\/>/,
+  "The data-journey-tail div must use only the journey-viewport-tail class",
+);
+assert.doesNotMatch(
+  stage,
+  /h-\[100svh\]|-mt-\[100svh\]/,
+  "The journey component must not retain legacy 100svh Tailwind utilities",
+);
+assert.match(
+  stage,
+  /style=\{\{ height: `\$\{\(scene\.end - scene\.start\) \* 1800\}svh` \}\}/,
+  "Journey scene duration must remain proportional to 1800svh",
 );
 assert.match(stage, /journeyFrameRef/, "Scroll measurement and media scrub should share one RAF");
 assert.doesNotMatch(

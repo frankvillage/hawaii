@@ -32,6 +32,32 @@ body {
   --journey-progress: 0;
 }
 
+.journey-viewport-stage {
+  height: 100svh;
+}
+
+.journey-viewport-track {
+  margin-top: -100svh;
+}
+
+.journey-viewport-tail {
+  height: 100svh;
+}
+
+@supports (height: 100dvh) {
+  .journey-viewport-stage {
+    height: 100dvh;
+  }
+
+  .journey-viewport-track {
+    margin-top: -100dvh;
+  }
+
+  .journey-viewport-tail {
+    height: 100dvh;
+  }
+}
+
 .journey-stage video {
   object-fit: cover;
   object-position: center;

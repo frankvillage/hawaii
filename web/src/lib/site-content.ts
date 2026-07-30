@@ -419,7 +419,7 @@ export const homeJourney = {
       eyebrow: "Aperitivo in terrazza",
       title: "Il tramonto è il momento dell'aperitivo.",
       summary:
-        "Daybed e tavoli vista mare per un aperitivo di pesce con la giusta atmosfera; il Giovedì Posh porta il dj set al piano terra.",
+        "Daybed e tavoli vista mare, cocktail e bollicine accompagnano la golden hour sul mare.",
       start: 0.55,
       end: 0.74,
       hotspots: [
@@ -431,11 +431,11 @@ export const homeJourney = {
           caption: "Daybed e bollicine alla golden hour",
         },
         {
-          label: "Giovedì Posh",
-          href: "/eventi",
+          label: "Cocktail & bollicine",
+          href: "/menu#cocktail",
           x: 71,
           y: 52,
-          caption: "Dj set all'esterno, al piano terra",
+          caption: "Mixology e bollicine alla golden hour",
         },
       ],
       menu: {
@@ -502,7 +502,13 @@ export const homeJourney = {
           y: 40,
           caption: "Banqueting e momenti speciali su misura",
         },
-        { label: "Le serate", href: "/eventi", x: 66, y: 28 },
+        {
+          label: "Giovedì Posh",
+          href: "/eventi",
+          x: 66,
+          y: 28,
+          caption: "Dj set e tavoli sotto le stelle",
+        },
       ],
       action: {
         label: "Info eventi su WhatsApp",

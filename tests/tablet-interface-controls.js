@@ -345,6 +345,267 @@ async function prepareMovement(page, progress, direction) {
   }
 }
 
+async function assertJourneyFooterRoundTrip(page, label) {
+  const expectedProgress = 0.62;
+  const footer = page.locator("footer").first();
+  if ((await footer.count()) === 0) {
+    throw new Error(`${label}: journey footer is missing`);
+  }
+
+  await footer.evaluate((element) => {
+    const root = document.documentElement;
+    const previousScrollBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    try {
+      element.scrollIntoView({ behavior: "auto", block: "start" });
+    } finally {
+      root.style.scrollBehavior = previousScrollBehavior;
+    }
+  });
+  try {
+    await page.waitForFunction(
+      () => {
+        const footerElement = document.querySelector("footer");
+        const wrapper = document.querySelector('[data-testid="hero-stage"]');
+        if (!footerElement || !wrapper) return false;
+        const footerRect = footerElement.getBoundingClientRect();
+        return (
+          footerRect.bottom > 0 &&
+          footerRect.top < window.innerHeight &&
+          Number(wrapper.dataset.scrollProgress) >= 0.998 &&
+          Number.isFinite(Number(wrapper.dataset.targetTime)) &&
+          wrapper.dataset.videoDirection === "forward"
+        );
+      },
+      undefined,
+      { timeout: 4_000 },
+    );
+  } catch (error) {
+    throw new Error(`${label}: footer did not reach the completed journey state`, {
+      cause: error,
+    });
+  }
+
+  const footerTargetValue = await page
+    .locator('[data-testid="hero-stage"]')
+    .getAttribute("data-target-time");
+  assert.notEqual(
+    footerTargetValue,
+    null,
+    `${label}: footer targetTime dataset value must exist`,
+  );
+  const footerTargetTime = Number(footerTargetValue);
+  assert.ok(
+    Number.isFinite(footerTargetTime),
+    `${label}: footer targetTime must be finite, received ${footerTargetTime}`,
+  );
+
+  try {
+    // Test-only seek avoids replaying the long forward sequence before checking reverse anchoring.
+    const footerSeekTime = await page.evaluate(async (targetTime) => {
+      const video = document.querySelector('[data-testid="journey-video"]');
+      if (!(video instanceof HTMLVideoElement)) {
+        throw new Error("Forward journey video is missing");
+      }
+
+      video.pause();
+      if (Math.abs(video.currentTime - targetTime) > 0.04) {
+        await new Promise((resolve, reject) => {
+          let timeoutId;
+          const cleanup = () => {
+            video.removeEventListener("seeked", handleSeeked);
+            window.clearTimeout(timeoutId);
+          };
+          const handleSeeked = () => {
+            cleanup();
+            resolve();
+          };
+          timeoutId = window.setTimeout(() => {
+            cleanup();
+            reject(new Error(`Forward journey video seek timed out at ${targetTime}`));
+          }, 4_000);
+          video.addEventListener("seeked", handleSeeked);
+          try {
+            video.currentTime = targetTime;
+          } catch (error) {
+            cleanup();
+            reject(error);
+          }
+        });
+      }
+
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+      return video.currentTime;
+    }, footerTargetTime);
+    assert.ok(
+      Number.isFinite(footerSeekTime),
+      `${label}: forward footer seek time must be finite, received ${footerSeekTime}`,
+    );
+    assert.ok(
+      Math.abs(footerSeekTime - footerTargetTime) <= 0.05,
+      `${label}: forward footer seek time ${footerSeekTime} must match target ${footerTargetTime}`,
+    );
+    await waitForSettled(page, footerTargetValue);
+  } catch (error) {
+    throw new Error(`${label}: footer media did not settle at target ${footerTargetTime}`, {
+      cause: error,
+    });
+  }
+
+  try {
+    await prepareMovement(page, expectedProgress, "reverse");
+  } catch (error) {
+    throw new Error(`${label}: footer round-trip reverse movement failed`, {
+      cause: error,
+    });
+  }
+  const state = await page.evaluate(() => {
+    const stage = document.querySelector('[data-testid="scroll-video-stage"]');
+    const wrapper = document.querySelector('[data-testid="hero-stage"]');
+    const forward = document.querySelector('[data-testid="journey-video"]');
+    const reverse = document.querySelector('[data-testid="journey-video-reverse"]');
+    if (
+      !stage ||
+      !wrapper ||
+      !(forward instanceof HTMLVideoElement) ||
+      !(reverse instanceof HTMLVideoElement)
+    ) {
+      return null;
+    }
+    const stageRect = stage.getBoundingClientRect();
+    return {
+      forwardDuration: forward.duration,
+      height: stageRect.height,
+      innerHeight: window.innerHeight,
+      progress: Number(wrapper.dataset.scrollProgress),
+      reverseCurrentTime: reverse.currentTime,
+      targetTime: Number(wrapper.dataset.targetTime),
+      top: stageRect.top,
+      videoDirection: wrapper.dataset.videoDirection,
+    };
+  });
+  assert.ok(
+    state,
+    `${label}: journey stage, wrapper, and videos must exist after the footer round-trip`,
+  );
+
+  for (const [name, value] of Object.entries(state).filter(
+    ([name]) => name !== "videoDirection",
+  )) {
+    assert.ok(Number.isFinite(value), `${label}: ${name} must be finite, received ${value}`);
+  }
+  const lastFrameTime = Math.max(state.forwardDuration - 1 / 25, 0);
+  const reverseCanonicalTime = Math.max(lastFrameTime - state.reverseCurrentTime, 0);
+  assert.ok(
+    Number.isFinite(lastFrameTime),
+    `${label}: lastFrameTime must be finite, received ${lastFrameTime}`,
+  );
+  assert.ok(
+    Number.isFinite(reverseCanonicalTime),
+    `${label}: reverseCanonicalTime must be finite, received ${reverseCanonicalTime}`,
+  );
+  assert.ok(
+    Math.abs(reverseCanonicalTime - footerTargetTime) <= 0.75,
+    `${label}: reverse canonical time ${reverseCanonicalTime} must remain anchored to footer target ${footerTargetTime}`,
+  );
+  assert.ok(
+    Math.abs(state.height - state.innerHeight) <= 2,
+    `${label}: journey stage height ${state.height} must match innerHeight ${state.innerHeight}`,
+  );
+  assert.ok(
+    Math.abs(state.top) <= 2,
+    `${label}: journey stage top must be within 2px of the viewport, received ${state.top}`,
+  );
+  assert.ok(
+    Math.abs(state.progress - expectedProgress) <= 0.002,
+    `${label}: journey progress must return to ${expectedProgress}, received ${state.progress}`,
+  );
+  assert.ok(
+    state.targetTime < footerTargetTime,
+    `${label}: round-trip targetTime ${state.targetTime} must precede footer targetTime ${footerTargetTime}`,
+  );
+  assert.equal(
+    state.videoDirection,
+    "reverse",
+    `${label}: round-trip videoDirection must be reverse`,
+  );
+}
+
+async function assertJourneyViewportResize(page, label, viewport) {
+  const expectedProgress = 0.58;
+  const restoredProgress = 0.56;
+  const resizedHeight = Math.max(viewport.height - 96, 560);
+  // This characterizes layout reflow only; setViewportSize does not emulate iPadOS toolbars.
+  const waitForLayout = async (progress, phase) => {
+    try {
+      await page.waitForFunction(
+        (expected) => {
+          const stage = document.querySelector('[data-testid="scroll-video-stage"]');
+          const wrapper = document.querySelector('[data-testid="hero-stage"]');
+          if (!stage || !wrapper) return false;
+          const rect = stage.getBoundingClientRect();
+          return (
+            Math.abs(Number(wrapper.dataset.scrollProgress) - expected) <= 0.002 &&
+            Math.abs(rect.height - window.innerHeight) <= 2 &&
+            Math.abs(rect.top) <= 2
+          );
+        },
+        progress,
+        { timeout: 4_000 },
+      );
+    } catch (error) {
+      throw new Error(
+        `${label}: ${phase} viewport layout did not settle at progress ${progress}`,
+        { cause: error },
+      );
+    }
+
+    const state = await page.evaluate(() => {
+      const stage = document.querySelector('[data-testid="scroll-video-stage"]');
+      const wrapper = document.querySelector('[data-testid="hero-stage"]');
+      if (!stage || !wrapper) return null;
+      const rect = stage.getBoundingClientRect();
+      return {
+        height: rect.height,
+        innerHeight: window.innerHeight,
+        progress: Number(wrapper.dataset.scrollProgress),
+        top: rect.top,
+      };
+    });
+    assert.ok(state, `${label}: ${phase} journey stage and wrapper must exist`);
+    for (const [name, value] of Object.entries(state)) {
+      assert.ok(
+        Number.isFinite(value),
+        `${label}: ${phase} ${name} must be finite, received ${value}`,
+      );
+    }
+    assert.ok(
+      Math.abs(state.progress - progress) <= 0.002,
+      `${label}: ${phase} progress must be ${progress}, received ${state.progress}`,
+    );
+    assert.ok(
+      Math.abs(state.height - state.innerHeight) <= 2,
+      `${label}: ${phase} stage height ${state.height} must match innerHeight ${state.innerHeight}`,
+    );
+    assert.ok(
+      Math.abs(state.top) <= 2,
+      `${label}: ${phase} stage top must be within 2px, received ${state.top}`,
+    );
+  };
+
+  try {
+    await page.setViewportSize({ width: viewport.width, height: resizedHeight });
+    await setJourneyProgress(page, expectedProgress);
+    await waitForLayout(expectedProgress, "resized");
+  } finally {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await setJourneyProgress(page, restoredProgress);
+    await waitForLayout(restoredProgress, "restored");
+  }
+}
+
 async function assertVideoLayers(page, label) {
   const layers = await page.evaluate(() => {
     const stage = document.querySelector('[data-testid="scroll-video-stage"]');
@@ -610,6 +871,8 @@ async function exerciseTablet(browserType, browserName, viewport) {
       state: "moving",
     });
 
+    await assertJourneyFooterRoundTrip(page, label);
+    await assertJourneyViewportResize(page, label, viewport);
     console.log(`tablet interface checks passed: ${label}`);
   } finally {
     await context.close();
