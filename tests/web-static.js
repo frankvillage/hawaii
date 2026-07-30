@@ -373,6 +373,37 @@ const propagatedBookingSources = [
   menuPage,
   villagePage,
 ].join("\n");
+
+assert.match(
+  siteContent,
+  /export type MenuDish = \{[\s\S]*?allergens\?: readonly number\[\];/,
+  "Menu dishes must support declared allergen codes",
+);
+assert.match(
+  siteContent,
+  /export const allergenLegend = \[/,
+  "Menu content must publish the official allergen legend",
+);
+assert.match(
+  siteContent,
+  /allergens: \[2, 9, 12, 14\]/,
+  "The Hawaii menu must retain verified allergen declarations",
+);
+assert.match(
+  siteContent,
+  /allergens: \[1, 3, 7\]/,
+  "The MUULab menu must retain verified allergen declarations",
+);
+assert.match(
+  menuPage,
+  /data-testid="allergen-legend"/,
+  "Menu page must render a visible allergen legend",
+);
+assert.match(
+  menuPage,
+  /data-testid="dish-allergens"/,
+  "Menu page must render dish-level allergen declarations",
+);
 const aperitivoScene = sourceBetween(
   siteContent,
   'id: "aperitivo"',

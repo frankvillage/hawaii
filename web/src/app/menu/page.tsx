@@ -7,6 +7,7 @@ import { muulabWineSections } from "@/lib/muulab-wines";
 import { buildMetadata } from "@/lib/seo";
 import {
   hawaiiWineSections,
+  allergenLegend,
   menuHighlights,
   venueMenus,
 } from "@/lib/site-content";
@@ -101,6 +102,33 @@ export default function MenuPage() {
           ))}
         </div>
 
+        <section
+          data-testid="allergen-legend"
+          aria-labelledby="allergen-legend-title"
+          className="mt-10 rounded-[2rem] border border-[#1c2b2e]/10 bg-[#16292d] p-6 text-[#f8f5ee] shadow-[0_14px_40px_rgba(23,32,34,0.12)] sm:p-8"
+        >
+          <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#d6b887]">Allergeni</p>
+          <h2 id="allergen-legend-title" className="mt-3 font-serif text-3xl sm:text-4xl">
+            Informazioni per il tuo tavolo.
+          </h2>
+          <p className="mt-4 max-w-3xl text-sm leading-7 text-[#d9dfdc]">
+            Comunica sempre allergie o intolleranze al personale prima dell&apos;ordine.
+            I codici sono riportati accanto alle voci per cui la cucina ha fornito una
+            dichiarazione verificata; dove non compaiono, chiedi al personale per la
+            verifica aggiornata della ricetta e delle possibili contaminazioni crociate.
+          </p>
+          <ol className="mt-6 grid gap-x-5 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            {allergenLegend.map((allergen) => (
+              <li key={allergen.id} className="flex items-baseline gap-3">
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[#d6b887]/60 text-xs font-semibold text-[#f1d39d]">
+                  {allergen.id}
+                </span>
+                <span>{allergen.label}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+
         <div className="mt-16 grid gap-20">
           {venueMenus.map((menu) => (
             <Fragment key={menu.id}>
@@ -177,14 +205,18 @@ export default function MenuPage() {
                     {category.dishes.length ? (
                       <ul className="mt-4 grid gap-3 text-sm leading-7 text-[#3c4a4e]">
                         {category.dishes.map((dish) => (
-                          <li
-                            key={dish.name}
-                            className="flex items-baseline justify-between gap-4 border-b border-[#1c2b2e]/10 pb-2 last:border-b-0 last:pb-0"
-                          >
-                            <span>{dish.name}</span>
-                            {dish.price ? (
-                              <span className="whitespace-nowrap text-[#96703d]">{dish.price}</span>
-                            ) : null}
+                          <li key={dish.name} className="border-b border-[#1c2b2e]/10 pb-3 last:border-b-0 last:pb-0">
+                            <div className="flex items-baseline justify-between gap-4">
+                              <span>{dish.name}</span>
+                              {dish.price ? (
+                                <span className="whitespace-nowrap text-[#96703d]">{dish.price}</span>
+                              ) : null}
+                            </div>
+                            <p data-testid="dish-allergens" className="mt-1 text-[0.68rem] uppercase tracking-[0.12em] text-[#766952]">
+                              {dish.allergens?.length
+                                ? `Allergeni: ${dish.allergens.join(", ")}`
+                                : "Allergeni: chiedi al personale"}
+                            </p>
                           </li>
                         ))}
                       </ul>
