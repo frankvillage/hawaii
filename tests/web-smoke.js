@@ -471,10 +471,32 @@ async function main() {
     );
     assert.equal(await page.locator("#cocktail").count(), 1);
     assert.equal(await page.locator("#carta-vini").count(), 1);
+    assert.equal(await page.locator("#carta-vini-muulab").count(), 1);
+    assert.deepEqual(
+      await page.locator("section[id]").evaluateAll((sections) =>
+        sections
+          .map((section) => section.id)
+          .filter((id) =>
+            ["ristorante-mare", "carta-vini", "muulab", "carta-vini-muulab"].includes(id),
+          ),
+      ),
+      ["ristorante-mare", "carta-vini", "muulab", "carta-vini-muulab"],
+      "Each restaurant menu must be immediately followed by its own wine list",
+    );
+    assert.doesNotMatch(
+      (await page.locator("#ristorante-mare").textContent()) || "",
+      /Gli sfizi, prima della pizza|La pizza si accende la sera|Crocchetta speck e tartufo/,
+      "Retired Hawaii pizza starters must not be visible",
+    );
     assert.equal(
       await page.locator('[data-testid="hawaii-wine-item"]').count(),
       73,
       "The Hawaii wine section must publish every deterministic wine and sparkling wine",
+    );
+    assert.equal(
+      await page.locator('[data-testid="muulab-wine-item"]').count(),
+      156,
+      "The MUULab wine section must publish the complete official cellar",
     );
     assert.equal(
       await page.locator('[data-testid="wine-list-link"][href="#carta-vini"]').count(),
@@ -607,7 +629,12 @@ async function main() {
       /La serata del giovedì negli spazi esterni di Hawaii, con dj set e tavoli sotto le stelle\. In caso di pioggia, Posh si sposta in veranda\./,
     );
     const poshWhatsapp = poshCard.getByRole("link", { name: "Info eventi su WhatsApp" });
-    assert.equal(await poshWhatsapp.getAttribute("href"), "https://wa.me/393516900701");
+    const poshWhatsappUrl = new URL((await poshWhatsapp.getAttribute("href")) || "");
+    assert.equal(poshWhatsappUrl.origin + poshWhatsappUrl.pathname, "https://wa.me/393516900701");
+    assert.equal(
+      poshWhatsappUrl.searchParams.get("text"),
+      "Ciao, vorrei ricevere informazioni sugli eventi Hawaii.",
+    );
 
     await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
     assertRetiredContentAbsent((await page.locator("body").textContent()) || "", "Homepage");

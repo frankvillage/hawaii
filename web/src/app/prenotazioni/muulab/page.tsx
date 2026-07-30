@@ -6,7 +6,7 @@ const venue = bookingVenues.muulab;
 
 export const metadata = buildMetadata({
   title: "Prenota MUULab Riviera",
-  description: "Prenota MUULab Riviera tramite TheFork o con assistenza diretta.",
+  description: "Prenota MUULab Riviera online o con assistenza diretta.",
   path: venue.internalBookingPath,
 });
 

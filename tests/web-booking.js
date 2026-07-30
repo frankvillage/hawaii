@@ -12,6 +12,8 @@ if (!baseUrl) {
 const basePath = new URL(baseUrl).pathname.replace(/\/+$/, "");
 const normalizePath = (value) => (value || "").replace(/\/+$/, "");
 const internalPath = (value) => `${basePath}${value}`;
+const whatsappUrl = (phone, message) =>
+  `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 
 const venues = [
   {
@@ -20,7 +22,10 @@ const venues = [
     name: "Hawaii",
     phoneDisplay: "085 9396664",
     phoneHref: "tel:+390859396664",
-    whatsappUrl: "https://wa.me/393516900701",
+    whatsappUrl: whatsappUrl(
+      "393516900701",
+      "Ciao, vorrei prenotare un tavolo al ristorante Hawaii.",
+    ),
     theForkUrl: "https://widget.thefork.com/0248d215-d9e7-4ae2-b2fa-af52577eb540",
   },
   {
@@ -29,7 +34,10 @@ const venues = [
     name: "MUULab Riviera",
     phoneDisplay: "085 9396485",
     phoneHref: "tel:+390859396485",
-    whatsappUrl: "https://wa.me/393333440051",
+    whatsappUrl: whatsappUrl(
+      "393333440051",
+      "Ciao, vorrei prenotare un tavolo sulla terrazza MUULab Riviera.",
+    ),
     theForkUrl: "https://widget.thefork.com/cbc67fa3-b6fd-4e02-9891-572334c016d1",
   },
 ];
@@ -105,12 +113,11 @@ async function expectSecureBooking(browser, venue) {
     });
     assert.equal(await whatsapp.getAttribute("href"), venue.whatsappUrl);
 
-    const fallback = page.getByTestId("thefork-direct-link");
-    await fallback.waitFor({ state: "visible" });
-    assert.equal(await fallback.getAttribute("href"), venue.theForkUrl);
-    assert.equal(await fallback.getAttribute("target"), "_blank");
-    assert.match((await fallback.getAttribute("rel")) || "", /\bnoopener\b/);
-    assert.match((await fallback.getAttribute("rel")) || "", /\bnoreferrer\b/);
+    assert.equal(
+      await page.locator(`a[href="${venue.theForkUrl}"]`).count(),
+      0,
+      "The embedded booking page must not expose a link that leaves the site",
+    );
     assert.equal(await page.locator(`iframe[src="${venue.theForkUrl}"]`).count(), 0);
     assert.equal(vendorRequests, 0, "TheFork must not be requested before global consent");
     assert.equal(
@@ -151,11 +158,7 @@ async function expectSecureBooking(browser, venue) {
     await page.waitForTimeout(100);
     assert.equal(vendorRequests, 1, "Global consent should make exactly one TheFork request");
 
-    await fallback.waitFor({ state: "visible" });
-    assert.equal(await fallback.getAttribute("href"), venue.theForkUrl);
-    assert.equal(await fallback.getAttribute("target"), "_blank");
-    assert.match((await fallback.getAttribute("rel")) || "", /\bnoopener\b/);
-    assert.match((await fallback.getAttribute("rel")) || "", /\bnoreferrer\b/);
+    assert.equal(await page.locator(`a[href="${venue.theForkUrl}"]`).count(), 0);
   } finally {
     await page?.close();
     await context.close();
@@ -196,6 +199,11 @@ async function expectGlobalRejectionBlocksTheFork(browser, venue) {
       await page.locator(`iframe[src="${venue.theForkUrl}"]`).count(),
       0,
       "Global rejection must keep the TheFork iframe blocked",
+    );
+    assert.doesNotMatch(
+      (await page.getByRole("main").textContent()) || "",
+      /Apri direttamente TheFork|link diretto a TheFork/i,
+      "Rejected consent must not introduce an external TheFork escape link",
     );
     await page.waitForTimeout(250);
     assert.deepEqual(vendorRequests, [], "Global rejection must not request any TheFork endpoint");
@@ -357,7 +365,10 @@ async function expectPropagatedBookingLinks(browser) {
       name: "WhatsApp Hawaii: 351 6900701",
       exact: true,
     });
-    assert.equal(await globalWhatsapp.getAttribute("href"), "https://wa.me/393516900701");
+    assert.equal(
+      await globalWhatsapp.getAttribute("href"),
+      whatsappUrl("393516900701", "Ciao, vorrei ricevere informazioni su Hawaii."),
+    );
 
     const restaurantCta = page
       .getByRole("link", { name: "Prenota Hawaii", exact: true })
@@ -399,14 +410,34 @@ async function expectPropagatedBookingLinks(browser) {
     const assistanceCta = page
       .getByRole("link", { name: "Assistenza padel su WhatsApp", exact: true })
       .first();
-    assert.equal(await assistanceCta.getAttribute("href"), "https://wa.me/393513200049");
+    assert.equal(
+      await assistanceCta.getAttribute("href"),
+      whatsappUrl("393513200049", "Ciao, vorrei prenotare un campo da padel."),
+    );
   });
 
   await expectPageLinks(browser, "/eventi", async (page) => {
     const eventsCta = page
       .getByRole("link", { name: "Info eventi su WhatsApp", exact: true })
       .first();
-    assert.equal(await eventsCta.getAttribute("href"), "https://wa.me/393516900701");
+    assert.equal(
+      await eventsCta.getAttribute("href"),
+      whatsappUrl("393516900701", "Ciao, vorrei ricevere informazioni sugli eventi Hawaii."),
+    );
+  });
+
+  await expectPageLinks(browser, "/feste-private", async (page) => {
+    const privateEventsCta = page.getByRole("link", {
+      name: "WhatsApp feste private",
+      exact: true,
+    });
+    assert.equal(
+      await privateEventsCta.getAttribute("href"),
+      whatsappUrl(
+        "393516900701",
+        "Ciao, vorrei organizzare una festa o un evento privato da Hawaii.",
+      ),
+    );
   });
 }
 
@@ -433,6 +464,7 @@ async function expectBookingHubGroups(browser) {
       "Eventi privati",
     ]);
     assert.deepEqual(groups[0].links, ["Prenota Hawaii", "Prenota MUULab"]);
+    assert.deepEqual(groups[1].links, ["Prenota spiaggia", "Prenota padel"]);
     assert.equal(groups[0].images.length, 2);
     assert.match(groups[0].images[0].src || "", /food-gnocchi-mare\.jpg/);
     assert.match(groups[0].images[1].src || "", /muulab-carpaccio-nero\.jpg/);
@@ -441,6 +473,9 @@ async function expectBookingHubGroups(browser) {
 
     const hawaii = page.getByRole("link", { name: "Prenota Hawaii", exact: true });
     const muulab = page.getByRole("link", { name: "Prenota MUULab", exact: true });
+    const padel = page
+      .locator('[data-booking-group="beach-sport"] a')
+      .filter({ hasText: "Prenota padel" });
     assert.equal(
       normalizePath(await hawaii.getAttribute("href")),
       internalPath("/prenotazioni/ristorante"),
@@ -449,6 +484,8 @@ async function expectBookingHubGroups(browser) {
       normalizePath(await muulab.getAttribute("href")),
       internalPath("/prenotazioni/muulab"),
     );
+    assert.equal(normalizePath(await padel.getAttribute("href")), internalPath("/sport"));
+    assert.equal(await padel.getAttribute("target"), null);
   });
 }
 

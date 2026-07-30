@@ -327,6 +327,7 @@ const footerPath = path.join(
 );
 const contactPagePath = path.join(root, "web", "src", "app", "contatti", "page.tsx");
 const menuPagePath = path.join(root, "web", "src", "app", "menu", "page.tsx");
+const muulabWinesPath = path.join(root, "web", "src", "lib", "muulab-wines.ts");
 const villagePagePath = path.join(root, "web", "src", "app", "villaggio", "page.tsx");
 const eventPagePath = path.join(root, "web", "src", "app", "eventi", "page.tsx");
 const hawaiiWineListPath = path.join(
@@ -357,6 +358,9 @@ const whatsappButton = fs.readFileSync(whatsappButtonPath, "utf8");
 const footer = fs.readFileSync(footerPath, "utf8");
 const contactPage = fs.readFileSync(contactPagePath, "utf8");
 const menuPage = fs.readFileSync(menuPagePath, "utf8");
+const muulabWines = fs.existsSync(muulabWinesPath)
+  ? fs.readFileSync(muulabWinesPath, "utf8")
+  : "";
 const villagePage = fs.readFileSync(villagePagePath, "utf8");
 const eventPage = fs.readFileSync(eventPagePath, "utf8");
 const hawaiiWineList = fs.readFileSync(hawaiiWineListPath, "utf8");
@@ -737,11 +741,10 @@ assert.match(
   /height: "max\(800px, calc\(100svh - 7rem\)\)"/,
   "TheFork iframe should retain the planned responsive minimum height",
 );
-assert.match(theFork, /target="_blank"/, "TheFork fallback should open separately");
-assert.match(
+assert.doesNotMatch(
   theFork,
-  /rel="noopener noreferrer"/,
-  "TheFork fallback should isolate the external page",
+  /thefork-direct-link|Apri direttamente TheFork|href=\{venue\.theForkUrl\}/,
+  "Embedded booking pages must not expose an external TheFork link",
 );
 assert.match(
   nextConfig,
@@ -769,6 +772,7 @@ assert.match(bookingHub, /food-gnocchi-mare\.jpg/);
 assert.match(bookingHub, /muulab-carpaccio-nero\.jpg/);
 assert.match(bookingHub, /data-booking-image/);
 assert.match(bookingHub, /beachBookingUrl/);
+assert.match(bookingHub, /label: "Prenota padel"[\s\S]{0,160}href: "\/sport"/);
 assert.match(bookingHub, /["']\/sport["']/);
 assert.match(bookingHub, /["']\/feste-private["']/);
 assert.doesNotMatch(bookingHub, /Prenota (?:Hawaii|MUULab) su TheFork/);
@@ -781,9 +785,13 @@ assert.match(bookingForm, /Serate ed eventi/);
 assert.match(bookingForm, /Feste private/);
 assert.doesNotMatch(bookingForm, /Prenota (spiaggia|tavolo mare|terrazza|sport)/);
 
-assert.match(bookingConfig, /https:\/\/wa\.me\/393516900701/);
-assert.match(bookingConfig, /https:\/\/wa\.me\/393333440051/);
-assert.match(bookingConfig, /https:\/\/wa\.me\/393513200049/);
+assert.match(bookingConfig, /buildWhatsAppUrl/);
+assert.match(bookingConfig, /393516900701/);
+assert.match(bookingConfig, /393333440051/);
+assert.match(bookingConfig, /393513200049/);
+assert.match(bookingConfig, /vorrei prenotare un tavolo al ristorante Hawaii/);
+assert.match(bookingConfig, /vorrei prenotare un tavolo sulla terrazza MUULab Riviera/);
+assert.match(bookingConfig, /vorrei prenotare un campo da padel/);
 assert.match(
   bookingConfig,
   /https:\/\/new-widget\.spiagge\.it\/stabilimenti-balneari\/prenotazione\/it-pe-65123-lido-hawaii\/insertPeriod\?yb_booking_license=it-pe-65123-lido-hawaii/,
@@ -798,8 +806,8 @@ assert.match(siteContent, /beachBookingUrl/);
 assert.match(siteContent, /sportBooking\.portalUrl/);
 assert.match(siteContent, /sportBooking\.registrationNotice/);
 assert.match(siteContent, /sportBooking\.whatsappUrl/);
-assert.match(siteContent, /bookingVenues\.hawaii\.whatsappUrl/);
-assert.match(whatsappButton, /bookingVenues\.hawaii\.whatsappUrl/);
+assert.match(siteContent, /whatsappContacts\.events/);
+assert.match(whatsappButton, /whatsappContacts\.general/);
 assert.match(footer, /bookingVenues\.hawaii/);
 assert.match(footer, /bookingVenues\.muulab/);
 assert.match(contactPage, /bookingVenues\.hawaii/);
@@ -909,11 +917,43 @@ assert.match(
   /id=\{category\.anchor\}[\s\S]{0,200}scroll-mt-/,
   "Menu category anchors must reserve room below the sticky header",
 );
-assert.match(menuPage, /id="carta-vini"[\s\S]{0,120}scroll-mt-/);
+assert.match(menuPage, /<section id=\{id\} className="scroll-mt-/);
+assert.match(menuPage, /id="carta-vini"/);
+assert.match(menuPage, /id="carta-vini-muulab"/);
 assert.match(globalStyles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*scroll-behavior: auto/);
 assert.match(
   siteContent,
   /title: "Bevande, birre e cantina"[\s\S]{0,320}action: \{ label: "Carta dei vini", href: "#carta-vini" \}/,
+);
+assert.doesNotMatch(
+  siteContent,
+  /Gli sfizi, prima della pizza|La pizza si accende la sera|Crocchetta speck e tartufo/,
+  "Retired Hawaii pizza starters must not be published",
+);
+assert.doesNotMatch(
+  villagePage,
+  /\bgli sfizi\b/i,
+  "The village page must not advertise retired pizza starters",
+);
+assert.match(
+  muulabWines,
+  /export const muulabWineSections/,
+  "MUULab wines must live in a dedicated structured data module",
+);
+for (const section of [
+  "Coravin al calice",
+  "Bollicine",
+  "Vini rossi italiani",
+  "Francia",
+  "Vini rosati",
+  "Vini bianchi",
+]) {
+  assert.match(muulabWines, new RegExp(`title: "${section}"`));
+}
+assert.match(
+  menuPage,
+  /menu\.id === "ristorante-mare"[\s\S]*?id="carta-vini"[\s\S]*?menu\.id === "muulab"[\s\S]*?id="carta-vini-muulab"/,
+  "Each restaurant menu must be followed by its own wine list",
 );
 assert.match(
   menuPage,
@@ -962,8 +1002,8 @@ assert.match(
 );
 assert.match(
   siteContent,
-  /title: "Giovedì Posh"[\s\S]{0,620}href: bookingVenues\.hawaii\.whatsappUrl/,
-  "Giovedì Posh must use the configured Hawaii WhatsApp CTA",
+  /title: "Giovedì Posh"[\s\S]{0,620}href: whatsappContacts\.events/,
+  "Giovedì Posh must use the contextual events WhatsApp CTA",
 );
 assert.match(eventPage, /eventFormats/);
 

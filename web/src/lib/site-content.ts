@@ -2,6 +2,7 @@ import {
   beachBookingUrl,
   bookingVenues,
   sportBooking,
+  whatsappContacts,
   type BookingVenueId,
 } from "@/lib/booking-config";
 
@@ -512,7 +513,7 @@ export const homeJourney = {
       ],
       action: {
         label: "Info eventi su WhatsApp",
-        href: bookingVenues.hawaii.whatsappUrl,
+        href: whatsappContacts.events,
         external: true,
       },
     },
@@ -936,7 +937,7 @@ export const pages: Record<string, EntityPage> = {
       "La domenica pomeriggio con dj set, il Giovedì Posh al piano terra e le serate evento annunciate sui social: ogni settimana ha i suoi appuntamenti.",
     primaryAction: {
       label: "Info eventi su WhatsApp",
-      href: bookingVenues.hawaii.whatsappUrl,
+      href: whatsappContacts.events,
     },
     secondaryAction: { label: "Feste private", href: "/feste-private" },
     gradient: "from-[#12161f] via-[#283140] to-[#7b5149]",
@@ -1051,15 +1052,14 @@ export const quickBooking = {
       href: bookingVenues.muulab.internalBookingPath,
     },
     {
-      label: "Prenota padel su Wansport",
-      detail: sportBooking.registrationNotice,
-      href: sportBooking.portalUrl,
-      external: true,
+      label: "Prenota padel",
+      detail: "Campi, assistenza e accesso a Wansport",
+      href: "/sport",
     },
     {
       label: "Info eventi su WhatsApp",
       detail: "Informazioni e serate Hawaii",
-      href: bookingVenues.hawaii.whatsappUrl,
+      href: whatsappContacts.events,
       external: true,
     },
   ],
@@ -1095,15 +1095,14 @@ export const bookingOptions = [
     href: bookingVenues.muulab.internalBookingPath,
   },
   {
-    title: "Prenota padel su Wansport",
-    description: sportBooking.registrationNotice,
-    href: sportBooking.portalUrl,
-    external: true,
+    title: "Prenota padel",
+    description: "Campi, assistenza e accesso a Wansport.",
+    href: "/sport",
   },
   {
     title: "Info eventi su WhatsApp",
     description: "Informazioni, serate e date speciali Hawaii.",
-    href: bookingVenues.hawaii.whatsappUrl,
+    href: whatsappContacts.events,
     external: true,
   },
 ];
@@ -1284,20 +1283,6 @@ export const venueMenus: VenueMenu[] = [
         ],
       },
       {
-        title: "Gli sfizi, prima della pizza",
-        note: "La pizza si accende la sera.",
-        dishes: [
-          { name: "Arancino al ragù di ventricina di manzo", price: "€ 6" },
-          { name: "Arancino al ragù di polpo e provola", price: "€ 6" },
-          { name: "Primo sale croccante", price: "€ 5" },
-          { name: "Baccalà in pastella", price: "€ 8" },
-          { name: "Montanarina alla cosacca", price: "€ 3,50" },
-          { name: "Tagliere di salumi e formaggi", price: "€ 12" },
-          { name: "Pallottine cacio e uova", price: "€ 8" },
-          { name: "Crocchetta speck e tartufo", price: "€ 6" },
-        ],
-      },
-      {
         title: "La pizza, a cena",
         dishes: [
           { name: "Margherita", price: "€ 9" },
@@ -1432,6 +1417,10 @@ export const venueMenus: VenueMenu[] = [
         title: "Cantina e Coravin",
         note: "Vini al calice con sistema Coravin, birre artigianali, bollicine e una cantina che attraversa Abruzzo, Piemonte, Borgogna e Champagne: la carta completa è al tavolo.",
         dishes: [],
+        action: {
+          label: "Carta dei vini MUULab",
+          href: "#carta-vini-muulab",
+        },
       },
     ],
   },
@@ -1445,7 +1434,7 @@ export const eventFormats: EventFormat[] = [
     description:
       "Il format della domenica: pranzo à la carte che si allunga nel pomeriggio, dj set e il mare davanti fino al tramonto.",
     notes: ["pranzo à la carte", "dj set", "pomeriggio sul mare"],
-    action: { label: "Info eventi su WhatsApp", href: bookingVenues.hawaii.whatsappUrl },
+    action: { label: "Info eventi su WhatsApp", href: whatsappContacts.events },
   },
   {
     title: "Giovedì Posh",
@@ -1453,7 +1442,7 @@ export const eventFormats: EventFormat[] = [
     description:
       "La serata del giovedì negli spazi esterni di Hawaii, con dj set e tavoli sotto le stelle. In caso di pioggia, Posh si sposta in veranda.",
     notes: ["dj set", "tavoli sotto le stelle", "veranda in caso di pioggia"],
-    action: { label: "Info eventi su WhatsApp", href: bookingVenues.hawaii.whatsappUrl },
+    action: { label: "Info eventi su WhatsApp", href: whatsappContacts.events },
   },
   {
     title: "Special Date",
@@ -1461,7 +1450,7 @@ export const eventFormats: EventFormat[] = [
     description:
       "Serate speciali e tappe d'estate — come l'Aperol tour — con dj set, ospiti e tavoli evento annunciati sui canali social.",
     notes: ["dj set", "special guest", "tavoli evento"],
-    action: { label: "Info eventi su WhatsApp", href: bookingVenues.hawaii.whatsappUrl },
+    action: { label: "Info eventi su WhatsApp", href: whatsappContacts.events },
   },
 ];
 
@@ -1497,7 +1486,7 @@ export const legalSections: Record<"privacy" | "cookie", LegalSection[]> = {
   privacy: [
     {
       title: "Titolare del trattamento",
-      body: `Il titolare del trattamento è Kona S.R.L., Viale della Riviera 154, 65123 Pescara (PE). Per ogni richiesta relativa ai dati personali: info@hawaiipescara.it · WhatsApp ${bookingVenues.hawaii.whatsappUrl}.`,
+      body: "Il titolare del trattamento è Kona S.R.L., Viale della Riviera 154, 65123 Pescara (PE). Per ogni richiesta relativa ai dati personali: info@hawaiipescara.it · WhatsApp +39 351 690 0701.",
     },
     {
       title: "Navigazione sul sito",

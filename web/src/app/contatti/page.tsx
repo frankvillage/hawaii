@@ -1,7 +1,11 @@
 import Link from "next/link";
 
 import { ContactForm } from "@/components/forms/contact-form";
-import { bookingVenues, sportBooking } from "@/lib/booking-config";
+import {
+  bookingVenues,
+  sportBooking,
+  whatsappContacts,
+} from "@/lib/booking-config";
 import { buildMetadata } from "@/lib/seo";
 import { siteMeta } from "@/lib/site-content";
 
@@ -40,7 +44,7 @@ export default function ContactPage() {
               </p>
               <p>
                 <a
-                  href={bookingVenues.hawaii.whatsappUrl}
+                  href={whatsappContacts.general}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[#96703d]"

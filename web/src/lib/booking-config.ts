@@ -10,11 +10,34 @@ export type BookingVenue = {
   readonly internalBookingPath: string;
 };
 
+export function buildWhatsAppUrl(phone: string, message: string) {
+  const normalizedPhone = phone.replace(/\D/g, "");
+  return `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`;
+}
+
+export const whatsappMessages = {
+  general: "Ciao, vorrei ricevere informazioni su Hawaii.",
+  hawaiiTable: "Ciao, vorrei prenotare un tavolo al ristorante Hawaii.",
+  muulabTable: "Ciao, vorrei prenotare un tavolo sulla terrazza MUULab Riviera.",
+  padel: "Ciao, vorrei prenotare un campo da padel.",
+  events: "Ciao, vorrei ricevere informazioni sugli eventi Hawaii.",
+  privateEvents: "Ciao, vorrei organizzare una festa o un evento privato da Hawaii.",
+} as const;
+
+const whatsappNumbers = {
+  hawaii: "393516900701",
+  muulab: "393333440051",
+  padel: "393513200049",
+} as const;
+
 export const bookingVenues = {
   hawaii: {
     id: "hawaii",
     name: "Hawaii",
-    whatsappUrl: "https://wa.me/393516900701",
+    whatsappUrl: buildWhatsAppUrl(
+      whatsappNumbers.hawaii,
+      whatsappMessages.hawaiiTable,
+    ),
     phoneDisplay: "085 9396664",
     phoneHref: "tel:+390859396664",
     theForkUrl:
@@ -24,7 +47,10 @@ export const bookingVenues = {
   muulab: {
     id: "muulab",
     name: "MUULab Riviera",
-    whatsappUrl: "https://wa.me/393333440051",
+    whatsappUrl: buildWhatsAppUrl(
+      whatsappNumbers.muulab,
+      whatsappMessages.muulabTable,
+    ),
     phoneDisplay: "085 9396485",
     phoneHref: "tel:+390859396485",
     theForkUrl:
@@ -38,6 +64,15 @@ export const beachBookingUrl =
 
 export const sportBooking = {
   portalUrl: "https://wansport.com",
-  whatsappUrl: "https://wa.me/393513200049",
+  whatsappUrl: buildWhatsAppUrl(whatsappNumbers.padel, whatsappMessages.padel),
   registrationNotice: "Registrarsi o accedere a Wansport per prenotare.",
+} as const;
+
+export const whatsappContacts = {
+  general: buildWhatsAppUrl(whatsappNumbers.hawaii, whatsappMessages.general),
+  events: buildWhatsAppUrl(whatsappNumbers.hawaii, whatsappMessages.events),
+  privateEvents: buildWhatsAppUrl(
+    whatsappNumbers.hawaii,
+    whatsappMessages.privateEvents,
+  ),
 } as const;

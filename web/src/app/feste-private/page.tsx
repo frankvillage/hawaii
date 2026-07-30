@@ -1,4 +1,5 @@
 import { PrivateEventForm } from "@/components/forms/private-event-form";
+import { whatsappContacts } from "@/lib/booking-config";
 import { buildMetadata } from "@/lib/seo";
 import { pages } from "@/lib/site-content";
 
@@ -70,6 +71,14 @@ export default function PrivateEventsPage() {
             <p>Terrazza al tramonto, dinner serale o configurazioni dedicate in base al format.</p>
             <p>Ogni richiesta parte da poche informazioni chiare e continua con un contatto diretto.</p>
           </div>
+          <a
+            href={whatsappContacts.privateEvents}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="cta mt-6 justify-center"
+          >
+            WhatsApp feste private
+          </a>
         </aside>
       </section>
     </main>

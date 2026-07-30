@@ -106,7 +106,7 @@ const cucine = [
   {
     eyebrow: "La sera",
     title: "La pizza",
-    body: "Dal forno a cena: gli sfizi, le classiche e le firme della casa, da Margherita a Ombre Nere.",
+    body: "Dal forno a cena: le classiche e le firme della casa, da Margherita a Ombre Nere.",
     photos: [
       { src: "/media/hawaii/photos/pizza-forno.jpg", alt: "L'impasto della pizza lavorato a vista" },
     ],

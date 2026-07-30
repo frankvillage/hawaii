@@ -43,8 +43,8 @@ const bookingGroups = [
         external: true,
       },
       {
-        label: "Prenota sport",
-        description: "Padel, outdoor gym e attività sul mare.",
+        label: "Prenota padel",
+        description: "Campi da padel, assistenza e accesso a Wansport.",
         href: "/sport",
       },
     ],

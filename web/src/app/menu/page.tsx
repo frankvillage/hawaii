@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Fragment } from "react";
 
 import { bookingVenues } from "@/lib/booking-config";
+import { muulabWineSections } from "@/lib/muulab-wines";
 import { buildMetadata } from "@/lib/seo";
 import {
   hawaiiWineSections,
@@ -14,6 +16,64 @@ export const metadata = buildMetadata({
   description: "Esplora menu mare, terrazza, cocktail e carta vini di Hawaii.",
   path: "/menu",
 });
+
+type WineListProps = {
+  id: string;
+  eyebrow: string;
+  title: string;
+  itemTestId: string;
+  sections: readonly {
+    title: string;
+    wines: readonly { name: string; price?: string }[];
+  }[];
+};
+
+function WineList({
+  id,
+  eyebrow,
+  title,
+  itemTestId,
+  sections,
+}: WineListProps) {
+  return (
+    <section id={id} className="scroll-mt-24">
+      <div className="max-w-2xl">
+        <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#96703d]">
+          {eyebrow}
+        </p>
+        <h2 className="mt-4 font-serif text-4xl text-[#16292d] sm:text-5xl">
+          {title}
+        </h2>
+      </div>
+      <div className="mt-8 grid gap-5 lg:grid-cols-2">
+        {sections.map((section) => (
+          <article
+            key={section.title}
+            className="rounded-[2rem] border border-[#1c2b2e]/10 bg-white p-6 shadow-[0_14px_40px_rgba(23,32,34,0.07)]"
+          >
+            <h3 className="font-serif text-2xl text-[#16292d] sm:text-3xl">
+              {section.title}
+            </h3>
+            <ul className="mt-4 grid gap-3 text-sm leading-7 text-[#3c4a4e]">
+              {section.wines.map((wine) => (
+                <li
+                  key={`${section.title}-${wine.name}`}
+                  data-testid={itemTestId}
+                  className="flex items-baseline justify-between gap-4 border-b border-[#1c2b2e]/10 pb-2 last:border-b-0"
+                >
+                  <span>{wine.name}</span>
+                  {wine.price ? (
+                    <span className="whitespace-nowrap text-[#96703d]">{wine.price}</span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export default function MenuPage() {
   return (
@@ -43,7 +103,8 @@ export default function MenuPage() {
 
         <div className="mt-16 grid gap-20">
           {venueMenus.map((menu) => (
-            <section key={menu.id} id={menu.id} className="scroll-mt-24">
+            <Fragment key={menu.id}>
+            <section id={menu.id} className="scroll-mt-24">
               <div className="max-w-2xl">
                 {menu.logo ? (
                   <Image
@@ -141,42 +202,29 @@ export default function MenuPage() {
                 ))}
               </div>
             </section>
+            {menu.id === "ristorante-mare" ? (
+              <WineList
+                id="carta-vini"
+                eyebrow="Cantina Hawaii"
+                title="Carta vini Hawaii"
+                itemTestId="hawaii-wine-item"
+                sections={hawaiiWineSections.map((section) => ({
+                  title: section.title,
+                  wines: section.dishes,
+                }))}
+              />
+            ) : null}
+            {menu.id === "muulab" ? (
+              <WineList
+                id="carta-vini-muulab"
+                eyebrow="Cantina MUULab Riviera"
+                title="Carta vini MUULab Riviera"
+                itemTestId="muulab-wine-item"
+                sections={muulabWineSections}
+              />
+            ) : null}
+            </Fragment>
           ))}
-
-          <section id="carta-vini" className="scroll-mt-24">
-            <div className="max-w-2xl">
-              <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#96703d]">
-                Cantina Hawaii
-              </p>
-              <h2 className="mt-4 font-serif text-4xl text-[#16292d] sm:text-5xl">
-                Carta vini Hawaii
-              </h2>
-            </div>
-            <div className="mt-8 grid gap-5 lg:grid-cols-2">
-              {hawaiiWineSections.map((section) => (
-                <article
-                  key={section.title}
-                  className="rounded-[2rem] border border-[#1c2b2e]/10 bg-white p-6 shadow-[0_14px_40px_rgba(23,32,34,0.07)]"
-                >
-                  <h3 className="font-serif text-2xl text-[#16292d] sm:text-3xl">
-                    {section.title}
-                  </h3>
-                  <ul className="mt-4 grid gap-3 text-sm leading-7 text-[#3c4a4e]">
-                    {section.dishes.map((wine) => (
-                      <li
-                        key={wine.name}
-                        data-testid="hawaii-wine-item"
-                        className="flex items-baseline justify-between gap-4 border-b border-[#1c2b2e]/10 pb-2 last:border-b-0"
-                      >
-                        <span>{wine.name}</span>
-                        <span className="whitespace-nowrap text-[#96703d]">{wine.price}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-              ))}
-            </div>
-          </section>
         </div>
 
         <div className="mt-14 flex flex-col gap-4 rounded-[2rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)] p-6 sm:flex-row sm:items-end sm:justify-between">

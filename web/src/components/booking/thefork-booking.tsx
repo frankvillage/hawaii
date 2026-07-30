@@ -39,16 +39,6 @@ export function TheForkBooking({ venue }: { venue: BookingVenue }) {
             WhatsApp {venue.name}
           </a>
         </div>
-
-        <a
-          data-testid="thefork-direct-link"
-          href={venue.theForkUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-6 inline-flex text-sm font-semibold text-[#8b612b] underline decoration-[#8b612b]/35 underline-offset-4"
-        >
-          Apri direttamente TheFork
-        </a>
       </div>
 
       <div className="min-w-0 overflow-hidden rounded-[2rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)]">
@@ -70,7 +60,7 @@ export function TheForkBooking({ venue }: { venue: BookingVenue }) {
               </p>
               <p className="mt-4 text-sm leading-7 text-[#4c5453]">
                 {consent === "reject"
-                  ? "Puoi prenotare dal link diretto a TheFork oppure usare l'assistenza telefonica."
+                  ? "Per prenotare usa l'assistenza telefonica o WhatsApp."
                   : "Accetta i cookie dal banner per caricare automaticamente il calendario."}
               </p>
             </div>

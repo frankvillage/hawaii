@@ -6,7 +6,7 @@ const venue = bookingVenues.hawaii;
 
 export const metadata = buildMetadata({
   title: "Prenota Hawaii",
-  description: "Prenota il tuo tavolo da Hawaii Pescara tramite TheFork o con assistenza diretta.",
+  description: "Prenota il tuo tavolo da Hawaii Pescara online o con assistenza diretta.",
   path: venue.internalBookingPath,
 });
 

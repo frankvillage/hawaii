@@ -1,7 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { bookingVenues, sportBooking } from "@/lib/booking-config";
+import {
+  bookingVenues,
+  sportBooking,
+  whatsappContacts,
+} from "@/lib/booking-config";
 import { bookingOptions, navigation, siteMeta } from "@/lib/site-content";
 
 export function SiteFooter() {
@@ -64,7 +68,7 @@ export function SiteFooter() {
             </p>
             <p>
               <a
-                href={bookingVenues.hawaii.whatsappUrl}
+                href={whatsappContacts.events}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-white"

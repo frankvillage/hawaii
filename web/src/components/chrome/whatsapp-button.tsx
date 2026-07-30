@@ -1,17 +1,18 @@
-import { bookingVenues } from "@/lib/booking-config";
+import { whatsappContacts } from "@/lib/booking-config";
 
 /* Floating WhatsApp chat, as on the current WordPress site — the client
    relies on it. Sits above the soul rail on mobile. */
 export function WhatsAppButton() {
-  const nationalNumber = bookingVenues.hawaii.whatsappUrl
+  const nationalNumber = whatsappContacts.general
     .replace("https://wa.me/", "")
+    .split("?")[0]
     .replace(/^39/, "");
   const displayNumber = `${nationalNumber.slice(0, 3)} ${nationalNumber.slice(3)}`;
 
   return (
     <a
       data-testid="whatsapp-button"
-      href={bookingVenues.hawaii.whatsappUrl}
+      href={whatsappContacts.general}
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`WhatsApp Hawaii: ${displayNumber}`}
