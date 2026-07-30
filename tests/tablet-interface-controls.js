@@ -447,6 +447,8 @@ async function assertJourneyFooterRoundTrip(page, label) {
       Math.abs(footerSeekTime - footerTargetTime) <= 0.05,
       `${label}: forward footer seek time ${footerSeekTime} must match target ${footerTargetTime}`,
     );
+    // The test-only seek bypasses the touch gesture a real tablet user provides while scrolling.
+    await recoverPlaybackGestureIfNeeded(page);
     await waitForSettled(page, footerTargetValue);
   } catch (error) {
     throw new Error(`${label}: footer media did not settle at target ${footerTargetTime}`, {
