@@ -17,6 +17,7 @@
     "media:reverse": "node scripts/generate-reverse-video.mjs",
     "build:web:aruba": "bash scripts/build-static-aruba.sh",
     "test:web:aruba": "node tests/aruba-static-readiness.js output/aruba-static",
+    "test:web:hardening": "node tests/web-go-live-hardening.js",
     "test:web:production": "node tests/run-web-production.js pages-preview",
     "build:presentation": "node presentation/src/hawaii_pescara_2026_presentation.js",
     "render:presentation": "python3 presentation/render_slides.py presentation/output/hawaii-pescara-2026-proposta.pptx --output_dir presentation/rendered",

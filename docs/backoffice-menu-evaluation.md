@@ -1,13 +1,23 @@
 # Valutazione di un back office leggero per i menu
 
-**Stato:** raccomandazione architetturale, non implementata  
+**Stato:** valutazione storica, superata dalla soluzione a Studio gestito
 **Data:** 23 luglio 2026  
 **Ambito:** modifica editoriale delle voci menu Hawaii e MUULab
 
-## Decisione
+## Decisione aggiornata
 
-Si raccomanda **Decap CMS con backend GitHub** come back office leggero, da
-implementare in una fase successiva al rilascio Aruba.
+La raccomandazione Decap/GitHub non e piu il target: richiederebbe agli editor
+accesso al repository e non garantirebbe il livello di separazione richiesto.
+Il riferimento attuale e `docs/admin-content-management-blueprint.md`: Studio
+gestito su host separato, Google SSO con MFA, account nominativi per proprieta,
+agenzia Hawaii e amministratore tecnico, contenuti strutturati e sito pubblico
+statico.
+
+## Analisi storica
+
+La precedente valutazione raccomandava **Decap CMS con backend GitHub** come back
+office leggero. Le sezioni seguenti restano conservate come confronto tecnico,
+ma non descrivono piu la soluzione da implementare.
 
 Decap è un'applicazione web open source che traduce le modifiche editoriali in
 commit e pull request: i contenuti restano nel repository, senza database o API

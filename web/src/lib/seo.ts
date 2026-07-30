@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { bookingVenues } from "@/lib/booking-config";
+import { socialImageForPath } from "@/lib/social-images";
 import type { EntityPage, FaqItem } from "@/lib/site-content";
 import { siteMeta } from "@/lib/site-content";
 
@@ -12,23 +13,29 @@ export function buildMetadata(input: {
   path?: string;
 }): Metadata {
   const url = `${baseUrl}${input.path ?? ""}`;
+  const title = input.title.endsWith(`| ${siteMeta.name}`)
+    ? input.title
+    : `${input.title} | ${siteMeta.name}`;
+  const image = socialImageForPath(input.path);
 
   return {
-    title: `${input.title} | ${siteMeta.name}`,
+    title,
     description: input.description,
     alternates: { canonical: url },
     openGraph: {
-      title: `${input.title} | ${siteMeta.name}`,
+      title,
       description: input.description,
       url,
       siteName: siteMeta.name,
       locale: "it_IT",
       type: "website",
+      images: [{ url: image.src, alt: image.alt }],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${input.title} | ${siteMeta.name}`,
+      title,
       description: input.description,
+      images: [image.src],
     },
   };
 }

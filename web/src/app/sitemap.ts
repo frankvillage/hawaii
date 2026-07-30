@@ -34,7 +34,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return routes.map(({ route, changeFrequency, priority }) => ({
     url: `${baseUrl}${route}`,
-    lastModified: new Date(),
     changeFrequency,
     priority,
   }));

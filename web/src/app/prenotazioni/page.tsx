@@ -148,13 +148,13 @@ export default function BookingPage() {
 
           <div className="lg:pt-10">
             <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#96703d]">
-              Richiesta rapida
+              Contatto diretto
             </p>
             <h2 className="mt-4 font-serif text-4xl text-[#16292d]">
-              Lascia i tuoi riferimenti.
+              Parliamone direttamente.
             </h2>
             <p className="mt-4 max-w-xl text-base leading-7 text-[#4c5453]">
-              Ti ricontattiamo con il canale piu adatto in base alla tua richiesta.
+              Per informazioni, eventi e richieste speciali scegli un contatto dedicato.
             </p>
             <div className="mt-8">
               <BookingInquiryForm />

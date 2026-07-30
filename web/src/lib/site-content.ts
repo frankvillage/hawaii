@@ -141,6 +141,7 @@ export type LegalSection = {
   title: string;
   body: string;
   bullets?: string[];
+  references?: Action[];
 };
 
 export type EntityPage = {
@@ -1480,34 +1481,43 @@ export const faqIndex: FaqItem[] = [
   ...pages["eventi"].faqs,
 ];
 
-/* Aligned with the informativa published on www.hawaiipescara.it/privacy-policy
-   (titolare: Kona S.R.L.). Keep in sync with the WordPress site. */
+/* Keep this content aligned with the live site's actual data flows, not legacy WordPress plugins. */
 export const legalSections: Record<"privacy" | "cookie", LegalSection[]> = {
   privacy: [
     {
       title: "Titolare del trattamento",
-      body: "Il titolare del trattamento è Kona S.R.L., Viale della Riviera 154, 65123 Pescara (PE). Per ogni richiesta relativa ai dati personali: info@hawaiipescara.it · WhatsApp +39 351 690 0701.",
+      body: "Il titolare del trattamento è Kona S.R.L., Viale della Riviera 154, 65123 Pescara (PE), P. IVA IT02271430684. Per richieste relative ai dati personali: info@hawaiipescara.it.",
     },
     {
-      title: "Navigazione sul sito",
-      body: "Durante la navigazione vengono raccolti dati tecnici quali indirizzi IP, indirizzi URI delle risorse richieste e orari di connessione, oltre ai cookie descritti nell'informativa dedicata.",
+      title: "Dati trattati durante la navigazione",
+      body: "Il funzionamento del sito comporta il trattamento di dati tecnici e di navigazione, come indirizzo IP, risorse richieste, data e ora della richiesta, dati del dispositivo e registri di sicurezza. Il sito non utilizza strumenti propri di profilazione, marketing o analytics.",
       bullets: [
-        "finalità: funzionamento del sito, sicurezza e analisi statistica",
-        "base giuridica: art. 6.1.b GDPR per gli strumenti tecnici; consenso per gli strumenti di profilazione",
-        "conservazione: dati di navigazione fino a 1 mese; cookie fino a 12 mesi",
+        "finalità: funzionamento del sito, sicurezza e gestione tecnica",
+        "base giuridica: interesse legittimo del titolare alla sicurezza e al corretto funzionamento del sito",
+        "conservazione: i log tecnici sono conservati, di regola, per un periodo non superiore a 1 mese, salvo esigenze di accertamento di illeciti o obblighi di legge",
       ],
     },
     {
-      title: "Form di contatto e prenotazioni",
-      body: "I dati inviati tramite i form (nome, cognome, email, telefono) sono trattati per rispondere a richieste informative e commerciali e per gestire prenotazioni ed eventi.",
+      title: "Contatti e richieste",
+      body: "Il sito non raccoglie dati tramite moduli proprietari. Email, telefono e WhatsApp sono canali scelti dall'utente per richiedere informazioni, disponibilità o servizi. I dati comunicati a Kona S.R.L. sono trattati per gestire la richiesta e l'eventuale rapporto successivo.",
       bullets: [
-        "base giuridica: esecuzione di misure precontrattuali richieste dall'interessato",
-        "conservazione: massimo 12 mesi dalla richiesta",
+        "base giuridica: esecuzione di misure precontrattuali richieste dall'interessato e, quando necessario, interesse legittimo alla gestione del rapporto",
+        "conservazione: fino a 12 mesi dalla definizione della richiesta, salvo obblighi di legge o necessità di tutela dei diritti del titolare",
       ],
     },
     {
-      title: "Prenotazioni tramite TheFork",
-      body: "Il calendario di TheFork segue il consenso generale ai servizi esterni. Dopo l'accettazione viene caricato automaticamente e il browser avvia una connessione di rete verso widget.thefork.com, servizio di terza parte gestito da TheFork, prima che l'utente inserisca eventuali dati di prenotazione.",
+      title: "Piattaforme e servizi esterni",
+      body: "Il calendario TheFork viene caricato soltanto dopo la scelta generale dell'utente di accettare i servizi esterni. Prima che l'utente inserisca dati di prenotazione, il browser stabilisce una connessione di rete con widget.thefork.com. WhatsApp, Spiagge.it, Wansport e le mappe si aprono esclusivamente quando l'utente seleziona il relativo collegamento. Ogni servizio esterno opera secondo la propria informativa e può trattare dati secondo modalità autonome.",
+      references: [
+        { label: "Informativa TheFork", href: "https://www.thefork.it/legal" },
+        { label: "Informativa WhatsApp", href: "https://www.whatsapp.com/legal/privacy-policy-eea" },
+        { label: "Informativa Spiagge.it", href: "https://www.spiagge.it/privacy-policy/?lang=it" },
+        { label: "Informativa Wansport", href: "https://wansport.com/privacy-policy/" },
+      ],
+    },
+    {
+      title: "Trasferimenti di dati",
+      body: "Alcuni servizi esterni possono trattare dati anche al di fuori dello Spazio Economico Europeo. Le informazioni sulle eventuali garanzie adottate e sui trasferimenti sono riportate nelle informative dei rispettivi fornitori, disponibili dai collegamenti indicati sopra.",
     },
     {
       title: "Clienti e fornitori",
@@ -1519,34 +1529,46 @@ export const legalSections: Record<"privacy" | "cookie", LegalSection[]> = {
     },
     {
       title: "Diritti dell'interessato",
-      body: "In qualsiasi momento è possibile richiedere accesso, rettifica, cancellazione, portabilità, limitazione del trattamento e revoca del consenso scrivendo a info@hawaiipescara.it.",
+      body: "L'interessato può chiedere accesso, rettifica, cancellazione, limitazione, portabilità, opposizione e revoca del consenso scrivendo a info@hawaiipescara.it. Resta salvo il diritto di proporre reclamo al Garante per la protezione dei dati personali.",
+      references: [
+        { label: "Garante per la protezione dei dati personali", href: "https://www.garanteprivacy.it/web/guest/home/autorita" },
+      ],
+    },
+    {
+      title: "Aggiornamenti",
+      body: "Questa informativa è aggiornata al 30 luglio 2026. Il titolare può modificarla per riflettere cambiamenti normativi, organizzativi o tecnici; la versione pubblicata su questa pagina è quella applicabile al momento della consultazione.",
     },
   ],
   cookie: [
     {
-      title: "Cosa sono e come li usiamo",
-      body: "Il sito utilizza cookie tecnici necessari al funzionamento e, previo consenso, strumenti di misurazione. I dati di navigazione sono conservati fino a 1 mese; i cookie fino a 12 mesi.",
+      title: "Preferenze locali e servizi esterni",
+      body: "Il sito memorizza nel browser una preferenza tecnica locale per ricordare la scelta sul consenso ai servizi esterni. Non usa cookie proprietari di profilazione, marketing o analytics.",
     },
     {
-      title: "Categorie di cookie",
-      body: "Le categorie in uso rispecchiano quelle dichiarate nell'informativa privacy del titolare Kona S.R.L.",
+      title: "Servizi soggetti a consenso",
+      body: "Il calendario di prenotazione TheFork resta bloccato finché l'utente non effettua la scelta generale di accettare i servizi esterni. Dopo il consenso generale, prima che l'utente inserisca dati di prenotazione, il browser stabilisce una connessione di rete con widget.thefork.com, che può usare proprie tecnologie e trattare dati secondo la propria informativa.",
       bullets: [
-        "cookie tecnici necessari (base giuridica: art. 6.1.b GDPR)",
-        "cookie analitici e statistici, attivati solo dopo il consenso",
-        "eventuali cookie di profilazione di terze parti, solo previo consenso esplicito",
+        "preferenza locale di consenso: necessaria per ricordare la scelta dell'utente",
+        "TheFork: servizio esterno caricato soltanto dopo il consenso",
+      ],
+      references: [{ label: "Informativa privacy e cookie TheFork", href: "https://www.thefork.it/legal" }],
+    },
+    {
+      title: "Collegamenti aperti dall'utente",
+      body: "WhatsApp, Spiagge.it, Wansport e le mappe non sono incorporati né caricati automaticamente nel sito. Si aprono soltanto su scelta dell'utente e sono regolati dalle informative dei rispettivi servizi.",
+      references: [
+        { label: "Informativa WhatsApp", href: "https://www.whatsapp.com/legal/privacy-policy-eea" },
+        { label: "Informativa Spiagge.it", href: "https://www.spiagge.it/privacy-policy/?lang=it" },
+        { label: "Informativa Wansport", href: "https://wansport.com/privacy-policy/" },
       ],
     },
     {
       title: "Gestione del consenso",
-      body: "Al primo accesso il banner consente di accettare o rifiutare i cookie non necessari; la scelta è modificabile in qualsiasi momento da questa pagina o dalle impostazioni del browser, dove i cookie possono anche essere eliminati.",
-    },
-    {
-      title: "TheFork e consenso generale",
-      body: "Il widget di TheFork resta disattivato finche non viene accettata la scelta generale per i servizi esterni. Dopo il consenso generale viene caricato automaticamente e avvia una connessione di rete verso widget.thefork.com, servizio di terza parte gestito da TheFork, prima di inserire i dati di prenotazione.",
+      body: "Al primo accesso il banner permette di accettare o rifiutare i servizi esterni. La scelta può essere modificata in qualsiasi momento dal pulsante in questa pagina oppure cancellando le preferenze del sito dal browser. Il rifiuto non limita la consultazione dei contenuti del sito.",
     },
     {
       title: "Titolare e contatti",
-      body: "Titolare del trattamento: Kona S.R.L., Viale della Riviera 154, 65123 Pescara (PE) · info@hawaiipescara.it. Per il quadro completo si rimanda all'informativa privacy.",
+      body: "Titolare del trattamento: Kona S.R.L., Viale della Riviera 154, 65123 Pescara (PE), P. IVA IT02271430684 · info@hawaiipescara.it. Per il quadro completo si rimanda all'informativa privacy. Aggiornamento: 30 luglio 2026.",
     },
   ],
 };

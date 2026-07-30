@@ -98,7 +98,7 @@ export default function ContactPage() {
               Ti indirizziamo subito all&apos;area giusta.
             </h2>
             <p className="mt-4 max-w-xl text-base leading-7 text-[#4c5453]">
-              Seleziona l&apos;area che ti interessa e lasciaci un messaggio.
+              Scegli il canale piu comodo per raggiungere l&apos;area che ti interessa.
             </p>
           </div>
         </div>

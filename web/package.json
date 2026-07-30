@@ -9,9 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "next": "16.2.10",
+    "next": "16.2.12",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "sharp": "0.35.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -19,17 +20,20 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.10",
+    "eslint": "9.39.2",
+    "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
   "overrides": {
-    "@babel/core": "^7.29.0",
+    "@babel/core": "8.0.1",
+    "brace-expansion": "5.0.9",
+    "minimatch": "10.2.6",
+    "sharp": "0.35.3",
     "@typescript-eslint/typescript-estree": {
-      "brace-expansion": "^5.0.6"
+      "brace-expansion": "5.0.9"
     },
     "js-yaml": "^4.1.2",
-    "postcss": "^8.5.10"
+    "postcss": "8.5.25"
   }
 }

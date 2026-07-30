@@ -17,8 +17,8 @@ export default function CookiePage() {
           Informativa cookie.
         </h1>
         <p className="mt-6 text-base leading-8 text-[#4c5453]">
-          Informazioni su cookie tecnici, analytics e preferenze di consenso
-          utilizzate all&apos;interno del sito.
+          Informazioni sulle preferenze locali e sui servizi esterni utilizzati
+          dal sito.
         </p>
         <ConsentPreferencesButton />
 
@@ -38,6 +38,22 @@ export default function CookiePage() {
                       className="pl-4 before:mr-2 before:ml-[-1rem] before:text-[#96703d] before:content-['-']"
                     >
                       {bullet}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {section.references?.length ? (
+                <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm leading-6">
+                  {section.references.map((reference) => (
+                    <li key={reference.href}>
+                      <a
+                        href={reference.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-[#725124] underline decoration-[#d8bb8b] underline-offset-4 transition-colors hover:text-[#16292d]"
+                      >
+                        {reference.label}
+                      </a>
                     </li>
                   ))}
                 </ul>

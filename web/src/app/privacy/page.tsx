@@ -40,6 +40,22 @@ export default function PrivacyPage() {
                   ))}
                 </ul>
               ) : null}
+              {section.references?.length ? (
+                <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm leading-6">
+                  {section.references.map((reference) => (
+                    <li key={reference.href}>
+                      <a
+                        href={reference.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-[#725124] underline decoration-[#d8bb8b] underline-offset-4 transition-colors hover:text-[#16292d]"
+                      >
+                        {reference.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </article>
           ))}
         </div>

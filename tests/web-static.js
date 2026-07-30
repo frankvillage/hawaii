@@ -780,10 +780,10 @@ assert.doesNotMatch(siteContent, /(?:label|title): "Prenota (?:Hawaii|MUULab) su
 assert.doesNotMatch(productionSources, /Prenota (?:Hawaii|MUULab) su TheFork/);
 assert.match(siteContent, /label: "Prenota Hawaii"/);
 assert.match(siteContent, /label: "Prenota MUULab"/);
-assert.match(bookingForm, /Informazioni generali/);
-assert.match(bookingForm, /Serate ed eventi/);
-assert.match(bookingForm, /Feste private/);
-assert.doesNotMatch(bookingForm, /Prenota (spiaggia|tavolo mare|terrazza|sport)/);
+assert.match(bookingForm, /whatsappContacts\.events/);
+assert.match(bookingForm, /bookingVenues\.hawaii\.phoneHref/);
+assert.match(bookingForm, /bookingVenues\.muulab\.phoneHref/);
+assert.doesNotMatch(bookingForm, /fetch\(|<form|input|textarea/);
 
 assert.match(bookingConfig, /buildWhatsAppUrl/);
 assert.match(bookingConfig, /393516900701/);

@@ -413,23 +413,37 @@ async function main() {
     const bookingForm = page.locator('[data-testid="booking-inquiry-form"]');
     await bookingForm.waitFor({ state: "visible", timeout: 2500 });
     assert.equal(
-      await page.locator('input[name="name"]').count(),
+      await bookingForm.getByRole("link", { name: "WhatsApp informazioni ed eventi" }).count(),
       1,
-      "Booking page should collect a contact name",
+      "Booking page should expose the verified event WhatsApp contact",
     );
     assert.equal(
-      await page.locator('select[name="requestType"]').count(),
-      1,
-      "Booking page should expose a request type selector",
+      await bookingForm.locator("form, input, select, textarea").count(),
+      0,
+      "Static booking page must not expose a form without a delivery backend",
     );
 
     await page.goto(`${baseUrl}/contatti`, { waitUntil: "networkidle" });
     const contactForm = page.locator('[data-testid="contact-form"]');
     await contactForm.waitFor({ state: "visible", timeout: 2500 });
     assert.equal(
-      await page.locator('textarea[name="message"]').count(),
+      await contactForm.getByRole("link", { name: "Scrivi su WhatsApp" }).count(),
       1,
-      "Contact page should expose a message field",
+      "Contact page should expose the verified Hawaii WhatsApp contact",
+    );
+    assert.equal(
+      await contactForm.locator("form, input, select, textarea").count(),
+      0,
+      "Static contact page must not collect data without a delivery backend",
+    );
+
+    await page.goto(`${baseUrl}/feste-private`, { waitUntil: "networkidle" });
+    const privateEventActions = page.locator("#form");
+    await privateEventActions.waitFor({ state: "visible", timeout: 2500 });
+    assert.equal(
+      await privateEventActions.getByRole("link", { name: "WhatsApp feste private" }).count(),
+      1,
+      "Private event page should expose its dedicated WhatsApp contact",
     );
 
     await page.goto(`${baseUrl}/sport`, { waitUntil: "networkidle" });
