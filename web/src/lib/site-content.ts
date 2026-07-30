@@ -1518,7 +1518,7 @@ export const legalSections: Record<"privacy" | "cookie", LegalSection[]> = {
     },
     {
       title: "Prenotazioni tramite TheFork",
-      body: "Il modulo di TheFork e protetto da un consenso specifico. Solo dopo l'attivazione il browser avvia una connessione di rete verso widget.thefork.com, servizio di terza parte gestito da TheFork, prima che l'utente inserisca eventuali dati di prenotazione.",
+      body: "Il calendario di TheFork segue il consenso generale ai servizi esterni. Dopo l'accettazione viene caricato automaticamente e il browser avvia una connessione di rete verso widget.thefork.com, servizio di terza parte gestito da TheFork, prima che l'utente inserisca eventuali dati di prenotazione.",
     },
     {
       title: "Clienti e fornitori",
@@ -1552,8 +1552,8 @@ export const legalSections: Record<"privacy" | "cookie", LegalSection[]> = {
       body: "Al primo accesso il banner consente di accettare o rifiutare i cookie non necessari; la scelta è modificabile in qualsiasi momento da questa pagina o dalle impostazioni del browser, dove i cookie possono anche essere eliminati.",
     },
     {
-      title: "Consenso specifico per TheFork",
-      body: "Il widget di TheFork resta disattivato finche non viene espresso un consenso specifico. L'attivazione avvia una connessione di rete verso widget.thefork.com, servizio di terza parte gestito da TheFork, prima di inserire i dati di prenotazione.",
+      title: "TheFork e consenso generale",
+      body: "Il widget di TheFork resta disattivato finche non viene accettata la scelta generale per i servizi esterni. Dopo il consenso generale viene caricato automaticamente e avvia una connessione di rete verso widget.thefork.com, servizio di terza parte gestito da TheFork, prima di inserire i dati di prenotazione.",
     },
     {
       title: "Titolare e contatti",

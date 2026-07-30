@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 
-const STORAGE_KEY = "hawaii-consent-v1";
+import {
+  readStoredConsent,
+  storeConsent,
+  subscribeToConsent,
+  type ConsentDecision,
+} from "@/lib/consent";
 
-async function persistConsent(decision: "accept" | "reject") {
+async function persistConsent(decision: ConsentDecision) {
   try {
     await fetch("/api/consent", {
       method: "POST",
@@ -17,21 +22,19 @@ async function persistConsent(decision: "accept" | "reject") {
 }
 
 export function CookieBanner() {
-  const [dismissed, setDismissed] = useState(false);
-  const visible = useSyncExternalStore(
-    () => () => undefined,
-    () => !window.localStorage.getItem(STORAGE_KEY),
-    () => false,
+  const consent = useSyncExternalStore(
+    subscribeToConsent,
+    readStoredConsent,
+    () => null,
   );
 
-  if (!visible || dismissed) {
+  if (consent) {
     return null;
   }
 
-  const decide = (decision: "accept" | "reject") => {
-    window.localStorage.setItem(STORAGE_KEY, decision);
+  const decide = (decision: ConsentDecision) => {
+    storeConsent(decision);
     void persistConsent(decision);
-    setDismissed(true);
   };
 
   return (
@@ -42,8 +45,9 @@ export function CookieBanner() {
             Cookie & analytics
           </p>
           <p className="mt-2 text-[0.95rem] leading-6 text-[#dbdbd6] sm:text-sm">
-            Usiamo solo strumenti tecnici finché non esprimi una scelta. I cookie di
-            misurazione e marketing restano bloccati fino al consenso.
+            Usiamo solo strumenti tecnici finché non esprimi una scelta. Servizi
+            esterni e cookie di misurazione o marketing restano bloccati fino al
+            consenso.
           </p>
         </div>
         <div className="flex gap-2 sm:min-w-[235px] sm:flex-col sm:gap-3">

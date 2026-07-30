@@ -1,3 +1,4 @@
+import { ConsentPreferencesButton } from "@/components/legal/consent-preferences-button";
 import { buildMetadata } from "@/lib/seo";
 import { legalSections } from "@/lib/site-content";
 
@@ -19,6 +20,7 @@ export default function CookiePage() {
           Informazioni su cookie tecnici, analytics e preferenze di consenso
           utilizzate all&apos;interno del sito.
         </p>
+        <ConsentPreferencesButton />
 
         <div className="mt-10 space-y-5">
           {legalSections.cookie.map((section) => (

@@ -21,8 +21,8 @@ export default function HawaiiBookingPage() {
           Hawaii
         </h1>
         <p className="mt-6 max-w-2xl text-lg leading-8 text-[#4c5453]">
-          Prenota il ristorante sul mare in modo sicuro: scegli l’assistenza diretta
-          oppure attiva il modulo TheFork.
+          Scegli data, orario e numero di ospiti dal calendario oppure usa
+          l’assistenza diretta.
         </p>
         <div className="mt-10">
           <TheForkBooking venue={venue} />

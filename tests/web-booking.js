@@ -112,17 +112,24 @@ async function expectSecureBooking(browser, venue) {
     assert.match((await fallback.getAttribute("rel")) || "", /\bnoopener\b/);
     assert.match((await fallback.getAttribute("rel")) || "", /\bnoreferrer\b/);
     assert.equal(await page.locator(`iframe[src="${venue.theForkUrl}"]`).count(), 0);
-    assert.equal(vendorRequests, 0, "TheFork must not be requested before activation");
+    assert.equal(vendorRequests, 0, "TheFork must not be requested before global consent");
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Carica il modulo TheFork", exact: true })
+        .count(),
+      0,
+      "The booking page must not require a second TheFork activation button",
+    );
 
-    await page.getByRole("button", { name: "Rifiuta", exact: true }).click();
-    assert.equal(vendorRequests, 0, "Global rejection must not load TheFork");
-
-    await page
-      .getByRole("button", { name: "Carica il modulo TheFork", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Accetta", exact: true }).click();
     await page.waitForFunction(() => document.querySelectorAll("iframe").length === 1);
     await page.waitForFunction(
-      () => window.localStorage.getItem("hawaii-thefork-consent-v1") === "granted",
+      () => window.localStorage.getItem("hawaii-consent-v1") === "accept",
+    );
+    assert.equal(
+      await page.evaluate(() => window.localStorage.getItem("hawaii-thefork-consent-v1")),
+      null,
+      "The obsolete dedicated TheFork consent must not be persisted",
     );
 
     const iframe = page.locator(`iframe[src="${venue.theForkUrl}"]`);
@@ -132,7 +139,7 @@ async function expectSecureBooking(browser, venue) {
       `Prenotazione ${venue.name} con TheFork`,
     );
     assert.equal(await iframe.getAttribute("allow"), "payment *");
-    assert.equal(await iframe.getAttribute("loading"), "lazy");
+    assert.equal(await iframe.getAttribute("loading"), "eager");
     assert.equal(
       await iframe.getAttribute("referrerpolicy"),
       "strict-origin-when-cross-origin",
@@ -142,13 +149,174 @@ async function expectSecureBooking(browser, venue) {
       "max(800px, -7rem + 100svh)",
     );
     await page.waitForTimeout(100);
-    assert.equal(vendorRequests, 1, "Activation should make exactly one TheFork request");
+    assert.equal(vendorRequests, 1, "Global consent should make exactly one TheFork request");
 
     await fallback.waitFor({ state: "visible" });
     assert.equal(await fallback.getAttribute("href"), venue.theForkUrl);
     assert.equal(await fallback.getAttribute("target"), "_blank");
     assert.match((await fallback.getAttribute("rel")) || "", /\bnoopener\b/);
     assert.match((await fallback.getAttribute("rel")) || "", /\bnoreferrer\b/);
+  } finally {
+    await page?.close();
+    await context.close();
+  }
+}
+
+async function expectGlobalRejectionBlocksTheFork(browser, venue) {
+  const context = await browser.newContext();
+  let page;
+  const vendorRequests = [];
+
+  try {
+    await context.route("**/*", async (route) => {
+      const requestUrl = new URL(route.request().url());
+      if (
+        requestUrl.hostname === "thefork.com" ||
+        requestUrl.hostname.endsWith(".thefork.com")
+      ) {
+        vendorRequests.push(route.request().url());
+        await route.abort();
+        return;
+      }
+      if (["image", "media"].includes(route.request().resourceType())) {
+        await route.abort();
+        return;
+      }
+      await route.continue();
+    });
+
+    page = await context.newPage();
+    await page.goto(`${baseUrl}${venue.path}`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "Rifiuta", exact: true }).click();
+    await page.waitForFunction(
+      () => window.localStorage.getItem("hawaii-consent-v1") === "reject",
+    );
+
+    assert.equal(
+      await page.locator(`iframe[src="${venue.theForkUrl}"]`).count(),
+      0,
+      "Global rejection must keep the TheFork iframe blocked",
+    );
+    await page.waitForTimeout(250);
+    assert.deepEqual(vendorRequests, [], "Global rejection must not request any TheFork endpoint");
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Carica il modulo TheFork", exact: true })
+        .count(),
+      0,
+      "Rejected consent must not restore a dedicated activation button",
+    );
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(250);
+    assert.equal(
+      await page.locator(`iframe[src="${venue.theForkUrl}"]`).count(),
+      0,
+      "Persisted rejection must keep the TheFork iframe blocked after reload",
+    );
+    assert.deepEqual(
+      vendorRequests,
+      [],
+      "Persisted rejection must not request any TheFork endpoint after reload",
+    );
+  } finally {
+    await page?.close();
+    await context.close();
+  }
+}
+
+async function expectConsentSyncsAcrossTabs(browser, venue) {
+  const context = await browser.newContext();
+  let firstPage;
+  let secondPage;
+
+  try {
+    await context.route("**/*", async (route) => {
+      const requestUrl = new URL(route.request().url());
+      if (
+        requestUrl.hostname === "thefork.com" ||
+        requestUrl.hostname.endsWith(".thefork.com")
+      ) {
+        await route.abort();
+        return;
+      }
+      if (["image", "media"].includes(route.request().resourceType())) {
+        await route.abort();
+        return;
+      }
+      await route.continue();
+    });
+
+    firstPage = await context.newPage();
+    secondPage = await context.newPage();
+    await firstPage.goto(`${baseUrl}${venue.path}`, { waitUntil: "domcontentloaded" });
+    await secondPage.goto(`${baseUrl}${venue.path}`, { waitUntil: "domcontentloaded" });
+
+    await firstPage.getByRole("button", { name: "Accetta", exact: true }).click();
+    await secondPage.waitForFunction(
+      (theForkUrl) =>
+        window.localStorage.getItem("hawaii-consent-v1") === "accept" &&
+        document.querySelector(`iframe[src="${theForkUrl}"]`),
+      venue.theForkUrl,
+    );
+    assert.equal(
+      await secondPage.getByRole("button", { name: "Accetta", exact: true }).count(),
+      0,
+      "The second tab banner must close when consent is accepted elsewhere",
+    );
+  } finally {
+    await firstPage?.close();
+    await secondPage?.close();
+    await context.close();
+  }
+}
+
+async function expectConsentCanBeRevised(browser, venue) {
+  const context = await browser.newContext();
+  let page;
+  const vendorRequests = [];
+
+  try {
+    await context.route("**/*", async (route) => {
+      const requestUrl = new URL(route.request().url());
+      if (
+        requestUrl.hostname === "thefork.com" ||
+        requestUrl.hostname.endsWith(".thefork.com")
+      ) {
+        vendorRequests.push(route.request().url());
+        await route.abort();
+        return;
+      }
+      if (["image", "media"].includes(route.request().resourceType())) {
+        await route.abort();
+        return;
+      }
+      await route.continue();
+    });
+
+    page = await context.newPage();
+    await page.goto(`${baseUrl}/cookie`, { waitUntil: "domcontentloaded" });
+    await page.evaluate(() => {
+      window.localStorage.setItem("hawaii-consent-v1", "accept");
+    });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page
+      .getByRole("button", { name: "Modifica preferenze cookie", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Rifiuta", exact: true }).click();
+    await page.waitForFunction(
+      () => window.localStorage.getItem("hawaii-consent-v1") === "reject",
+    );
+
+    vendorRequests.length = 0;
+    await page.goto(`${baseUrl}${venue.path}`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(250);
+    assert.equal(
+      await page.locator(`iframe[src="${venue.theForkUrl}"]`).count(),
+      0,
+      "Revised rejection must block the TheFork iframe",
+    );
+    assert.deepEqual(vendorRequests, [], "Revised rejection must block TheFork requests");
   } finally {
     await page?.close();
     await context.close();
@@ -290,7 +458,10 @@ async function main() {
   try {
     for (const venue of venues) {
       await expectSecureBooking(browser, venue);
+      await expectGlobalRejectionBlocksTheFork(browser, venue);
     }
+    await expectConsentSyncsAcrossTabs(browser, venues[0]);
+    await expectConsentCanBeRevised(browser, venues[0]);
     await expectVenueRestaurantSchema(browser, venues[0], venues[1]);
     await expectVenueRestaurantSchema(browser, venues[1], venues[0]);
     await expectBookingHubGroups(browser);

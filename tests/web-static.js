@@ -285,7 +285,17 @@ const theForkPath = path.join(
   "booking",
   "thefork-booking.tsx",
 );
+const cookieBannerPath = path.join(
+  root,
+  "web",
+  "src",
+  "components",
+  "legal",
+  "cookie-banner.tsx",
+);
+const consentPath = path.join(root, "web", "src", "lib", "consent.ts");
 const bookingHubPath = path.join(root, "web", "src", "app", "prenotazioni", "page.tsx");
+const cookiePagePath = path.join(root, "web", "src", "app", "cookie", "page.tsx");
 const bookingFormPath = path.join(
   root,
   "web",
@@ -332,7 +342,11 @@ const globalStyles = fs.readFileSync(globalStylesPath, "utf8");
 const soulRail = fs.readFileSync(soulRailPath, "utf8");
 const siteHeader = fs.readFileSync(siteHeaderPath, "utf8");
 const theFork = fs.existsSync(theForkPath) ? fs.readFileSync(theForkPath, "utf8") : "";
+const cookieBanner = fs.readFileSync(cookieBannerPath, "utf8");
+const consent = fs.existsSync(consentPath) ? fs.readFileSync(consentPath, "utf8") : "";
+const consentSources = [theFork, cookieBanner, consent].join("\n");
 const bookingHub = fs.readFileSync(bookingHubPath, "utf8");
+const cookiePage = fs.readFileSync(cookiePagePath, "utf8");
 const bookingForm = fs.readFileSync(bookingFormPath, "utf8");
 const nextConfig = fs.readFileSync(nextConfigPath, "utf8");
 const bookingConfig = fs.readFileSync(bookingConfigPath, "utf8");
@@ -686,10 +700,30 @@ assert.match(arubaReadiness, /journey-desktop\.mp4/);
 assert.match(arubaReadiness, /\/hawaii\//);
 assert.match(arubaGuide, /form/i);
 assert.match(arubaGuide, /non inviano|non consegnano/i);
-assert.match(
+assert.doesNotMatch(
   theFork,
-  /hawaii-thefork-consent-v1/,
-  "TheFork must use its dedicated consent key",
+  /hawaii-thefork-consent-v1|Carica il modulo TheFork/,
+  "TheFork must not require or persist a second dedicated consent",
+);
+assert.match(
+  consentSources,
+  /hawaii-consent-v1/,
+  "TheFork must follow the global consent decision",
+);
+assert.match(
+  cookieBanner,
+  /subscribeToConsent/,
+  "The cookie banner must stay synchronized with the shared consent store",
+);
+assert.match(
+  cookiePage,
+  /ConsentPreferencesButton/,
+  "The cookie page must let visitors revise their stored consent",
+);
+assert.match(
+  consentSources,
+  /hawaii-consent-change/,
+  "TheFork must react immediately when global consent changes",
 );
 assert.match(theFork, /allow="payment \*"/, "TheFork iframe should only allow payments");
 assert.match(
@@ -697,7 +731,7 @@ assert.match(
   /referrerPolicy="strict-origin-when-cross-origin"/,
   "TheFork iframe should use a restrictive referrer policy",
 );
-assert.match(theFork, /loading="lazy"/, "TheFork iframe should load lazily");
+assert.match(theFork, /loading="eager"/, "TheFork iframe should load immediately after consent");
 assert.match(
   theFork,
   /height: "max\(800px, calc\(100svh - 7rem\)\)"/,
@@ -713,6 +747,11 @@ assert.match(
   nextConfig,
   /frame-src https:\/\/widget\.thefork\.com;/,
   "CSP should authorize only the TheFork widget frame origin",
+);
+assert.doesNotMatch(
+  productionSources,
+  /attiva (?:il )?modulo TheFork|Carica il modulo TheFork/i,
+  "Booking copy must not ask visitors to activate TheFork manually",
 );
 assert.match(
   nextConfig,
@@ -940,7 +979,16 @@ for (const [policy, disclosure] of [
   ["cookie", cookieDisclosure],
 ]) {
   assert.match(disclosure, /TheFork/i, `${policy} must identify TheFork`);
-  assert.match(disclosure, /consenso specifico/i, `${policy} must explain the consent gate`);
+  assert.doesNotMatch(
+    disclosure,
+    /consenso specifico/i,
+    `${policy} must not claim that TheFork has a separate consent control`,
+  );
+  assert.match(
+    disclosure,
+    /consenso generale|scelta generale/i,
+    `${policy} must explain that TheFork follows the global consent choice`,
+  );
   assert.match(
     disclosure,
     /connessione di rete|trasferimento di rete/i,
