@@ -6,8 +6,18 @@ on:
       - main
       - claude/codex-handoff-assets-se8fjq
   workflow_dispatch:
+    inputs:
+      cms_revision:
+        description: Published Sanity document revision
+        required: false
+        type: string
+      rollback_run_id:
+        description: Successful run ID from this workflow and branch
+        required: false
+        type: string
 
 permissions:
+  actions: read
   contents: read
   pages: write
   id-token: write
@@ -18,6 +28,7 @@ concurrency:
 
 jobs:
   verify:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.rollback_run_id == '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -51,13 +62,21 @@ jobs:
       - name: Drop server-only API routes
         run: rm -rf web/src/app/api
 
-      - name: Build static export
-        working-directory: web
+      - name: Capture immutable menu snapshot and build static export
         env:
+          MENU_CMS_SNAPSHOT_PATH: ../.verified-menu-release/menu-snapshot.json
           STATIC_EXPORT: "1"
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
           NODE_OPTIONS: --max-old-space-size=2048
-        run: npm run build -- --webpack
+          RELEASE_CMS_REVISION: ${{ inputs.cms_revision || '' }}
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          SANITY_API_VERSION: ${{ secrets.SANITY_API_VERSION }}
+          SANITY_API_TOKEN: ${{ secrets.SANITY_API_TOKEN }}
+        run: |
+          node scripts/verified-menu-release.mjs capture .verified-menu-release
+          cd web
+          npm run build -- --webpack
 
       - name: Prefix root media URLs
         run: |
@@ -79,6 +98,89 @@ jobs:
           cp -a web/out/. pages-preview/${{ github.event.repository.name }}/
           npm run test:web:production
 
+      - name: Seal verified release artifact
+        env:
+          RELEASE_CMS_REVISION: ${{ inputs.cms_revision || '' }}
+          RELEASE_WORKFLOW_PATH: .github/workflows/deploy-pages.yml
+        run: node scripts/verified-menu-release.mjs seal .verified-menu-release web/out
+
+      - name: Retain private verified release
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-menu-release
+          path: .verified-menu-release
+          if-no-files-found: error
+          retention-days: 90
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/out
+
+  restore:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.rollback_run_id != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify source workflow run
+        id: source-run
+        uses: actions/github-script@v7
+        env:
+          TARGET_RUN_ID: ${{ inputs.rollback_run_id }}
+          EXPECTED_BRANCH: ${{ github.ref_name }}
+          EXPECTED_WORKFLOW_PATH: .github/workflows/deploy-pages.yml
+        with:
+          script: |
+            const runId = Number(process.env.TARGET_RUN_ID);
+            if (!Number.isSafeInteger(runId) || runId <= 0 || runId === context.runId) {
+              core.setFailed("rollback_run_id non valido");
+              return;
+            }
+
+            const { data: run } = await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: runId,
+            });
+            const workflowPath = String(run.path || "").split("@")[0];
+
+            if (run.status !== "completed" || run.conclusion !== "success") {
+              core.setFailed("Il run sorgente non è completato con successo");
+              return;
+            }
+            if (run.head_branch !== process.env.EXPECTED_BRANCH) {
+              core.setFailed("Il run sorgente appartiene a un branch diverso");
+              return;
+            }
+            if (workflowPath !== process.env.EXPECTED_WORKFLOW_PATH) {
+              core.setFailed("Il run sorgente appartiene a un workflow diverso");
+              return;
+            }
+
+            core.setOutput("source_commit", run.head_sha);
+
+      - name: Download verified release from source run
+        uses: actions/download-artifact@v4
+        with:
+          name: verified-menu-release
+          path: .verified-menu-release
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.rollback_run_id }}
+
+      - name: Verify manifest and restore exact artifact
+        env:
+          RELEASE_EXPECTED_WORKFLOW_PATH: .github/workflows/deploy-pages.yml
+          RELEASE_EXPECTED_BRANCH: ${{ github.ref_name }}
+          RELEASE_EXPECTED_SOURCE_COMMIT: ${{ steps.source-run.outputs.source_commit }}
+          RELEASE_EXPECTED_SOURCE_RUN_ID: ${{ inputs.rollback_run_id }}
+          RELEASE_EXPECTED_DOCUMENT_IDS: menu-hawaii,menu-muulab
+        run: node scripts/verified-menu-release.mjs verify .verified-menu-release web/out
+
       - uses: actions/configure-pages@v5
         with:
           enablement: true
@@ -88,7 +190,8 @@ jobs:
           path: web/out
 
   deploy:
-    needs: verify
+    needs: [verify, restore]
+    if: ${{ always() && !cancelled() && (needs.verify.result == 'success' || needs.restore.result == 'success') }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages

@@ -2,6 +2,7 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
+const { createHash } = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -226,6 +227,180 @@ function readSourceTree(directory) {
   });
 }
 
+function sha256File(filePath) {
+  return createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+}
+
+function assertVerifiedMenuReleaseBehavior() {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "hawaii-menu-release-test-"));
+  const releaseDir = path.join(fixtureRoot, "release");
+  const siteDir = path.join(fixtureRoot, "site");
+  const outputDir = path.join(fixtureRoot, "restored");
+  const snapshotPath = path.join(releaseDir, "menu-snapshot.json");
+  const archivePath = path.join(releaseDir, "site.tar.gz");
+  const manifestPath = path.join(releaseDir, "content-manifest.json");
+
+  try {
+    fs.mkdirSync(releaseDir, { recursive: true });
+    fs.mkdirSync(siteDir, { recursive: true });
+    fs.writeFileSync(path.join(siteDir, "index.html"), "<h1>Verified release</h1>\n");
+    const archive = spawnSync("tar", ["-czf", archivePath, "-C", siteDir, "."], {
+      encoding: "utf8",
+    });
+    assert.equal(archive.status, 0, archive.stderr || archive.stdout);
+
+    const snapshot = {
+      schemaVersion: 1,
+      source: "sanity",
+      result: [
+        {
+          _id: "menu-hawaii",
+          _rev: "hawaii-revision",
+          _updatedAt: "2026-07-31T12:00:00.000Z",
+          venue: "hawaii",
+          categories: [],
+        },
+        {
+          _id: "menu-muulab",
+          _rev: "muulab-revision",
+          _updatedAt: "2026-07-31T12:00:01.000Z",
+          venue: "muulab",
+          categories: [],
+        },
+      ],
+    };
+    fs.writeFileSync(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+
+    const manifest = {
+      schemaVersion: 1,
+      workflowPath: ".github/workflows/deploy-pages.yml",
+      branch: "main",
+      sourceCommit: "0123456789abcdef0123456789abcdef01234567",
+      sourceRunId: "12345",
+      cmsRevision: "hawaii-revision",
+      documentIds: ["menu-hawaii", "menu-muulab"],
+      documentRevisions: {
+        "menu-hawaii": "hawaii-revision",
+        "menu-muulab": "muulab-revision",
+      },
+      documentUpdatedAt: {
+        "menu-hawaii": "2026-07-31T12:00:00.000Z",
+        "menu-muulab": "2026-07-31T12:00:01.000Z",
+      },
+      snapshot: {
+        file: "menu-snapshot.json",
+        sha256: sha256File(snapshotPath),
+      },
+      site: {
+        file: "site.tar.gz",
+        sha256: sha256File(archivePath),
+      },
+    };
+    fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    const env = {
+      ...process.env,
+      RELEASE_EXPECTED_BRANCH: manifest.branch,
+      RELEASE_EXPECTED_DOCUMENT_IDS: manifest.documentIds.join(","),
+      RELEASE_EXPECTED_SOURCE_COMMIT: manifest.sourceCommit,
+      RELEASE_EXPECTED_SOURCE_RUN_ID: manifest.sourceRunId,
+      RELEASE_EXPECTED_WORKFLOW_PATH: manifest.workflowPath,
+    };
+    const valid = spawnSync(
+      process.execPath,
+      [verifiedMenuReleasePath, "verify", releaseDir, outputDir],
+      { cwd: root, encoding: "utf8", env },
+    );
+    assert.equal(valid.status, 0, valid.stderr || valid.stdout);
+    assert.equal(
+      fs.readFileSync(path.join(outputDir, "index.html"), "utf8"),
+      "<h1>Verified release</h1>\n",
+    );
+
+    fs.appendFileSync(snapshotPath, "tampered\n");
+    const tampered = spawnSync(
+      process.execPath,
+      [verifiedMenuReleasePath, "verify", releaseDir, outputDir],
+      { cwd: root, encoding: "utf8", env },
+    );
+    assert.notEqual(tampered.status, 0, "A modified snapshot must never be restored");
+    assert.match(tampered.stderr, /checksum/i);
+
+    fs.writeFileSync(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+    fs.writeFileSync(path.join(fixtureRoot, "escape.html"), "must-not-extract\n");
+    const unsafeArchive = spawnSync(
+      "tar",
+      ["-czf", archivePath, "-C", siteDir, "../escape.html"],
+      { encoding: "utf8" },
+    );
+    assert.equal(unsafeArchive.status, 0, unsafeArchive.stderr || unsafeArchive.stdout);
+    manifest.snapshot.sha256 = sha256File(snapshotPath);
+    manifest.site.sha256 = sha256File(archivePath);
+    fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    const unsafe = spawnSync(
+      process.execPath,
+      [verifiedMenuReleasePath, "verify", releaseDir, outputDir],
+      { cwd: root, encoding: "utf8", env },
+    );
+    assert.notEqual(unsafe.status, 0, "Path traversal entries must never be extracted");
+    assert.match(unsafe.stderr, /Archivio statico non sicuro/i);
+  } finally {
+    fs.rmSync(fixtureRoot, { force: true, recursive: true });
+  }
+}
+
+function assertLocalMenuSnapshotCapture() {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "hawaii-menu-capture-test-"));
+  const releaseDir = path.join(fixtureRoot, "release");
+  const env = {
+    ...process.env,
+    GITHUB_SHA: "0123456789abcdef0123456789abcdef01234567",
+  };
+  for (const variable of [
+    "RELEASE_CMS_REVISION",
+    "SANITY_PROJECT_ID",
+    "SANITY_DATASET",
+    "SANITY_API_VERSION",
+    "SANITY_API_TOKEN",
+  ]) {
+    delete env[variable];
+  }
+
+  try {
+    const capture = spawnSync(
+      process.execPath,
+      [verifiedMenuReleasePath, "capture", releaseDir],
+      { cwd: root, encoding: "utf8", env },
+    );
+    assert.equal(capture.status, 0, capture.stderr || capture.stdout);
+
+    const snapshot = JSON.parse(
+      fs.readFileSync(path.join(releaseDir, "menu-snapshot.json"), "utf8"),
+    );
+    assert.equal(snapshot.schemaVersion, 1);
+    assert.equal(snapshot.source, "local-fallback");
+    assert.deepEqual(
+      snapshot.result.map(({ _id }) => _id),
+      ["menu-hawaii", "menu-muulab"],
+    );
+    assert.ok(snapshot.result.every(({ _rev }) => _rev.startsWith("local-fallback:")));
+    assert.ok(snapshot.result.every(({ _updatedAt }) => _updatedAt === null));
+    assert.doesNotMatch(JSON.stringify(snapshot), /"_type":/);
+
+    const dishes = snapshot.result.flatMap(({ categories }) =>
+      categories.flatMap(({ dishes: categoryDishes }) => categoryDishes),
+    );
+    assert.ok(dishes.some(({ price }) => price === "€ 12 l'etto"));
+    assert.ok(
+      dishes.some((dish) => !Object.prototype.hasOwnProperty.call(dish, "allergens")),
+      "Empty allergen lists must remain omitted instead of becoming required arrays",
+    );
+  } finally {
+    fs.rmSync(fixtureRoot, { force: true, recursive: true });
+  }
+}
+
 const productionSources = readSourceTree(path.join(root, "web", "src")).join("\n");
 const pagesWorkflow = fs.readFileSync(
   path.join(root, ".github", "workflows", "deploy-pages.yml"),
@@ -241,6 +416,14 @@ const arubaHeadersPath = path.join(root, "deploy", "aruba", ".htaccess.example")
 const arubaReadinessPath = path.join(root, "tests", "aruba-static-readiness.js");
 const arubaGuidePath = path.join(root, "docs", "deploy", "aruba-static-readiness.md");
 const arubaReleasePath = path.join(root, "scripts", "aruba-release.mjs");
+const verifiedMenuReleasePath = path.join(root, "scripts", "verified-menu-release.mjs");
+const verifiedMenuRelease = fs.existsSync(verifiedMenuReleasePath)
+  ? fs.readFileSync(verifiedMenuReleasePath, "utf8")
+  : "";
+const adminContentBlueprint = fs.readFileSync(
+  path.join(root, "docs", "admin-content-management-blueprint.md"),
+  "utf8",
+);
 const homePagePath = path.join(root, "web", "src", "app", "page.tsx");
 const arubaBuild = fs.existsSync(arubaBuildPath) ? fs.readFileSync(arubaBuildPath, "utf8") : "";
 const pagesPreviewBuild = fs.existsSync(pagesPreviewBuildPath)
@@ -255,7 +438,8 @@ const arubaReadiness = fs.existsSync(arubaReadinessPath)
 const arubaGuide = fs.existsSync(arubaGuidePath) ? fs.readFileSync(arubaGuidePath, "utf8") : "";
 const arubaRelease = fs.readFileSync(arubaReleasePath, "utf8");
 const homePage = fs.readFileSync(homePagePath, "utf8");
-const verifyJob = pagesWorkflow.match(/\n  verify:\n([\s\S]*?)\n  deploy:/)?.[1] || "";
+const verifyJob = pagesWorkflow.match(/\n  verify:\n([\s\S]*?)\n  restore:/)?.[1] || "";
+const restoreJob = pagesWorkflow.match(/\n  restore:\n([\s\S]*?)\n  deploy:/)?.[1] || "";
 const layoutPath = path.join(root, "web", "src", "app", "layout.tsx");
 const stagePath = path.join(
   root,
@@ -578,6 +762,8 @@ const menuCmsCheck = spawnSync(
       const validDocuments = [
         {
           _id: "menu-muulab",
+          _rev: "muulab-revision",
+          _updatedAt: "2026-07-31T12:00:01.000Z",
           venue: "muulab",
           categories: [
             {
@@ -606,6 +792,8 @@ const menuCmsCheck = spawnSync(
         },
         {
           _id: "menu-hawaii",
+          _rev: "hawaii-revision",
+          _updatedAt: "2026-07-31T12:00:00.000Z",
           venue: "hawaii",
           categories: [
             {
@@ -696,11 +884,51 @@ const menuCmsCheck = spawnSync(
       assert.equal(parsedUrl.searchParams.get("perspective"), "published");
       assert.equal(
         parsedUrl.searchParams.get("query"),
-        '*[_type == "menu" && _id in ["menu-hawaii", "menu-muulab"]]{_id, venue, categories[]{_key, title, note, dishes[]{_key, name, note, price, allergens, available}}}',
+        '*[_type == "menu" && _id in ["menu-hawaii", "menu-muulab"]]{_id, _rev, _updatedAt, venue, categories[]{_key, title, note, dishes[]{_key, name, note, price, allergens, available}}}',
       );
       assert.equal(requestInit.cache, "force-cache");
       assert.equal(requestInit.headers.Authorization, "Bearer super-secret-token");
       assert.doesNotMatch(requestUrl, /super-secret-token/);
+
+      let snapshotFetchCalled = false;
+      const snapshotMenus = await loadBuildMenuContent({
+        env: { MENU_CMS_SNAPSHOT_PATH: "/tmp/frozen-menu-snapshot.json" },
+        fetcher: async () => {
+          snapshotFetchCalled = true;
+          throw new Error("Snapshot builds must not fetch Sanity");
+        },
+        readSnapshot: async (snapshotPath) => {
+          assert.equal(snapshotPath, "/tmp/frozen-menu-snapshot.json");
+          return JSON.stringify({
+            schemaVersion: 1,
+            source: "sanity",
+            result: validDocuments,
+          });
+        },
+        warn: () => {},
+      });
+      assert.equal(snapshotFetchCalled, false);
+      assert.deepEqual(
+        snapshotMenus.map(({ id }) => id),
+        ["ristorante-mare", "muulab"],
+        "The build must consume the exact frozen snapshot when configured",
+      );
+
+      const invalidSnapshot = await loadBuildMenuContent({
+        env: { MENU_CMS_SNAPSHOT_PATH: "/tmp/frozen-menu-snapshot.json" },
+        readSnapshot: async () =>
+          JSON.stringify({
+            schemaVersion: 1,
+            source: "sanity",
+            result: validDocuments.slice(0, 1),
+          }),
+        warn: () => {},
+      });
+      assert.equal(
+        invalidSnapshot,
+        venueMenus,
+        "An invalid snapshot must atomically preserve the local fallback",
+      );
 
       for (const env of [
         {},
@@ -903,6 +1131,10 @@ for (const variable of [
   assert.match(webEnvExample, new RegExp(`^${variable}=`, "m"));
 }
 assert.doesNotMatch(webEnvExample, /^NEXT_PUBLIC_SANITY_/m);
+assert.match(menuCms, /process\.env\.MENU_CMS_SNAPSHOT_PATH/);
+assert.match(webEnvExample, /^MENU_CMS_SNAPSHOT_PATH=\s*$/m);
+assert.doesNotMatch(webEnvExample, /^NEXT_PUBLIC_MENU_CMS_SNAPSHOT_PATH/m);
+assert.match(menuCms, /readSnapshot/);
 assert.match(
   webEnvExample,
   /^SANITY_API_TOKEN=\s*$/m,
@@ -1549,6 +1781,16 @@ assert.doesNotMatch(
   /(?:from|import\()\s*["'][^"']*journey-segment-(?:controller|machine)/,
   "Production must not import the superseded journey controller or reducer",
 );
+const pushTrigger = sourceBetween(pagesWorkflow, "  push:", "  workflow_dispatch:");
+assert.match(pushTrigger, /branches:\s*\n\s*- main\s*\n\s*- claude\/codex-handoff-assets-se8fjq/);
+assert.doesNotMatch(pagesWorkflow, /repository_dispatch/);
+assert.match(
+  pagesWorkflow,
+  /workflow_dispatch:\s*\n\s*inputs:\s*[\s\S]*?cms_revision:[\s\S]*?rollback_run_id:/,
+  "Manual and Sanity publishing must expose the revision and optional rollback run",
+);
+assert.match(pagesWorkflow, /permissions:\s*\n\s*actions:\s*read/);
+assert.match(verifyJob, /if:.*rollback_run_id.*== ''/);
 assert.match(verifyJob, /npm run test:web:journey/);
 assert.match(verifyJob, /npm run test:web:static/);
 assert.match(verifyJob, /tsc --noEmit/);
@@ -1562,7 +1804,91 @@ assert.match(verifyJob, /rm -rf pages-preview/);
 assert.match(verifyJob, /cp -a web\/out\/\. pages-preview\/\$\{\{ github\.event\.repository\.name \}\}\//);
 assert.match(verifyJob, /npm run test:web:production/);
 assert.match(verifyJob, /actions\/upload-pages-artifact@v3[\s\S]*path:\s*web\/out/);
-assert.match(pagesWorkflow, /needs:\s*verify/);
+const cmsBuildStep = sourceBetween(
+  verifyJob,
+  "- name: Capture immutable menu snapshot and build static export",
+  "- name: Prefix root media URLs",
+);
+for (const variable of [
+  "SANITY_PROJECT_ID",
+  "SANITY_DATASET",
+  "SANITY_API_VERSION",
+  "SANITY_API_TOKEN",
+]) {
+  assert.match(cmsBuildStep, new RegExp(`${variable}:\\s*\\$\\{\\{ secrets\\.${variable} \\}\\}`));
+}
+assert.ok(
+  cmsBuildStep.indexOf("verified-menu-release.mjs capture") <
+    cmsBuildStep.indexOf("npm run build -- --webpack"),
+  "The immutable snapshot must be captured before the static build",
+);
+assert.match(
+  cmsBuildStep,
+  /MENU_CMS_SNAPSHOT_PATH:\s*\.\.\/\.verified-menu-release\/menu-snapshot\.json/,
+);
+assert.doesNotMatch(
+  verifyJob.replace(cmsBuildStep, ""),
+  /secrets\.SANITY_/,
+  "Sanity secrets must be scoped only to the static build/snapshot step",
+);
+assert.match(cmsBuildStep, /verified-menu-release\.mjs capture/);
+assert.match(
+  verifyJob,
+  /actions\/upload-artifact@v4[\s\S]*name:\s*verified-menu-release[\s\S]*retention-days:\s*90/,
+  "Every normal build must retain a private verified release artifact",
+);
+assert.match(restoreJob, /actions\/github-script@v7/);
+assert.match(restoreJob, /getWorkflowRun/);
+assert.match(restoreJob, /run\.status !== "completed"/);
+assert.match(restoreJob, /run\.conclusion !== "success"/);
+assert.match(restoreJob, /run\.head_branch !== process\.env\.EXPECTED_BRANCH/);
+assert.match(restoreJob, /workflowPath !== process\.env\.EXPECTED_WORKFLOW_PATH/);
+assert.match(
+  restoreJob,
+  /actions\/download-artifact@v4[\s\S]*name:\s*verified-menu-release[\s\S]*run-id:/,
+);
+assert.match(restoreJob, /verified-menu-release\.mjs verify/);
+assert.match(
+  restoreJob,
+  /RELEASE_EXPECTED_SOURCE_RUN_ID:\s*\$\{\{ inputs\.rollback_run_id \}\}/,
+);
+assert.match(
+  pagesWorkflow,
+  /needs:\s*\[verify, restore\]/,
+  "Deployment must accept either a fresh verification or a verified rollback",
+);
+assert.match(verifiedMenuRelease, /\b_rev\b/);
+assert.match(verifiedMenuRelease, /\b_updatedAt\b/);
+assert.match(verifiedMenuRelease, /menu-hawaii/);
+assert.match(verifiedMenuRelease, /menu-muulab/);
+assert.match(verifiedMenuRelease, /createHash\("sha256"\)/);
+assert.match(verifiedMenuRelease, /RELEASE_EXPECTED_WORKFLOW_PATH/);
+assert.match(verifiedMenuRelease, /RELEASE_EXPECTED_BRANCH/);
+assert.match(verifiedMenuRelease, /RELEASE_EXPECTED_SOURCE_COMMIT/);
+assert.match(verifiedMenuRelease, /RELEASE_EXPECTED_SOURCE_RUN_ID/);
+assert.match(verifiedMenuRelease, /RELEASE_EXPECTED_DOCUMENT_IDS/);
+assert.match(verifiedMenuRelease, /isMenuPrice/);
+assert.match(verifiedMenuRelease, /areUniqueAllergenCodes/);
+assert.doesNotMatch(verifiedMenuRelease, /s\\?\\?\.q|s\.q\./);
+assert.doesNotMatch(
+  `${pagesWorkflow}\n${verifiedMenuRelease}`,
+  /github_pat_|ghp_|SANITY_API_TOKEN:\s*["'][^"']+|password\s*[:=]\s*["'][^"']+/i,
+  "Publishing automation must not contain hard-coded credentials",
+);
+for (const requirement of [
+  /workflow_dispatch/,
+  /Actions:\s*write/i,
+  /Contents:\s*read/i,
+  /Google SSO/i,
+  /MFA/i,
+  /rotazione/i,
+  /revoca/i,
+  /configurazione esterna/i,
+]) {
+  assert.match(adminContentBlueprint, requirement);
+}
+assertVerifiedMenuReleaseBehavior();
+assertLocalMenuSnapshotCapture();
 assert.match(productionRunner, /server\.listen\(0, "127\.0\.0\.1"/);
 assert.match(productionRunner, /tests\/web-smoke\.js/);
 assert.match(productionRunner, /tests\/webkit-mobile-playback\.js/);

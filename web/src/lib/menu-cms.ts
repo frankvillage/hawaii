@@ -1,5 +1,7 @@
 import "server-only";
 
+import { readFile } from "node:fs/promises";
+
 import { z } from "zod";
 
 import { areUniqueAllergenCodes, isMenuPrice, menuCategoryKeys } from "../../../shared/menu-contract";
@@ -16,7 +18,7 @@ type LocalCategoryTitlesByKey = {
 };
 
 const menuQuery =
-  '*[_type == "menu" && _id in ["menu-hawaii", "menu-muulab"]]{_id, venue, categories[]{_key, title, note, dishes[]{_key, name, note, price, allergens, available}}}';
+  '*[_type == "menu" && _id in ["menu-hawaii", "menu-muulab"]]{_id, _rev, _updatedAt, venue, categories[]{_key, title, note, dishes[]{_key, name, note, price, allergens, available}}}';
 
 const requiredText = z.string().min(1);
 const optionalPrice = z.string().refine(isMenuPrice).optional();
@@ -75,6 +77,8 @@ const menuDocumentSchema = z.discriminatedUnion("_id", [
   z
     .object({
       _id: z.literal("menu-hawaii"),
+      _rev: requiredText,
+      _updatedAt: z.string().datetime().nullable(),
       venue: z.literal("hawaii"),
       categories: menuCategoriesSchema,
     })
@@ -82,18 +86,18 @@ const menuDocumentSchema = z.discriminatedUnion("_id", [
   z
     .object({
       _id: z.literal("menu-muulab"),
+      _rev: requiredText,
+      _updatedAt: z.string().datetime().nullable(),
       venue: z.literal("muulab"),
       categories: menuCategoriesSchema,
     })
     .strict(),
 ]);
 
-const menuResponseSchema = z
-  .object({
-    result: z.array(menuDocumentSchema).length(2),
-  })
-  .passthrough()
-  .superRefine(({ result }, context) => {
+const menuDocumentsSchema = z
+  .array(menuDocumentSchema)
+  .length(2)
+  .superRefine((result, context) => {
     const documentIds = new Set(result.map(({ _id }) => _id));
 
     if (
@@ -104,10 +108,23 @@ const menuResponseSchema = z
       context.addIssue({
         code: "custom",
         message: "Both fixed menu documents are required exactly once.",
-        path: ["result"],
       });
     }
   });
+
+const menuResponseSchema = z
+  .object({
+    result: menuDocumentsSchema,
+  })
+  .passthrough();
+
+const menuSnapshotSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    source: z.enum(["sanity", "local-fallback"]),
+    result: menuDocumentsSchema,
+  })
+  .strict();
 
 const menuEnvironmentSchema = z
   .object({
@@ -119,6 +136,7 @@ const menuEnvironmentSchema = z
   .strip();
 
 const defaultEnvironment = {
+  MENU_CMS_SNAPSHOT_PATH: process.env.MENU_CMS_SNAPSHOT_PATH,
   SANITY_PROJECT_ID: process.env.SANITY_PROJECT_ID,
   SANITY_DATASET: process.env.SANITY_DATASET,
   SANITY_API_VERSION: process.env.SANITY_API_VERSION,
@@ -130,6 +148,7 @@ type MenuCmsEnvironment = Partial<Record<keyof typeof defaultEnvironment, string
 type MenuCmsDependencies = {
   env?: MenuCmsEnvironment;
   fetcher?: typeof fetch;
+  readSnapshot?: (snapshotPath: string) => Promise<string>;
   warn?: (message: string) => void;
 };
 
@@ -141,7 +160,8 @@ type FallbackReason =
   | "fetch-failed"
   | "http-error"
   | "invalid-json"
-  | "invalid-schema";
+  | "invalid-schema"
+  | "snapshot-read-failed";
 
 function fallbackToLocalMenus(
   reason: FallbackReason,
@@ -227,11 +247,44 @@ function mapDocument(document: MenuDocument): VenueMenu {
   };
 }
 
+function mapValidatedPayload(
+  payload: unknown,
+  schema: typeof menuResponseSchema | typeof menuSnapshotSchema,
+): VenueMenu[] | null {
+  const documents = schema.safeParse(payload);
+  if (!documents.success) return null;
+
+  try {
+    return ["menu-hawaii", "menu-muulab"].map((documentId) =>
+      mapDocument(
+        documents.data.result.find(({ _id }) => _id === documentId) as MenuDocument,
+      ),
+    );
+  } catch {
+    return null;
+  }
+}
+
 export async function loadBuildMenuContent({
   env = defaultEnvironment,
   fetcher = fetch,
+  readSnapshot = (snapshotPath) => readFile(snapshotPath, "utf8"),
   warn = (message) => console.warn(message),
 }: MenuCmsDependencies = {}): Promise<VenueMenu[]> {
+  const snapshotPath = env.MENU_CMS_SNAPSHOT_PATH?.trim();
+
+  if (snapshotPath) {
+    let payload: unknown;
+    try {
+      payload = JSON.parse(await readSnapshot(snapshotPath));
+    } catch {
+      return fallbackToLocalMenus("snapshot-read-failed", warn);
+    }
+
+    const snapshotMenus = mapValidatedPayload(payload, menuSnapshotSchema);
+    return snapshotMenus ?? fallbackToLocalMenus("invalid-schema", warn);
+  }
+
   const config = menuEnvironmentSchema.safeParse(env);
 
   if (!config.success) {
@@ -269,18 +322,8 @@ export async function loadBuildMenuContent({
     return fallbackToLocalMenus("invalid-json", warn);
   }
 
-  const documents = menuResponseSchema.safeParse(payload);
-  if (!documents.success) {
-    return fallbackToLocalMenus("invalid-schema", warn);
-  }
-
-  try {
-    return ["menu-hawaii", "menu-muulab"].map((documentId) =>
-      mapDocument(
-        documents.data.result.find(({ _id }) => _id === documentId) as MenuDocument,
-      ),
-    );
-  } catch {
-    return fallbackToLocalMenus("invalid-schema", warn);
-  }
+  return (
+    mapValidatedPayload(payload, menuResponseSchema) ??
+    fallbackToLocalMenus("invalid-schema", warn)
+  );
 }
