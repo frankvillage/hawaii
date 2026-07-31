@@ -71,6 +71,7 @@ const menuCategorySchema = z
 
 const menuCategoriesSchema = z
   .array(menuCategorySchema)
+  .min(1)
   .superRefine(addDuplicateKeyIssues);
 
 const menuDocumentSchema = z.discriminatedUnion("_id", [
@@ -278,11 +279,14 @@ export async function loadBuildMenuContent({
     try {
       payload = JSON.parse(await readSnapshot(snapshotPath));
     } catch {
-      return fallbackToLocalMenus("snapshot-read-failed", warn);
+      throw new Error("[menu-cms] Required build snapshot could not be read.");
     }
 
     const snapshotMenus = mapValidatedPayload(payload, menuSnapshotSchema);
-    return snapshotMenus ?? fallbackToLocalMenus("invalid-schema", warn);
+    if (!snapshotMenus) {
+      throw new Error("[menu-cms] Required build snapshot is invalid.");
+    }
+    return snapshotMenus;
   }
 
   const config = menuEnvironmentSchema.safeParse(env);

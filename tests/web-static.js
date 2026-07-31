@@ -258,14 +258,40 @@ function assertVerifiedMenuReleaseBehavior() {
           _rev: "hawaii-revision",
           _updatedAt: "2026-07-31T12:00:00.000Z",
           venue: "hawaii",
-          categories: [],
+          categories: [
+            {
+              _key: "hawaii-antipasti",
+              title: "Antipasti",
+              dishes: [
+                {
+                  _key: "hawaii-dish",
+                  name: "Piatto Hawaii",
+                  price: "€ 12",
+                  available: true,
+                },
+              ],
+            },
+          ],
         },
         {
           _id: "menu-muulab",
           _rev: "muulab-revision",
           _updatedAt: "2026-07-31T12:00:01.000Z",
           venue: "muulab",
-          categories: [],
+          categories: [
+            {
+              _key: "muulab-per-cominciare",
+              title: "Per cominciare",
+              dishes: [
+                {
+                  _key: "muulab-dish",
+                  name: "Piatto MUULab",
+                  price: "€ 14",
+                  available: true,
+                },
+              ],
+            },
+          ],
         },
       ],
     };
@@ -327,6 +353,25 @@ function assertVerifiedMenuReleaseBehavior() {
     assert.match(tampered.stderr, /checksum/i);
 
     fs.writeFileSync(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+    fs.symlinkSync("/etc/hosts", path.join(siteDir, "external-link"));
+    const linkedArchive = spawnSync(
+      "tar",
+      ["-czf", archivePath, "-C", siteDir, "."],
+      { encoding: "utf8" },
+    );
+    assert.equal(linkedArchive.status, 0, linkedArchive.stderr || linkedArchive.stdout);
+    manifest.snapshot.sha256 = sha256File(snapshotPath);
+    manifest.site.sha256 = sha256File(archivePath);
+    fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    const linked = spawnSync(
+      process.execPath,
+      [verifiedMenuReleasePath, "verify", releaseDir, outputDir],
+      { cwd: root, encoding: "utf8", env },
+    );
+    assert.notEqual(linked.status, 0, "Symlink entries must never be extracted");
+    assert.match(linked.stderr, /link|tipi di file/i);
+    fs.unlinkSync(path.join(siteDir, "external-link"));
+
     fs.writeFileSync(path.join(fixtureRoot, "escape.html"), "must-not-extract\n");
     const unsafeArchive = spawnSync(
       "tar",
@@ -537,6 +582,7 @@ const arubaRelease = fs.readFileSync(arubaReleasePath, "utf8");
 const homePage = fs.readFileSync(homePagePath, "utf8");
 const verifyJob = pagesWorkflow.match(/\n  verify:\n([\s\S]*?)\n  restore:/)?.[1] || "";
 const restoreJob = pagesWorkflow.match(/\n  restore:\n([\s\S]*?)\n  deploy:/)?.[1] || "";
+const deployJob = pagesWorkflow.match(/\n  deploy:\n([\s\S]*)$/)?.[1] || "";
 const layoutPath = path.join(root, "web", "src", "app", "layout.tsx");
 const stagePath = path.join(
   root,
@@ -1011,20 +1057,31 @@ const menuCmsCheck = spawnSync(
         "The build must consume the exact frozen snapshot when configured",
       );
 
-      const invalidSnapshot = await loadBuildMenuContent({
-        env: { MENU_CMS_SNAPSHOT_PATH: "/tmp/frozen-menu-snapshot.json" },
-        readSnapshot: async () =>
-          JSON.stringify({
-            schemaVersion: 1,
-            source: "sanity",
-            result: validDocuments.slice(0, 1),
+      await assert.rejects(
+        () =>
+          loadBuildMenuContent({
+            env: { MENU_CMS_SNAPSHOT_PATH: "/tmp/frozen-menu-snapshot.json" },
+            readSnapshot: async () =>
+              JSON.stringify({
+                schemaVersion: 1,
+                source: "sanity",
+                result: validDocuments.slice(0, 1),
+              }),
+            warn: () => {},
           }),
-        warn: () => {},
-      });
-      assert.equal(
-        invalidSnapshot,
-        venueMenus,
-        "An invalid snapshot must atomically preserve the local fallback",
+        /Required build snapshot is invalid/,
+        "A configured immutable snapshot must fail closed instead of signing fallback content",
+      );
+      await assert.rejects(
+        () =>
+          loadBuildMenuContent({
+            env: { MENU_CMS_SNAPSHOT_PATH: "/tmp/missing-menu-snapshot.json" },
+            readSnapshot: async () => {
+              throw new Error("missing");
+            },
+            warn: () => {},
+          }),
+        /Required build snapshot could not be read/,
       );
 
       for (const env of [
@@ -1052,6 +1109,10 @@ const menuCmsCheck = spawnSync(
       const atomicFailures = [
         validDocuments.slice(0, 1),
         [validDocuments[0], validDocuments[0]],
+        [
+          validDocuments[0],
+          { ...validDocuments[1], categories: [] },
+        ],
         [
           validDocuments[0],
           { ...validDocuments[1], venue: "muulab" },
@@ -1901,9 +1962,14 @@ assert.match(verifyJob, /rm -rf pages-preview/);
 assert.match(verifyJob, /cp -a web\/out\/\. pages-preview\/\$\{\{ github\.event\.repository\.name \}\}\//);
 assert.match(verifyJob, /npm run test:web:production/);
 assert.match(verifyJob, /actions\/upload-pages-artifact@v3[\s\S]*path:\s*web\/out/);
+const cmsCaptureStep = sourceBetween(
+  verifyJob,
+  "- name: Capture immutable menu snapshot",
+  "- name: Build exact captured menu snapshot",
+);
 const cmsBuildStep = sourceBetween(
   verifyJob,
-  "- name: Capture immutable menu snapshot and build static export",
+  "- name: Build exact captured menu snapshot",
   "- name: Prefix root media URLs",
 );
 for (const variable of [
@@ -1912,11 +1978,14 @@ for (const variable of [
   "SANITY_API_VERSION",
   "SANITY_API_TOKEN",
 ]) {
-  assert.match(cmsBuildStep, new RegExp(`${variable}:\\s*\\$\\{\\{ secrets\\.${variable} \\}\\}`));
+  assert.match(
+    cmsCaptureStep,
+    new RegExp(`${variable}:\\s*\\$\\{\\{ secrets\\.${variable} \\}\\}`),
+  );
 }
 assert.ok(
-  cmsBuildStep.indexOf("verified-menu-release.mjs capture") <
-    cmsBuildStep.indexOf("npm run build -- --webpack"),
+  verifyJob.indexOf("verified-menu-release.mjs capture") <
+    verifyJob.indexOf("npm run build -- --webpack"),
   "The immutable snapshot must be captured before the static build",
 );
 assert.match(
@@ -1924,11 +1993,12 @@ assert.match(
   /MENU_CMS_SNAPSHOT_PATH:\s*\.\.\/\.verified-menu-release\/menu-snapshot\.json/,
 );
 assert.doesNotMatch(
-  verifyJob.replace(cmsBuildStep, ""),
+  verifyJob.replace(cmsCaptureStep, ""),
   /secrets\.SANITY_/,
-  "Sanity secrets must be scoped only to the static build/snapshot step",
+  "Sanity secrets must be scoped only to snapshot capture",
 );
-assert.match(cmsBuildStep, /verified-menu-release\.mjs capture/);
+assert.doesNotMatch(cmsBuildStep, /SANITY_API_TOKEN|secrets\.SANITY_/);
+assert.match(cmsCaptureStep, /verified-menu-release\.mjs capture/);
 assert.match(
   verifyJob,
   /actions\/upload-artifact@v4[\s\S]*name:\s*verified-menu-release[\s\S]*include-hidden-files:\s*true[\s\S]*retention-days:\s*90/,
@@ -1971,6 +2041,14 @@ assert.match(
   /needs:\s*\[verify, restore\]/,
   "Deployment must accept either a fresh verification or a verified rollback",
 );
+assert.doesNotMatch(
+  pagesWorkflow.match(/permissions:\n([\s\S]*?)\n\nconcurrency:/)?.[1] || "",
+  /pages:\s*write|id-token:\s*write/,
+  "Deployment credentials must not be global",
+);
+assert.match(deployJob, /permissions:\s*[\s\S]*pages:\s*write[\s\S]*id-token:\s*write/);
+assert.match(deployJob, /actions\/configure-pages@v5/);
+assert.doesNotMatch(`${verifyJob}\n${restoreJob}`, /actions\/configure-pages@v5/);
 assert.match(verifiedMenuRelease, /\b_rev\b/);
 assert.match(verifiedMenuRelease, /\b_updatedAt\b/);
 assert.match(verifiedMenuRelease, /menu-hawaii/);

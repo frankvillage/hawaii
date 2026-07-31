@@ -98,6 +98,9 @@ function validateDocuments(documents, source) {
     if (!Array.isArray(document.categories)) {
       fail(`Categorie mancanti per ${document._id}.`);
     }
+    if (document.categories.length === 0) {
+      fail(`Il menu ${document._id} deve contenere almeno una categoria.`);
+    }
 
     const categoryKeys = new Set();
     for (const category of document.categories) {
@@ -399,6 +402,18 @@ function verify(releaseDirectory, outputDirectory) {
     })
   ) {
     fail("Archivio statico non sicuro.");
+  }
+  const archiveDetails = run("tar", ["-tvzf", archivePath], {
+    capture: true,
+    errorMessage: "Dettagli archivio statico illeggibili.",
+  }).stdout
+    .split("\n")
+    .filter(Boolean);
+  if (
+    archiveDetails.length !== archiveList.length ||
+    archiveDetails.some((entry) => entry[0] !== "-" && entry[0] !== "d")
+  ) {
+    fail("L'archivio statico contiene link o tipi di file non ammessi.");
   }
 
   rmSync(outputDirectory, { force: true, recursive: true });

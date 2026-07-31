@@ -19,8 +19,6 @@ on:
 permissions:
   actions: read
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: github-pages
@@ -62,21 +60,23 @@ jobs:
       - name: Drop server-only API routes
         run: rm -rf web/src/app/api
 
-      - name: Capture immutable menu snapshot and build static export
+      - name: Capture immutable menu snapshot
         env:
-          MENU_CMS_SNAPSHOT_PATH: ../.verified-menu-release/menu-snapshot.json
-          STATIC_EXPORT: "1"
-          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
-          NODE_OPTIONS: --max-old-space-size=2048
           RELEASE_CMS_REVISION: ${{ inputs.cms_revision || '' }}
           SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
           SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
           SANITY_API_VERSION: ${{ secrets.SANITY_API_VERSION }}
           SANITY_API_TOKEN: ${{ secrets.SANITY_API_TOKEN }}
-        run: |
-          node scripts/verified-menu-release.mjs capture .verified-menu-release
-          cd web
-          npm run build -- --webpack
+        run: node scripts/verified-menu-release.mjs capture .verified-menu-release
+
+      - name: Build exact captured menu snapshot
+        working-directory: web
+        env:
+          MENU_CMS_SNAPSHOT_PATH: ../.verified-menu-release/menu-snapshot.json
+          STATIC_EXPORT: "1"
+          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+          NODE_OPTIONS: --max-old-space-size=2048
+        run: npm run build -- --webpack
 
       - name: Prefix root media URLs
         run: |
@@ -112,10 +112,6 @@ jobs:
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 90
-
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -192,10 +188,6 @@ jobs:
           RELEASE_EXPECTED_DOCUMENT_IDS: menu-hawaii,menu-muulab
         run: node scripts/verified-menu-release.mjs verify .verified-menu-release web/out
 
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web/out
@@ -207,6 +199,13 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
     steps:
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
       - id: deployment
         uses: actions/deploy-pages@v4
