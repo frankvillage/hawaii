@@ -2,7 +2,9 @@
 
 Il rilascio definitivo usa esclusivamente l'artefatto verificato in
 `output/aruba-static`. WordPress non viene cancellato e il database non viene
-modificato.
+modificato. Il preflight del 31 luglio 2026 ha verificato il server FTPS
+canonico `ftplnx02.aruba.it`, la document root `/www.hawaiipescara.it` e la
+cartella di backup esistente `old`.
 
 ## Credenziali
 
@@ -27,10 +29,10 @@ node scripts/aruba-release.mjs deploy
 
 Il deployer:
 
-1. inventaria la document root e verifica la presenza di `OLD`;
-2. carica la nuova release in uno staging datato dentro `OLD`;
+1. inventaria la document root e verifica la presenza di `old`;
+2. carica la nuova release in uno staging datato dentro `old`;
 3. scrive hash SHA-256 e inventario in un manifest locale;
-4. sposta ogni elemento della root, esclusa `OLD`, in un backup datato;
+4. sposta ogni elemento della root, esclusa `old`, in un backup datato;
 5. promuove in root gli elementi statici già caricati;
 6. conserva una copia del manifest nel backup WordPress.
 
@@ -47,5 +49,5 @@ node scripts/aruba-release.mjs rollback output/aruba-releases/<release-id>.json
 ```
 
 La release statica corrente viene spostata in una cartella `failed-*` dentro
-`OLD`; i file WordPress vengono rimessi nella loro posizione originale. Il
+`old`; i file WordPress vengono rimessi nella loro posizione originale. Il
 rollback si interrompe se trova elementi inattesi nella root.

@@ -21,9 +21,11 @@ const rootDir = resolve(import.meta.dirname, "..");
 const artifactDir = resolve(
   process.env.ARUBA_ARTIFACT_DIR ?? join(rootDir, "output/aruba-static"),
 );
-const host = process.env.ARUBA_FTP_HOST ?? "ftp.hawaiipescara.it";
-const remoteRoot = normalizeRemotePath(process.env.ARUBA_REMOTE_ROOT ?? "/");
-const oldName = validateEntryName(process.env.ARUBA_OLD_DIR ?? "OLD");
+const host = process.env.ARUBA_FTP_HOST ?? "ftplnx02.aruba.it";
+const remoteRoot = normalizeRemotePath(
+  process.env.ARUBA_REMOTE_ROOT ?? "/www.hawaiipescara.it",
+);
+const oldName = validateEntryName(process.env.ARUBA_OLD_DIR ?? "old");
 const requireTls = process.env.ARUBA_FTP_TLS !== "allow-plain";
 const releaseStamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
 const releaseStateDir = join(rootDir, "output", "aruba-releases");
@@ -143,7 +145,14 @@ function parseMlsd(output) {
       if (separator < 0) return null;
       const facts = line.slice(0, separator).toLowerCase();
       const name = line.slice(separator + 1).trim();
-      if (facts.includes("type=cdir") || facts.includes("type=pdir")) return null;
+      if (
+        name === "." ||
+        name === ".." ||
+        facts.includes("type=cdir") ||
+        facts.includes("type=pdir")
+      ) {
+        return null;
+      }
       return validateEntryName(name);
     })
     .filter(Boolean);
@@ -161,7 +170,7 @@ function listRemote(path = remoteRoot) {
       listing.stdout
         .split(/\r?\n/)
         .map((line) => line.trim())
-        .filter(Boolean)
+        .filter((line) => line && line !== "." && line !== "..")
         .map(validateEntryName),
     ),
   ].sort();
