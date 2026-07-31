@@ -2326,6 +2326,16 @@ assert.match(
 );
 assert.match(
   staticUpdate,
+  /const stagedFile = joinRemote\(\s*remoteRoot,\s*oldName,/,
+  "Static updates must upload into the proven old root before assembling fresh directories",
+);
+assert.ok(
+  staticUpdate.indexOf("uploadVerifiedFile(localFile, stagedFile, file)") <
+    staticUpdate.indexOf("moveRemote(stagedFile, nestedStagedFile)"),
+  "A flat staged file must be verified before it is moved into the release tree",
+);
+assert.match(
+  staticUpdate,
   /static-pre-/,
   "The active static application must be archived before an update",
 );

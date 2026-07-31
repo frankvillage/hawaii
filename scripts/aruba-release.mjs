@@ -280,6 +280,26 @@ function walkFiles(directory) {
   return files.sort();
 }
 
+function parentDirectories(files) {
+  const directories = new Set();
+  for (const { path } of files) {
+    const segments = path.split("/");
+    segments.pop();
+    for (let depth = 1; depth <= segments.length; depth += 1) {
+      directories.add(segments.slice(0, depth).join("/"));
+    }
+  }
+  return [...directories].sort((left, right) => {
+    const depthDifference = left.split("/").length - right.split("/").length;
+    return depthDifference || left.localeCompare(right);
+  });
+}
+
+function flatStageName(releaseId, path) {
+  const digest = createHash("sha256").update(path).digest("hex").slice(0, 24);
+  return validateEntryName(`stage-${releaseId}-${digest}`);
+}
+
 function artifactInventory() {
   if (!existsSync(artifactDir)) {
     fail(`Artefatto assente: ${artifactDir}. Esegui prima npm run build:web:aruba.`);
@@ -536,17 +556,39 @@ function updateStatic() {
   );
   makeRemoteDirectory(backupDirectory);
   makeRemoteDirectory(stagingDirectory);
+  for (const directory of parentDirectories(applicationFiles)) {
+    makeRemoteDirectory(joinRemote(stagingDirectory, directory));
+  }
 
   for (const file of applicationFiles) {
-    uploadVerifiedFile(
-      join(artifactDir, ...file.path.split("/")),
-      joinRemote(stagingDirectory, file.path),
-      file,
+    const localFile = join(artifactDir, ...file.path.split("/"));
+    const stagedFile = joinRemote(
+      remoteRoot,
+      oldName,
+      flatStageName(releaseId, file.path),
     );
+    const nestedStagedFile = joinRemote(stagingDirectory, file.path);
+    uploadVerifiedFile(localFile, stagedFile, file);
+    moveRemote(stagedFile, nestedStagedFile);
   }
+  const stagedManifestFile = joinRemote(
+    remoteRoot,
+    oldName,
+    flatStageName(releaseId, "DEPLOY-MANIFEST.json"),
+  );
+  uploadVerifiedFile(localManifestPath, stagedManifestFile, manifestInventory);
+  moveRemote(
+    stagedManifestFile,
+    joinRemote(stagingDirectory, "DEPLOY-MANIFEST.json"),
+  );
+  const stagedRollbackManifest = joinRemote(
+    remoteRoot,
+    oldName,
+    flatStageName(releaseId, "ROLLBACK-MANIFEST.json"),
+  );
   uploadVerifiedFile(
     localManifestPath,
-    joinRemote(stagingDirectory, "DEPLOY-MANIFEST.json"),
+    stagedRollbackManifest,
     manifestInventory,
   );
 
@@ -560,10 +602,9 @@ function updateStatic() {
       moveRemote(move.from, move.to);
       backupMoves.push(move);
     }
-    uploadVerifiedFile(
-      localManifestPath,
+    moveRemote(
+      stagedRollbackManifest,
       joinRemote(backupDirectory, "ROLLBACK-MANIFEST.json"),
-      manifestInventory,
     );
   } catch (error) {
     restoreMoves(backupMoves);
