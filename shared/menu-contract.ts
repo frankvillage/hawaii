@@ -28,13 +28,29 @@ export function isAllergenCode(value: unknown): value is AllergenCode {
 export function areUniqueAllergenCodes(
   values: unknown,
 ): values is readonly AllergenCode[] {
-  if (!Array.isArray(values) || !values.every(isAllergenCode)) return false;
-  return new Set(values).size === values.length;
+  if (!Array.isArray(values)) return false;
+
+  const seen = new Set<AllergenCode>();
+  for (let index = 0; index < values.length; index += 1) {
+    if (!Object.prototype.hasOwnProperty.call(values, index)) return false;
+
+    const value = values[index];
+    if (!isAllergenCode(value) || seen.has(value)) return false;
+    seen.add(value);
+  }
+
+  return true;
 }
+
+const menuPricePatterns = [
+  /^€ [1-9]\d*(?:,\d{2})?$/,
+  /^da € [1-9]\d*(?:,\d{2})?$/,
+  /^€ [1-9]\d*(?:,\d{2})? l'etto$/,
+] as const;
 
 export function isMenuPrice(value: unknown): value is string {
   return (
     typeof value === "string" &&
-    /^(?:da )?€ [1-9]\d*(?:,\d{2})?(?: l'etto)?$/.test(value)
+    menuPricePatterns.some((pattern) => pattern.test(value))
   );
 }

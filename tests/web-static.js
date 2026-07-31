@@ -414,10 +414,23 @@ const menuContractCheck = spawnSync(
       assert.equal(areUniqueAllergenCodes([1, 8, 14]), true);
       assert.equal(areUniqueAllergenCodes([1, 1]), false);
       assert.equal(areUniqueAllergenCodes([1, 15]), false);
+      assert.equal(areUniqueAllergenCodes([1, , 14]), false);
       for (const value of ["€ 8", "€ 8,50", "da € 8", "€ 12 l'etto"]) {
         assert.equal(isMenuPrice(value), true, \`Expected valid menu price: \${value}\`);
       }
-      for (const value of ["", "8", "€8", "€ 0", "€ -2", "€ 8,5", "€ 8 each", 8, null]) {
+      for (const value of [
+        "",
+        "8",
+        "€8",
+        "€ 0",
+        "€ -2",
+        "€ 8,5",
+        "€ 8 each",
+        "da € 8 l'etto",
+        "da € 8,50 l'etto",
+        8,
+        null,
+      ]) {
         assert.equal(isMenuPrice(value), false, \`Expected invalid menu price: \${value}\`);
       }
     `,
