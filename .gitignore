@@ -31,6 +31,7 @@ tmp/
 output/playwright/
 output/aruba-static/
 output/.aruba-static.*/
+output/aruba-releases/
 pages-preview/
 presentation/rendered/
 .playwright-cli/
