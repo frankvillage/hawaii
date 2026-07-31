@@ -63,10 +63,9 @@ jobs:
       - name: Capture immutable menu snapshot
         env:
           RELEASE_CMS_REVISION: ${{ inputs.cms_revision || '' }}
-          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
-          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
-          SANITY_API_VERSION: ${{ secrets.SANITY_API_VERSION }}
-          SANITY_API_TOKEN: ${{ secrets.SANITY_API_TOKEN }}
+          SANITY_PROJECT_ID: ${{ vars.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ vars.SANITY_DATASET }}
+          SANITY_API_VERSION: ${{ vars.SANITY_API_VERSION }}
         run: node scripts/verified-menu-release.mjs capture .verified-menu-release
 
       - name: Build exact captured menu snapshot

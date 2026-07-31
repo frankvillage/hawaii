@@ -130,12 +130,18 @@ export type MenuCategory = {
   action?: Action;
 };
 
+export type WineSection = {
+  title: string;
+  wines: { name: string; price?: string }[];
+};
+
 export type VenueMenu = {
   id: string;
   eyebrow: string;
   title: string;
   description: string;
   categories: MenuCategory[];
+  wineSections?: WineSection[];
   action?: Action;
   documentAction?: Action;
   photos?: MediaAsset[];
@@ -1305,20 +1311,90 @@ export const venueMenus: VenueMenu[] = [
       {
         title: "La pizza, a cena",
         dishes: [
-          { name: "Margherita", price: "€ 9", allergens: [1, 7] },
-          { name: "Bufala", price: "€ 11", allergens: [1, 7] },
-          { name: "Diversamente diavola", price: "€ 14", allergens: [1, 7] },
-          { name: "Marinara", price: "€ 8", allergens: [1] },
-          { name: "Capricciosa", price: "€ 14", allergens: [1, 7] },
-          { name: "Nell'orto", price: "€ 13", allergens: [1, 7] },
-          { name: "Patate e salsiccia", price: "€ 14", allergens: [1, 7] },
-          { name: "5 formaggi", price: "€ 14", allergens: [1, 7] },
-          { name: "Saluti da Parma", price: "€ 15", allergens: [1, 7] },
-          { name: "Caprese", price: "€ 13", allergens: [1, 7] },
-          { name: "Ombre nere", price: "€ 16", allergens: [1, 7, 8] },
-          { name: "Highlands", price: "€ 15", allergens: [1, 4, 7] },
-          { name: "Nerano", price: "€ 13", allergens: [1, 7] },
-          { name: "Americana (per bambini)", price: "€ 8", allergens: [1, 7] },
+          {
+            name: "Margherita",
+            note: "Polpa di San Marzano, mozzarella fior di latte, basilico e olio EVO.",
+            price: "€ 9",
+            allergens: [1, 7],
+          },
+          {
+            name: "Bufala",
+            note: "Polpa di San Marzano, mozzarella fior di latte, bufala campana, basilico e olio EVO.",
+            price: "€ 11",
+            allergens: [1, 7],
+          },
+          {
+            name: "Diversamente diavola",
+            note: "Polpa di San Marzano, mozzarella fior di latte, ventricina Vastese, ventricina spalmabile Teramana, filamenti di peperoncino piccante, basilico e olio EVO.",
+            price: "€ 14",
+            allergens: [1, 7],
+          },
+          {
+            name: "Marinara",
+            note: "Pomodoro, olio all'aglio, origano, basilico e pomodori confit.",
+            price: "€ 8",
+            allergens: [1],
+          },
+          {
+            name: "Capricciosa",
+            note: "Polpa di San Marzano, mozzarella fior di latte, prosciutto cotto alta qualità, carciofi, funghi champignon freschi e olive nere.",
+            price: "€ 14",
+            allergens: [1, 7],
+          },
+          {
+            name: "Nell'orto",
+            note: "Crema di zucchine, melanzane grigliate, zucchine grigliate, basilico e olio EVO.",
+            price: "€ 13",
+            allergens: [1, 7],
+          },
+          {
+            name: "Patate e salsiccia",
+            note: "Mozzarella fior di latte, salsiccia, patate di Avezzano al forno con la buccia, rosmarino e olio EVO.",
+            price: "€ 14",
+            allergens: [1, 7],
+          },
+          {
+            name: "5 formaggi",
+            note: "Mozzarella fior di latte, gorgonzola piccante, provola di Agerola, crumble di parmigiano, crema di parmigiano e olio EVO.",
+            price: "€ 14",
+            allergens: [1, 7],
+          },
+          {
+            name: "Saluti da Parma",
+            note: "Base focaccia, prosciutto crudo di Parma, pomodoro Pachino IGP, rucola, parmigiano e olio EVO.",
+            price: "€ 15",
+            allergens: [1, 7],
+          },
+          {
+            name: "Caprese",
+            note: "Base focaccia, mozzarella fior di latte, pomodoro cuore di bue, basilico, olio EVO e origano.",
+            price: "€ 13",
+            allergens: [1, 7],
+          },
+          {
+            name: "Ombre nere",
+            note: "Base focaccia, carpaccio di Angus, pesto di pistacchio, stracciata e pepe rosa.",
+            price: "€ 16",
+            allergens: [1, 7, 8],
+          },
+          {
+            name: "Highlands",
+            note: "Base focaccia, salmone affumicato, crema di formaggio infusa al gin, valeriana, pomodorini confit e olio EVO.",
+            price: "€ 15",
+            allergens: [1, 4, 7],
+          },
+          {
+            name: "Nerano",
+            note: "Crema di zucchine, chips di zucchine, crema di parmigiano, mozzarella fior di latte, provola di Agerola e olio alla menta.",
+            price: "€ 13",
+            allergens: [1, 7],
+          },
+          {
+            name: "Americana (per bambini)",
+            note: "Mozzarella fior di latte, wurstel di puro suino e patatine fritte.",
+            price: "€ 8",
+            allergens: [1, 7],
+          },
         ],
       },
       {

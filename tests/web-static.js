@@ -303,12 +303,46 @@ function assertVerifiedMenuReleaseBehavior() {
               ],
             },
           ],
+          wineSections: [
+            {
+              _key: "hawaii-wines",
+              title: "CMS Hawaii wines",
+              wines: [
+                {
+                  _key: "hawaii-wine-visible",
+                  name: "CMS visible Hawaii wine",
+                  available: true,
+                  price: "€ 26",
+                },
+              ],
+            },
+          ],
         },
         {
           _id: "menu-muulab",
           _rev: "muulab-revision",
           _updatedAt: "2026-07-31T12:00:01.000Z",
           venue: "muulab",
+          wineSections: [
+            {
+              _key: "muulab-wines",
+              title: "CMS MUULab wines",
+              wines: [
+                {
+                  _key: "muulab-wine-hidden",
+                  name: "CMS hidden MUULab wine",
+                  available: false,
+                  price: "€ 12",
+                },
+                {
+                  _key: "muulab-wine-visible",
+                  name: "CMS visible MUULab wine",
+                  available: true,
+                  price: "€ 18",
+                },
+              ],
+            },
+          ],
           categories: [
             {
               _key: "muulab-per-cominciare",
@@ -954,12 +988,37 @@ const menuCmsCheck = spawnSync(
         SANITY_API_VERSION: "2026-04-07",
         SANITY_API_TOKEN: "super-secret-token",
       };
+      const publicDatasetEnv = {
+        SANITY_PROJECT_ID: "project-id",
+        SANITY_DATASET: "production",
+        SANITY_API_VERSION: "2026-04-07",
+      };
       const validDocuments = [
         {
           _id: "menu-muulab",
           _rev: "muulab-revision",
           _updatedAt: "2026-07-31T12:00:01.000Z",
           venue: "muulab",
+          wineSections: [
+            {
+              _key: "muulab-wines",
+              title: "CMS MUULab wines",
+              wines: [
+                {
+                  _key: "muulab-wine-hidden",
+                  name: "CMS hidden MUULab wine",
+                  available: false,
+                  price: "€ 12",
+                },
+                {
+                  _key: "muulab-wine-visible",
+                  name: "CMS visible MUULab wine",
+                  available: true,
+                  price: "€ 18",
+                },
+              ],
+            },
+          ],
           categories: [
             {
               _key: "muulab-cocktail-aperitivo",
@@ -990,6 +1049,20 @@ const menuCmsCheck = spawnSync(
           _rev: "hawaii-revision",
           _updatedAt: "2026-07-31T12:00:00.000Z",
           venue: "hawaii",
+          wineSections: [
+            {
+              _key: "hawaii-wines",
+              title: "CMS Hawaii wines",
+              wines: [
+                {
+                  _key: "hawaii-wine-visible",
+                  name: "CMS visible Hawaii wine",
+                  available: true,
+                  price: "€ 26",
+                },
+              ],
+            },
+          ],
           categories: [
             {
               _key: "hawaii-primi",
@@ -1051,6 +1124,12 @@ const menuCmsCheck = spawnSync(
             ],
           },
         ],
+        wineSections: [
+          {
+            title: "CMS Hawaii wines",
+            wines: [{ name: "CMS visible Hawaii wine", price: "€ 26" }],
+          },
+        ],
       });
       assert.deepEqual(successful.menus[1], {
         ...venueMenus[1],
@@ -1069,6 +1148,12 @@ const menuCmsCheck = spawnSync(
             ],
           },
         ],
+        wineSections: [
+          {
+            title: "CMS MUULab wines",
+            wines: [{ name: "CMS visible MUULab wine", price: "€ 18" }],
+          },
+        ],
       });
       assert.deepEqual(successful.warnings, []);
       assert.equal(successful.calls.length, 1);
@@ -1079,11 +1164,21 @@ const menuCmsCheck = spawnSync(
       assert.equal(parsedUrl.searchParams.get("perspective"), "published");
       assert.equal(
         parsedUrl.searchParams.get("query"),
-        '*[_type == "menu" && _id in ["menu-hawaii", "menu-muulab"]]{_id, _rev, _updatedAt, venue, categories[]{_key, title, note, dishes[]{_key, name, note, price, allergens, available}}}',
+        '*[_type == "menu" && _id in ["menu-hawaii", "menu-muulab"]]{_id, _rev, _updatedAt, venue, categories[]{_key, title, note, dishes[]{_key, name, note, price, allergens, available}}, wineSections[]{_key, title, wines[]{_key, name, price, available}}}',
       );
       assert.equal(requestInit.cache, "force-cache");
       assert.equal(requestInit.headers.Authorization, "Bearer super-secret-token");
       assert.doesNotMatch(requestUrl, /super-secret-token/);
+
+      const publicDataset = await loadWith(validDocuments, {
+        env: publicDatasetEnv,
+      });
+      assert.equal(publicDataset.calls.length, 1);
+      assert.equal(
+        publicDataset.calls[0][1].headers,
+        undefined,
+        "Public Sanity datasets must not require or send an API token",
+      );
 
       let snapshotFetchCalled = false;
       const snapshotMenus = await loadBuildMenuContent({
@@ -1139,11 +1234,6 @@ const menuCmsCheck = spawnSync(
       for (const env of [
         {},
         { SANITY_PROJECT_ID: "project-id" },
-        {
-          SANITY_PROJECT_ID: "project-id",
-          SANITY_DATASET: "production",
-          SANITY_API_VERSION: "2026-04-07",
-        },
       ]) {
         let fetched = false;
         const fallback = await loadBuildMenuContent({
@@ -1331,15 +1421,12 @@ assert.match(
   "The adapter must use the dependency-free shared price and allergen contract",
 );
 assert.doesNotMatch(menuCms, /NEXT_PUBLIC_/);
-for (const variable of [
-  "SANITY_PROJECT_ID",
-  "SANITY_DATASET",
-  "SANITY_API_VERSION",
-  "SANITY_API_TOKEN",
-]) {
+for (const variable of ["SANITY_PROJECT_ID", "SANITY_DATASET", "SANITY_API_VERSION"]) {
   assert.match(menuCms, new RegExp(`process\\.env\\.${variable}`));
   assert.match(webEnvExample, new RegExp(`^${variable}=`, "m"));
 }
+assert.match(menuCms, /process\.env\.SANITY_API_TOKEN/);
+assert.match(webEnvExample, /^SANITY_API_TOKEN=/m);
 assert.doesNotMatch(webEnvExample, /^NEXT_PUBLIC_SANITY_/m);
 assert.match(menuCms, /process\.env\.MENU_CMS_SNAPSHOT_PATH/);
 assert.match(webEnvExample, /^MENU_CMS_SNAPSHOT_PATH=\s*$/m);
@@ -1364,6 +1451,17 @@ assert.match(
 assert.match(menuPage, /const menus = await loadBuildMenuContent\(\)/);
 assert.match(menuPage, /\{menus\.map\(\(menu\) => \(/);
 assert.match(menuPage, /dish\.note[\s\S]{0,220}text-\[0\.72rem\]/);
+assert.match(
+  menuPage,
+  /menu\.wineSections \?\? fallbackWineSectionsByMenuId\[menu\.id\]/,
+  "The published menu must prefer editable Sanity wine sections with a safe static fallback",
+);
+assert.equal(
+  (menuPage.match(/className="mt-8 grid items-start gap-5 lg:grid-cols-2"/g) || [])
+    .length,
+  2,
+  "Food and wine cards must keep their intrinsic height instead of stretching to the row",
+);
 
 assert.ok(
   fs.existsSync(menuSeedPath),
@@ -1380,9 +1478,11 @@ assert.equal(
 );
 assert.match(
   menuSeed,
-  /jiti\.import<\{ venueMenus: VenueMenu\[\] \}>\(\s*"\.\.\/src\/lib\/site-content\.ts",?\s*\)/,
+  /jiti\.import<\{[\s\S]*?venueMenus: VenueMenu\[\];[\s\S]*?\}>\(\s*"\.\.\/src\/lib\/site-content\.ts",?\s*\)/,
   "The seed must derive directly from the approved local venueMenus",
 );
+assert.match(menuSeed, /hawaiiWineSections/);
+assert.match(menuSeed, /muulabWineSections/);
 assert.match(
   menuSeed,
   /import \{ menuCategoryKeys \} from "\.\.\/\.\.\/shared\/menu-contract";/,
@@ -1465,7 +1565,38 @@ assert.deepEqual(
   "MUULab category keys must exactly match the shared contract",
 );
 
+const hawaiiPizzaSeed = menuSeedDocuments[0].categories.find(
+  ({ _key }) => _key === "hawaii-pizza-cena",
+);
+assert.ok(hawaiiPizzaSeed, "The Hawaii pizza category must be present in the seed");
+assert.equal(hawaiiPizzaSeed.dishes.length, 14, "The approved pizza list must contain 14 items");
+for (const pizza of hawaiiPizzaSeed.dishes) {
+  assert.ok(
+    typeof pizza.note === "string" && pizza.note.trim().length > 0,
+    `${pizza.name} must include its ingredients`,
+  );
+}
+assert.match(
+  hawaiiPizzaSeed.dishes.find(({ name }) => name === "Margherita")?.note ?? "",
+  /San Marzano.*fior di latte.*basilico.*olio EVO/i,
+  "The Margherita ingredients must be exported to Sanity",
+);
+assert.match(
+  hawaiiPizzaSeed.dishes.find(({ name }) => name === "Americana (per bambini)")?.note ?? "",
+  /fior di latte.*wurstel.*patatine fritte/i,
+  "The Americana ingredients must be exported to Sanity",
+);
+
 for (const document of menuSeedDocuments) {
+  assert.ok(document.wineSections.length > 0, `${document._id} must include wine sections`);
+  for (const wineSection of document.wineSections) {
+    assert.equal(wineSection._type, "wineSection");
+    assert.ok(wineSection.wines.length > 0);
+    for (const wine of wineSection.wines) {
+      assert.equal(wine._type, "wineEntry");
+      assert.equal(wine.available, true);
+    }
+  }
   for (const category of document.categories) {
     assert.equal(category._type, "menuCategory");
     assert.ok(Array.isArray(category.dishes));
@@ -1595,6 +1726,11 @@ assert.match(
 assert.match(menuSchema, /allergenDefinitions\.map\(/);
 assert.match(menuSchema, /areUniqueAllergenCodes\(allergens\)/);
 assert.match(menuSchema, /isMenuPrice\(price\)/);
+assert.match(
+  menuSchema,
+  /name: "wineSections"[\s\S]*?of: \[wineSection\][\s\S]*?Rule\.required\(\)\.min\(1\)/,
+  "Each venue document must expose an editable, non-empty wine and beverage list",
+);
 
 assert.match(menuCategorySchema, /type: "object"/);
 assert.match(
@@ -2044,17 +2180,13 @@ const cmsBuildStep = sourceBetween(
   "- name: Build exact captured menu snapshot",
   "- name: Prefix root media URLs",
 );
-for (const variable of [
-  "SANITY_PROJECT_ID",
-  "SANITY_DATASET",
-  "SANITY_API_VERSION",
-  "SANITY_API_TOKEN",
-]) {
+for (const variable of ["SANITY_PROJECT_ID", "SANITY_DATASET", "SANITY_API_VERSION"]) {
   assert.match(
     cmsCaptureStep,
-    new RegExp(`${variable}:\\s*\\$\\{\\{ secrets\\.${variable} \\}\\}`),
+    new RegExp(`${variable}:\\s*\\$\\{\\{ vars\\.${variable} \\}\\}`),
   );
 }
+assert.doesNotMatch(cmsCaptureStep, /SANITY_API_TOKEN|secrets\.SANITY_/);
 assert.ok(
   verifyJob.indexOf("verified-menu-release.mjs capture") <
     verifyJob.indexOf("npm run build -- --webpack"),

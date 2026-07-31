@@ -29,6 +29,14 @@ type WineListProps = {
   }[];
 };
 
+const fallbackWineSectionsByMenuId: Record<string, WineListProps["sections"]> = {
+  "ristorante-mare": hawaiiWineSections.map((section) => ({
+    title: section.title,
+    wines: section.dishes,
+  })),
+  muulab: muulabWineSections,
+};
+
 function WineList({
   id,
   eyebrow,
@@ -46,7 +54,7 @@ function WineList({
           {title}
         </h2>
       </div>
-      <div className="mt-8 grid gap-5 lg:grid-cols-2">
+      <div className="mt-8 grid items-start gap-5 lg:grid-cols-2">
         {sections.map((section) => (
           <article
             key={section.title}
@@ -176,7 +184,7 @@ export default async function MenuPage() {
                 </div>
               ) : null}
 
-              <div className="mt-8 grid gap-5 lg:grid-cols-2">
+              <div className="mt-8 grid items-start gap-5 lg:grid-cols-2">
                 {menu.categories.map((category) => (
                   <article
                     key={`${menu.id}-${category.title}`}
@@ -230,10 +238,7 @@ export default async function MenuPage() {
                 eyebrow="Cantina Hawaii"
                 title="Carta vini Hawaii"
                 itemTestId="hawaii-wine-item"
-                sections={hawaiiWineSections.map((section) => ({
-                  title: section.title,
-                  wines: section.dishes,
-                }))}
+                sections={menu.wineSections ?? fallbackWineSectionsByMenuId[menu.id]}
               />
             ) : null}
             {menu.id === "muulab" ? (
@@ -242,7 +247,7 @@ export default async function MenuPage() {
                 eyebrow="Cantina MUULab Riviera"
                 title="Carta vini MUULab Riviera"
                 itemTestId="muulab-wine-item"
-                sections={muulabWineSections}
+                sections={menu.wineSections ?? fallbackWineSectionsByMenuId[menu.id]}
               />
             ) : null}
             </Fragment>

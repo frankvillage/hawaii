@@ -9,8 +9,11 @@ Studio content-first per:
 - FAQ
 - media asset
 
-Prima di avviare lo studio servono:
-- `SANITY_PROJECT_ID`
-- `SANITY_DATASET`
+Prima di avviare lo Studio servono in `studio/.env.local`:
+- `SANITY_STUDIO_PROJECT_ID`
+- `SANITY_STUDIO_DATASET`
+- `SANITY_STUDIO_HOSTNAME`
 
-Questo scaffold definisce struttura e schema; il binding al progetto Sanity reale va completato in fase di setup ambiente.
+Il progetto Hawaii usa il piano Sanity Free e il dataset pubblico `production`.
+La lettura dei contenuti pubblicati non richiede token; creazione e modifica restano
+protette dagli account Sanity autorizzati. Non inserire token o credenziali nel repository.

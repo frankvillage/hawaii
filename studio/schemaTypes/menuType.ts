@@ -153,6 +153,83 @@ const menuCategory = defineArrayMember({
   },
 });
 
+const wineEntry = defineArrayMember({
+  name: "wineEntry",
+  title: "Vino o bevanda",
+  type: "object",
+  fields: [
+    defineField({
+      name: "name",
+      title: "Nome",
+      type: "string",
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: "price",
+      title: "Prezzo",
+      type: "string",
+      description: "Esempi: € 8, € 8,50, da € 8. Lasciare vuoto se il prezzo non è previsto.",
+      validation: (Rule) => Rule.custom(validateMenuPrice),
+    }),
+    defineField({
+      name: "available",
+      title: "Disponibile",
+      type: "boolean",
+      initialValue: true,
+      validation: (Rule) => Rule.required(),
+    }),
+  ],
+  preview: {
+    select: {
+      available: "available",
+      name: "name",
+      price: "price",
+    },
+    prepare({ available, name, price }) {
+      return {
+        title: name || "Etichetta senza nome",
+        subtitle: [available === false ? "Non disponibile" : "", price]
+          .filter(Boolean)
+          .join(" - "),
+      };
+    },
+  },
+});
+
+const wineSection = defineArrayMember({
+  name: "wineSection",
+  title: "Sezione carta vini e bevande",
+  type: "object",
+  fields: [
+    defineField({
+      name: "title",
+      title: "Titolo sezione",
+      type: "string",
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: "wines",
+      title: "Vini e bevande",
+      type: "array",
+      of: [wineEntry],
+      validation: (Rule) => Rule.required().min(1),
+    }),
+  ],
+  preview: {
+    select: {
+      title: "title",
+      wines: "wines",
+    },
+    prepare({ title, wines }) {
+      const count = Array.isArray(wines) ? wines.length : 0;
+      return {
+        title: title || "Sezione senza nome",
+        subtitle: `${count} ${count === 1 ? "voce" : "voci"}`,
+      };
+    },
+  },
+});
+
 export const menuType = defineType({
   name: "menu",
   title: "Menu",
@@ -173,6 +250,15 @@ export const menuType = defineType({
       title: "Categories",
       type: "array",
       of: [menuCategory],
+      validation: (Rule) => Rule.required().min(1),
+    }),
+    defineField({
+      name: "wineSections",
+      title: "Carta vini e bevande",
+      type: "array",
+      of: [wineSection],
+      description:
+        "Sezioni e voci visualizzate nella carta del locale. È possibile ordinare, aggiungere, nascondere o rimuovere le etichette.",
       validation: (Rule) => Rule.required().min(1),
     }),
   ],

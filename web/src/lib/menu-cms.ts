@@ -18,7 +18,7 @@ type LocalCategoryTitlesByKey = {
 };
 
 const menuQuery =
-  '*[_type == "menu" && _id in ["menu-hawaii", "menu-muulab"]]{_id, _rev, _updatedAt, venue, categories[]{_key, title, note, dishes[]{_key, name, note, price, allergens, available}}}';
+  '*[_type == "menu" && _id in ["menu-hawaii", "menu-muulab"]]{_id, _rev, _updatedAt, venue, categories[]{_key, title, note, dishes[]{_key, name, note, price, allergens, available}}, wineSections[]{_key, title, wines[]{_key, name, price, available}}}';
 
 const requiredText = z.string().min(1);
 const optionalPrice = z.string().refine(isMenuPrice).optional();
@@ -60,6 +60,33 @@ const menuDishesSchema = z
   .array(menuDishSchema)
   .superRefine(addDuplicateKeyIssues);
 
+const wineEntrySchema = z
+  .object({
+    _key: requiredText,
+    name: requiredText,
+    price: optionalPrice,
+    available: z.boolean(),
+  })
+  .strict();
+
+const wineEntriesSchema = z
+  .array(wineEntrySchema)
+  .min(1)
+  .superRefine(addDuplicateKeyIssues);
+
+const wineSectionSchema = z
+  .object({
+    _key: requiredText,
+    title: requiredText,
+    wines: wineEntriesSchema,
+  })
+  .strict();
+
+const wineSectionsSchema = z
+  .array(wineSectionSchema)
+  .min(1)
+  .superRefine(addDuplicateKeyIssues);
+
 const menuCategorySchema = z
   .object({
     _key: requiredText,
@@ -82,6 +109,7 @@ const menuDocumentSchema = z.discriminatedUnion("_id", [
       _updatedAt: z.string().datetime().nullable(),
       venue: z.literal("hawaii"),
       categories: menuCategoriesSchema,
+      wineSections: wineSectionsSchema.optional(),
     })
     .strict(),
   z
@@ -91,6 +119,7 @@ const menuDocumentSchema = z.discriminatedUnion("_id", [
       _updatedAt: z.string().datetime().nullable(),
       venue: z.literal("muulab"),
       categories: menuCategoriesSchema,
+      wineSections: wineSectionsSchema.optional(),
     })
     .strict(),
 ]);
@@ -132,7 +161,7 @@ const menuEnvironmentSchema = z
     SANITY_PROJECT_ID: z.string().regex(/^[a-z0-9-]+$/),
     SANITY_DATASET: z.string().regex(/^[A-Za-z0-9_-]+$/),
     SANITY_API_VERSION: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    SANITY_API_TOKEN: z.string().min(1),
+    SANITY_API_TOKEN: z.string().min(1).optional(),
   })
   .strip();
 
@@ -245,6 +274,12 @@ function mapDocument(document: MenuDocument): VenueMenu {
         findLocalCategory(document._id, category._key, localMenu),
       ),
     ),
+    wineSections: document.wineSections?.map(({ title, wines }) => ({
+      title,
+      wines: wines
+        .filter(({ available }) => available)
+        .map(({ name, price }) => ({ name, price })),
+    })),
   };
 }
 
@@ -307,9 +342,9 @@ export async function loadBuildMenuContent({
   try {
     response = await fetcher(endpoint.toString(), {
       cache: "force-cache",
-      headers: {
-        Authorization: `Bearer ${SANITY_API_TOKEN}`,
-      },
+      headers: SANITY_API_TOKEN
+        ? { Authorization: `Bearer ${SANITY_API_TOKEN}` }
+        : undefined,
     });
   } catch {
     return fallbackToLocalMenus("fetch-failed", warn);

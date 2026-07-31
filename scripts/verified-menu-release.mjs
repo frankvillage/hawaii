@@ -136,6 +136,40 @@ function validateDocuments(documents, source) {
         }
       }
     }
+
+    if (document.wineSections !== undefined) {
+      if (!Array.isArray(document.wineSections) || document.wineSections.length === 0) {
+        fail(`Carta vini mancante per ${document._id}.`);
+      }
+      const sectionKeys = new Set();
+      for (const section of document.wineSections) {
+        const sectionKey = requireText(
+          section?._key,
+          `_key sezione vini di ${document._id}`,
+        );
+        if (sectionKeys.has(sectionKey)) {
+          fail(`_key sezione vini duplicata: ${sectionKey}.`);
+        }
+        sectionKeys.add(sectionKey);
+        requireText(section.title, `Titolo sezione vini ${sectionKey}`);
+        if (!Array.isArray(section.wines) || section.wines.length === 0) {
+          fail(`Vini mancanti in ${sectionKey}.`);
+        }
+        const wineKeys = new Set();
+        for (const wine of section.wines) {
+          const wineKey = requireText(wine?._key, `_key vino di ${sectionKey}`);
+          if (wineKeys.has(wineKey)) fail(`_key vino duplicata: ${wineKey}.`);
+          wineKeys.add(wineKey);
+          requireText(wine.name, `Nome vino ${wineKey}`);
+          if (wine.price !== undefined && !isMenuPrice(wine.price)) {
+            fail(`Prezzo non valido per ${wineKey}.`);
+          }
+          if (typeof wine.available !== "boolean") {
+            fail(`Disponibilità non valida per ${wineKey}.`);
+          }
+        }
+      }
+    }
   }
 
   return sorted;
@@ -172,6 +206,29 @@ function normalizeDocuments(documents) {
             : category?.dishes,
         }))
       : document?.categories,
+    ...copyOptional(
+      {
+        ...(document?.wineSections !== undefined
+          ? {
+              wineSections: Array.isArray(document.wineSections)
+                ? document.wineSections.map((section) => ({
+                    _key: section?._key,
+                    title: section?.title,
+                    wines: Array.isArray(section?.wines)
+                      ? section.wines.map((wine) => ({
+                          _key: wine?._key,
+                          name: wine?.name,
+                          ...copyOptional(wine || {}, "price"),
+                          available: wine?.available,
+                        }))
+                      : section?.wines,
+                  }))
+                : document.wineSections,
+            }
+          : {}),
+      },
+      "wineSections",
+    ),
   }));
 }
 
@@ -210,7 +267,7 @@ async function sanityDocuments() {
   const dataset = process.env.SANITY_DATASET;
   const apiVersion = process.env.SANITY_API_VERSION;
   const token = process.env.SANITY_API_TOKEN;
-  const configuration = [projectId, dataset, apiVersion, token];
+  const configuration = [projectId, dataset, apiVersion];
 
   if (
     configuration.some((value) => !value) ||
@@ -223,12 +280,12 @@ async function sanityDocuments() {
 
   try {
     const query =
-      '*[_id in ["menu-hawaii","menu-muulab"]]{_id,_rev,_updatedAt,venue,categories[]{_key,_type,title,note,dishes[]{_key,_type,name,price,note,available,allergens}}}';
+      '*[_id in ["menu-hawaii","menu-muulab"]]{_id,_rev,_updatedAt,venue,categories[]{_key,_type,title,note,dishes[]{_key,_type,name,price,note,available,allergens}},wineSections[]{_key,_type,title,wines[]{_key,_type,name,price,available}}}';
     const url =
       `https://${projectId}.api.sanity.io/v${apiVersion}/data/query/` +
       `${encodeURIComponent(dataset)}?query=${encodeURIComponent(query)}`;
     const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       cache: "no-store",
     });
     if (!response.ok) return null;

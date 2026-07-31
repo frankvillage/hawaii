@@ -6,4 +6,7 @@ export default defineCliConfig({
     dataset: process.env.SANITY_STUDIO_DATASET || "your-dataset",
   },
   studioHost: process.env.SANITY_STUDIO_HOSTNAME || "your-studio-hostname",
+  deployment: {
+    appId: "ny9pxocy0n96lezp2osirmzn",
+  },
 });
