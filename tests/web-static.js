@@ -580,6 +580,7 @@ const productionRunner = fs.readFileSync(
 const pagesPreviewBuildPath = path.join(root, "scripts", "build-pages-preview.sh");
 const arubaBuildPath = path.join(root, "scripts", "build-static-aruba.sh");
 const arubaHeadersPath = path.join(root, "deploy", "aruba", ".htaccess.example");
+const arubaOldGuardPath = path.join(root, "deploy", "aruba", "old.htaccess");
 const arubaReadinessPath = path.join(root, "tests", "aruba-static-readiness.js");
 const arubaGuidePath = path.join(root, "docs", "deploy", "aruba-static-readiness.md");
 const arubaReleasePath = path.join(root, "scripts", "aruba-release.mjs");
@@ -599,6 +600,7 @@ const pagesPreviewBuild = fs.existsSync(pagesPreviewBuildPath)
 const arubaHeaders = fs.existsSync(arubaHeadersPath)
   ? fs.readFileSync(arubaHeadersPath, "utf8")
   : "";
+const arubaOldGuard = fs.readFileSync(arubaOldGuardPath, "utf8");
 const arubaReadiness = fs.existsSync(arubaReadinessPath)
   ? fs.readFileSync(arubaReadinessPath, "utf8")
   : "";
@@ -2203,6 +2205,13 @@ assert.match(
   arubaHeaders,
   /RewriteRule \^OLD\(\?:\/\|\$\) - \[F,L,NC\]/,
   "The WordPress backup directory must be denied over HTTP",
+);
+assert.match(arubaOldGuard, /Require all denied/);
+assert.match(arubaOldGuard, /Deny from all/);
+assert.ok(
+  arubaRelease.indexOf("uploadFile(oldAccessGuard") <
+    arubaRelease.indexOf("const backupMoves = [];"),
+  "The old directory must be denied before any WordPress root entry is moved",
 );
 assert.match(arubaRelease, /release\.worktree !== "clean"/);
 assert.match(arubaRelease, /release\.commit !== head\.stdout\.trim\(\)/);

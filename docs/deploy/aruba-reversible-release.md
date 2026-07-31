@@ -30,7 +30,8 @@ node scripts/aruba-release.mjs deploy
 Il deployer:
 
 1. inventaria la document root e verifica la presenza di `old`;
-2. carica la nuova release in uno staging datato dentro `old`;
+2. protegge `old` con un deny HTTP autonomo e carica la nuova release in uno
+   staging datato;
 3. scrive hash SHA-256 e inventario in un manifest locale;
 4. sposta ogni elemento della root, esclusa `old`, in un backup datato;
 5. promuove in root gli elementi statici già caricati;

@@ -21,6 +21,7 @@ const rootDir = resolve(import.meta.dirname, "..");
 const artifactDir = resolve(
   process.env.ARUBA_ARTIFACT_DIR ?? join(rootDir, "output/aruba-static"),
 );
+const oldAccessGuard = join(rootDir, "deploy", "aruba", "old.htaccess");
 const host = process.env.ARUBA_FTP_HOST ?? "ftplnx02.aruba.it";
 const remoteRoot = normalizeRemotePath(
   process.env.ARUBA_REMOTE_ROOT ?? "/www.hawaiipescara.it",
@@ -345,6 +346,8 @@ function deploy() {
   };
   const localManifestPath = writeManifest(manifest);
 
+  if (!existsSync(oldAccessGuard)) fail("Protezione HTTP della cartella old assente.");
+  uploadFile(oldAccessGuard, joinRemote(remoteRoot, oldName, ".htaccess"));
   makeRemoteDirectory(backupDirectory);
   makeRemoteDirectory(stagingDirectory);
 
