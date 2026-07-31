@@ -1332,7 +1332,6 @@ export const venueMenus: VenueMenu[] = [
         title: "Bevande, birre e cantina",
         note: "Acque, bibite e birre accompagnano una selezione di etichette regionali, italiane e internazionali.",
         dishes: [],
-        action: { label: "Carta dei vini", href: "#carta-vini" },
       },
     ],
   },
@@ -1437,10 +1436,6 @@ export const venueMenus: VenueMenu[] = [
         title: "Cantina e Coravin",
         note: "Vini al calice con sistema Coravin, birre artigianali, bollicine e una cantina che attraversa Abruzzo, Piemonte, Borgogna e Champagne: la carta completa è al tavolo.",
         dishes: [],
-        action: {
-          label: "Carta dei vini MUULab",
-          href: "#carta-vini-muulab",
-        },
       },
     ],
   },

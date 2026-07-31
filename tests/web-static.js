@@ -2594,9 +2594,10 @@ assert.match(menuPage, /<section id=\{id\} className="scroll-mt-/);
 assert.match(menuPage, /id="carta-vini"/);
 assert.match(menuPage, /id="carta-vini-muulab"/);
 assert.match(globalStyles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*scroll-behavior: auto/);
-assert.match(
+assert.doesNotMatch(
   siteContent,
-  /title: "Bevande, birre e cantina"[\s\S]{0,320}action: \{ label: "Carta dei vini", href: "#carta-vini" \}/,
+  /action: \{ label: "Carta dei vini(?: MUULab)?", href: "#carta-vini(?:-muulab)?" \}/,
+  "Wine lists rendered immediately after each menu must not have redundant category buttons",
 );
 assert.doesNotMatch(
   siteContent,
@@ -2628,9 +2629,10 @@ assert.match(
   /menu\.id === "ristorante-mare"[\s\S]*?id="carta-vini"[\s\S]*?menu\.id === "muulab"[\s\S]*?id="carta-vini-muulab"/,
   "Each restaurant menu must be followed by its own wine list",
 );
-assert.match(
+assert.doesNotMatch(
   menuPage,
-  /data-testid="wine-list-link"[\s\S]{0,180}href=\{category\.action\.href\}/,
+  /data-testid="wine-list-link"/,
+  "The menu page must not render redundant wine-list buttons",
 );
 assert.match(
   siteContent,

@@ -513,9 +513,9 @@ async function main() {
       "The MUULab wine section must publish the complete official cellar",
     );
     assert.equal(
-      await page.locator('[data-testid="wine-list-link"][href="#carta-vini"]').count(),
-      1,
-      "The drinks card must link internally to the full Hawaii wine list",
+      await page.locator('[data-testid="wine-list-link"]').count(),
+      0,
+      "Wine lists displayed immediately after the menus must not have redundant buttons",
     );
 
     const expectedMenuAnchors = [

@@ -220,15 +220,6 @@ export default async function MenuPage() {
                         ))}
                       </ul>
                     ) : null}
-                    {category.action ? (
-                      <Link
-                        data-testid="wine-list-link"
-                        href={category.action.href}
-                        className="cta-ghost mt-5"
-                      >
-                        {category.action.label}
-                      </Link>
-                    ) : null}
                   </article>
                 ))}
               </div>
