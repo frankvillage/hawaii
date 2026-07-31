@@ -309,6 +309,12 @@ const nextConfigPath = path.join(root, "web", "next.config.ts");
 const bookingConfigPath = path.join(root, "web", "src", "lib", "booking-config.ts");
 const siteContentPath = path.join(root, "web", "src", "lib", "site-content.ts");
 const menuCmsPath = path.join(root, "web", "src", "lib", "menu-cms.ts");
+const menuSeedPath = path.join(
+  root,
+  "web",
+  "scripts",
+  "export-sanity-menu-seed.ts",
+);
 const webEnvExamplePath = path.join(root, "web", ".env.example");
 const seoPath = path.join(root, "web", "src", "lib", "seo.ts");
 const sitemapPath = path.join(root, "web", "src", "app", "sitemap.ts");
@@ -912,6 +918,133 @@ assert.match(
 assert.match(menuPage, /const menus = await loadBuildMenuContent\(\)/);
 assert.match(menuPage, /\{menus\.map\(\(menu\) => \(/);
 assert.match(menuPage, /dish\.note[\s\S]{0,220}text-\[0\.72rem\]/);
+
+assert.ok(
+  fs.existsSync(menuSeedPath),
+  "The deterministic Studio menu seed exporter must exist",
+);
+const menuSeed = fs.readFileSync(menuSeedPath, "utf8");
+const rootPackage = JSON.parse(
+  fs.readFileSync(path.join(root, "package.json"), "utf8"),
+);
+assert.equal(
+  rootPackage.scripts["menu:seed:studio"],
+  "web/node_modules/.bin/jiti web/scripts/export-sanity-menu-seed.ts",
+  "The Studio seed command must execute the checked-in exporter",
+);
+assert.match(
+  menuSeed,
+  /jiti\.import<\{ venueMenus: VenueMenu\[\] \}>\(\s*"\.\.\/src\/lib\/site-content\.ts",?\s*\)/,
+  "The seed must derive directly from the approved local venueMenus",
+);
+assert.match(
+  menuSeed,
+  /import \{ menuCategoryKeys \} from "\.\.\/\.\.\/shared\/menu-contract";/,
+  "The seed must consume the shared stable category keys",
+);
+assert.doesNotMatch(
+  menuSeed,
+  /\bfetch\s*\(|https?:\/\/|process\.env|SANITY_API_TOKEN|writeFile|appendFile|createWriteStream/,
+  "The seed exporter must not use the network, credentials or filesystem writes",
+);
+
+function runMenuSeed() {
+  return spawnSync("npm", ["run", "--silent", "menu:seed:studio"], {
+    cwd: root,
+    encoding: "utf8",
+  });
+}
+
+const firstMenuSeedRun = runMenuSeed();
+assert.equal(
+  firstMenuSeedRun.status,
+  0,
+  firstMenuSeedRun.stderr || firstMenuSeedRun.stdout,
+);
+assert.equal(
+  firstMenuSeedRun.stderr,
+  "",
+  "The seed command must emit NDJSON to stdout only",
+);
+const secondMenuSeedRun = runMenuSeed();
+assert.equal(
+  secondMenuSeedRun.status,
+  0,
+  secondMenuSeedRun.stderr || secondMenuSeedRun.stdout,
+);
+assert.equal(
+  secondMenuSeedRun.stdout,
+  firstMenuSeedRun.stdout,
+  "The Studio seed export must be deterministic",
+);
+
+const menuSeedDocuments = firstMenuSeedRun.stdout
+  .trim()
+  .split("\n")
+  .map((line) => JSON.parse(line));
+assert.deepEqual(
+  menuSeedDocuments.map(({ _id, _type, venue }) => ({ _id, _type, venue })),
+  [
+    { _id: "menu-hawaii", _type: "menu", venue: "hawaii" },
+    { _id: "menu-muulab", _type: "menu", venue: "muulab" },
+  ],
+  "The seed must contain only the two fixed menu documents",
+);
+assert.deepEqual(
+  menuSeedDocuments[0].categories.map(({ _key }) => _key),
+  [
+    "hawaii-antipasti",
+    "hawaii-primi",
+    "hawaii-secondi-griglia",
+    "hawaii-contorni",
+    "hawaii-pizza-cena",
+    "hawaii-dessert",
+    "hawaii-cantina",
+  ],
+  "Hawaii category keys must exactly match the shared contract",
+);
+assert.deepEqual(
+  menuSeedDocuments[1].categories.map(({ _key }) => _key),
+  [
+    "muulab-per-cominciare",
+    "muulab-crudi-carne",
+    "muulab-secondi-brace",
+    "muulab-tagli-brace",
+    "muulab-contorni",
+    "muulab-dolci",
+    "muulab-cocktail-aperitivo",
+    "muulab-cantina-coravin",
+  ],
+  "MUULab category keys must exactly match the shared contract",
+);
+
+for (const document of menuSeedDocuments) {
+  for (const category of document.categories) {
+    assert.equal(category._type, "menuCategory");
+    assert.ok(Array.isArray(category.dishes));
+    const dishKeys = category.dishes.map(({ _key }) => _key);
+    assert.equal(
+      new Set(dishKeys).size,
+      dishKeys.length,
+      `${document._id}/${category._key} dish keys must be unique`,
+    );
+    for (const dish of category.dishes) {
+      assert.equal(dish._type, "menuDish");
+      assert.equal(dish.available, true);
+      assert.match(dish._key, /^dish-[a-z0-9-]+-\d{2}$/);
+    }
+  }
+}
+assert.deepEqual(
+  menuSeedDocuments[0].categories[0].dishes[0].allergens,
+  [2],
+  "Hawaii allergens must be preserved",
+);
+assert.deepEqual(
+  menuSeedDocuments[1].categories[0].dishes[1].allergens,
+  [1, 3, 7],
+  "MUULab allergens must be preserved",
+);
 
 const menuSchema = fs.readFileSync(menuSchemaPath, "utf8");
 const menuDishSchema = sourceBetween(
