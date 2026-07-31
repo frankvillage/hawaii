@@ -366,6 +366,7 @@ const eventPage = fs.readFileSync(eventPagePath, "utf8");
 const hawaiiWineList = fs.readFileSync(hawaiiWineListPath, "utf8");
 const menuContractPath = path.join(root, "shared", "menu-contract.ts");
 const menuSchemaPath = path.join(root, "studio", "schemaTypes", "menuType.ts");
+const sanityCliPath = path.join(root, "studio", "sanity.cli.ts");
 const studioEnvExamplePath = path.join(root, "studio", ".env.example");
 const propagatedBookingSources = [
   bookingConfig,
@@ -553,6 +554,30 @@ assert.doesNotMatch(
   studioEnvExample,
   /TOKEN|SECRET|PASSWORD|AUTH/i,
   "Studio environment documentation must not solicit credentials",
+);
+
+assert.ok(fs.existsSync(sanityCliPath), "The Studio deployment CLI config must exist");
+const sanityCli = fs.readFileSync(sanityCliPath, "utf8");
+assert.match(sanityCli, /import \{ defineCliConfig \} from "sanity\/cli";/);
+assert.match(
+  sanityCli,
+  /projectId: process\.env\.SANITY_PROJECT_ID \|\| "your-project-id"/,
+  "Studio deployment must read the documented project ID with a placeholder fallback",
+);
+assert.match(
+  sanityCli,
+  /dataset: process\.env\.SANITY_DATASET \|\| "your-dataset"/,
+  "Studio deployment must read the documented dataset with a placeholder fallback",
+);
+assert.match(
+  sanityCli,
+  /studioHost: process\.env\.SANITY_STUDIO_HOSTNAME \|\| "your-studio-hostname"/,
+  "Studio deployment must read the documented host with a placeholder fallback",
+);
+assert.doesNotMatch(
+  sanityCli,
+  /TOKEN|SECRET|PASSWORD|AUTH/i,
+  "Studio deployment config must not read or contain credentials",
 );
 
 assert.match(
