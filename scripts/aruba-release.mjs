@@ -200,6 +200,68 @@ function uploadFile(localPath, remotePath) {
   ]);
 }
 
+function remoteFileInventory(remotePath) {
+  const directory = mkdtempSync(join(tmpdir(), "hawaii-aruba-verify-"));
+  const downloadPath = join(directory, basename(remotePath) || "download");
+  try {
+    runCurl(["--output", downloadPath, ftpUrl(remotePath)]);
+    const content = readFileSync(downloadPath);
+    return {
+      bytes: content.length,
+      sha256: createHash("sha256").update(content).digest("hex"),
+    };
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+function remoteFileMatches(remotePath, expected) {
+  const actual = remoteFileInventory(remotePath);
+  return actual.bytes === expected.bytes && actual.sha256 === expected.sha256;
+}
+
+function verifyRemoteFile(remotePath, expected) {
+  const actual = remoteFileInventory(remotePath);
+  if (actual.bytes !== expected.bytes || actual.sha256 !== expected.sha256) {
+    fail(
+      `Verifica remota fallita per ${remotePath}: ` +
+        `${actual.bytes} byte/${actual.sha256}, attesi ` +
+        `${expected.bytes} byte/${expected.sha256}.`,
+    );
+  }
+}
+
+function findEntrypoints(files) {
+  return files.filter(
+    (file) =>
+      file.path === "404.html" ||
+      file.path === "index.html" ||
+      (file.path.endsWith("/index.html") &&
+        file.path !== "404/index.html" &&
+        file.path !== "_not-found/index.html"),
+  );
+}
+
+function sleep(milliseconds) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
+function uploadVerifiedFile(localPath, remotePath, expected) {
+  const retryDelays = [0, 3_000, 8_000, 15_000];
+  let lastError;
+  for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
+    if (retryDelays[attempt]) sleep(retryDelays[attempt]);
+    try {
+      uploadFile(localPath, remotePath);
+      verifyRemoteFile(remotePath, expected);
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
 function walkFiles(directory) {
   const files = [];
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -326,6 +388,10 @@ function deploy() {
   }
 
   const files = artifactInventory();
+  const entrypointFiles = findEntrypoints(files);
+  if (!entrypointFiles.some((file) => file.path === "index.html")) {
+    fail("index.html assente dall'artefatto Aruba.");
+  }
   const releaseId = `hawaii-static-${releaseStamp}`;
   const backupDirectory = joinRemote(remoteRoot, oldName, `wordpress-pre-${releaseId}`);
   const stagingDirectory = joinRemote(remoteRoot, oldName, `.staging-${releaseId}`);
@@ -358,6 +424,13 @@ function deploy() {
     localManifestPath,
     joinRemote(stagingDirectory, "DEPLOY-MANIFEST.json"),
   );
+  for (const entrypoint of entrypointFiles) {
+    uploadVerifiedFile(
+      join(artifactDir, ...entrypoint.path.split("/")),
+      joinRemote(stagingDirectory, entrypoint.path),
+      entrypoint,
+    );
+  }
 
   const backupMoves = [];
   try {
@@ -388,6 +461,9 @@ function deploy() {
       moveRemote(move.from, move.to);
       promotionMoves.push(move);
     }
+    for (const entrypoint of entrypointFiles) {
+      verifyRemoteFile(joinRemote(remoteRoot, entrypoint.path), entrypoint);
+    }
   } catch (error) {
     attemptAllRestores([promotionMoves, backupMoves]);
     throw error;
@@ -396,6 +472,84 @@ function deploy() {
   console.log(`Release promossa: ${releaseId}`);
   console.log(`Backup WordPress: ${backupDirectory}`);
   console.log(`Manifest locale: ${localManifestPath}`);
+}
+
+function repairEntrypoints(manifestPath) {
+  if (!manifestPath) fail("Specifica il manifest locale del rilascio da riparare.");
+  const manifest = JSON.parse(readFileSync(resolve(manifestPath), "utf8"));
+  if (
+    manifest.host !== host ||
+    normalizeRemotePath(manifest.remoteRoot) !== remoteRoot ||
+    !Array.isArray(manifest.files)
+  ) {
+    fail("Manifest di riparazione non valido per questo host/root.");
+  }
+
+  const releaseId = validateEntryName(manifest.releaseId);
+  const entrypointFiles = findEntrypoints(manifest.files);
+  if (!entrypointFiles.some((file) => file.path === "index.html")) {
+    fail("Integrità attesa degli entrypoint assente dal manifest.");
+  }
+  for (const expected of entrypointFiles) {
+    if (
+      !Number.isSafeInteger(expected.bytes) ||
+      expected.bytes < 1 ||
+      !/^[a-f0-9]{64}$/.test(expected.sha256)
+    ) {
+      fail(`Integrità attesa non valida per ${expected.path}.`);
+    }
+    const localFile = join(artifactDir, ...expected.path.split("/"));
+    if (!existsSync(localFile)) fail(`${expected.path} assente dall'artefatto Aruba.`);
+    const localContent = readFileSync(localFile);
+    const localSha256 = createHash("sha256").update(localContent).digest("hex");
+    if (localContent.length !== expected.bytes || localSha256 !== expected.sha256) {
+      fail(`${expected.path} locale non corrisponde al manifest del rilascio.`);
+    }
+  }
+
+  const archiveDirectory = joinRemote(
+    remoteRoot,
+    oldName,
+    `replaced-${releaseId}-${releaseStamp}`,
+  );
+  const pending = entrypointFiles.filter(
+    (expected) => !remoteFileMatches(joinRemote(remoteRoot, expected.path), expected),
+  );
+  if (!pending.length) {
+    console.log("Tutti gli entrypoint remoti corrispondono al manifest.");
+    return;
+  }
+
+  makeRemoteDirectory(archiveDirectory);
+
+  for (const expected of pending) {
+    const archiveName = validateEntryName(expected.path.replaceAll("/", "__"));
+    const localFile = join(artifactDir, ...expected.path.split("/"));
+    const stagedFile = joinRemote(
+      remoteRoot,
+      oldName,
+      validateEntryName(`repair-${releaseId}-${releaseStamp}-${archiveName}`),
+    );
+    const archivedFile = joinRemote(archiveDirectory, archiveName);
+    const activeFile = joinRemote(remoteRoot, expected.path);
+
+    uploadVerifiedFile(localFile, stagedFile, expected);
+
+    const repairMoves = [];
+    try {
+      moveRemote(activeFile, archivedFile);
+      repairMoves.push({ from: activeFile, to: archivedFile });
+      moveRemote(stagedFile, activeFile);
+      repairMoves.push({ from: stagedFile, to: activeFile });
+      verifyRemoteFile(activeFile, expected);
+    } catch (error) {
+      restoreMoves(repairMoves);
+      throw error;
+    }
+    console.log(`Entrypoint riparato: ${expected.path}`);
+  }
+
+  console.log(`Versioni precedenti archiviate in: ${archiveDirectory}`);
 }
 
 function rollback(manifestPath) {
@@ -458,8 +612,9 @@ try {
   credentials = resolveNetrc();
   if (command === "inspect") inspect();
   else if (command === "deploy") deploy();
+  else if (command === "repair-entrypoints") repairEntrypoints(process.argv[3]);
   else if (command === "rollback") rollback(process.argv[3]);
-  else fail("Comando supportato: inspect, deploy, rollback.");
+  else fail("Comando supportato: inspect, deploy, repair-entrypoints, rollback.");
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;

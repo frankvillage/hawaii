@@ -35,10 +35,25 @@ Il deployer:
 3. scrive hash SHA-256 e inventario in un manifest locale;
 4. sposta ogni elemento della root, esclusa `old`, in un backup datato;
 5. promuove in root gli elementi statici già caricati;
-6. conserva una copia del manifest nel backup WordPress.
+6. scarica nuovamente tutti gli entrypoint HTML e ne confronta byte e hash
+   SHA-256 con l'artefatto locale prima di confermare il rilascio;
+7. conserva una copia del manifest nel backup WordPress.
 
 Se backup o promozione falliscono, gli spostamenti completati vengono invertiti.
 Il deploy non esegue comandi SQL e non rimuove file remoti.
+
+## Riparazione atomica degli entrypoint
+
+Se una verifica successiva rileva pagine incomplete, gli entrypoint possono
+essere ricaricati senza sovrascrivere direttamente la produzione:
+
+```bash
+node scripts/aruba-release.mjs repair-entrypoints output/aruba-releases/<release-id>.json
+```
+
+Il comando verifica prima l'hash di ogni file temporaneo, archivia la versione
+attiva in `old/replaced-*`, promuove un entrypoint alla volta e ripristina
+automaticamente la relativa versione precedente se il controllo finale fallisce.
 
 ## Ripristino
 

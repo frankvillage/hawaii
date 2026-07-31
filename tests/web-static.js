@@ -2216,6 +2216,54 @@ assert.ok(
 assert.match(arubaRelease, /release\.worktree !== "clean"/);
 assert.match(arubaRelease, /release\.commit !== head\.stdout\.trim\(\)/);
 assert.match(arubaRelease, /tests\/aruba-static-readiness\.js/);
+assert.match(
+  arubaRelease,
+  /for \(const entrypoint of entrypointFiles\)[\s\S]*verifyRemoteFile\(/,
+  "The reversible deployer must verify every promoted HTML entrypoint",
+);
+assert.match(arubaRelease, /file\.path !== "404\/index\.html"/);
+assert.match(arubaRelease, /file\.path !== "_not-found\/index\.html"/);
+const promotionTransaction = sourceBetween(
+  arubaRelease,
+  "const promotionMoves = [];",
+  "console.log(`Release promossa:",
+);
+assert.ok(
+  promotionTransaction.indexOf("verifyRemoteFile(") <
+    promotionTransaction.indexOf("} catch (error)"),
+  "Remote integrity verification must remain inside the automatic rollback boundary",
+);
+const entrypointRepair = sourceBetween(
+  arubaRelease,
+  "function repairEntrypoints(",
+  "function rollback(",
+);
+const verifiedUpload = sourceBetween(
+  arubaRelease,
+  "function uploadVerifiedFile(",
+  "function walkFiles(",
+);
+assert.match(verifiedUpload, /for \(let attempt = 0;/);
+assert.match(verifiedUpload, /verifyRemoteFile\(remotePath, expected\)/);
+assert.match(verifiedUpload, /sleep\(/);
+assert.match(entrypointRepair, /uploadVerifiedFile\(localFile, stagedFile, expected\)/);
+assert.match(
+  entrypointRepair,
+  /const stagedFile = joinRemote\(\s*remoteRoot,\s*oldName,/,
+  "Repair uploads must use the existing old root because fresh Aruba subdirectories can return empty files",
+);
+assert.ok(
+  entrypointRepair.indexOf("uploadVerifiedFile(localFile, stagedFile, expected)") <
+    entrypointRepair.indexOf("moveRemote(activeFile, archivedFile)"),
+  "An entrypoint repair must verify the staged upload before replacing production",
+);
+assert.ok(
+  entrypointRepair.indexOf("moveRemote(activeFile, archivedFile)") <
+    entrypointRepair.indexOf("moveRemote(stagedFile, activeFile)"),
+  "An entrypoint repair must archive the current file before promoting its replacement",
+);
+assert.match(entrypointRepair, /restoreMoves\(repairMoves\)/);
+assert.match(arubaRelease, /command === "repair-entrypoints"/);
 assert.doesNotMatch(
   arubaRelease,
   /(?:DELE|RMD)\s/,
