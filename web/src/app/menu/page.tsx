@@ -113,9 +113,8 @@ export default function MenuPage() {
           </h2>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-[#d9dfdc]">
             Comunica sempre allergie o intolleranze al personale prima dell&apos;ordine.
-            I codici sono riportati accanto alle voci per cui la cucina ha fornito una
-            dichiarazione verificata; dove non compaiono, chiedi al personale per la
-            verifica aggiornata della ricetta e delle possibili contaminazioni crociate.
+            Le sigle accanto ai piatti corrispondono alla legenda; per ingredienti,
+            ricette aggiornate e possibili contaminazioni crociate chiedi al personale.
           </p>
           <ol className="mt-6 grid gap-x-5 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
             {allergenLegend.map((allergen) => (
@@ -207,16 +206,22 @@ export default function MenuPage() {
                         {category.dishes.map((dish) => (
                           <li key={dish.name} className="border-b border-[#1c2b2e]/10 pb-3 last:border-b-0 last:pb-0">
                             <div className="flex items-baseline justify-between gap-4">
-                              <span>{dish.name}</span>
+                              <span>
+                                {dish.name}
+                                {dish.allergens?.length ? (
+                                  <sup
+                                    data-testid="dish-allergens"
+                                    aria-label={`Allergeni ${dish.allergens.join(", ")}`}
+                                    className="ml-1 text-[0.62rem] font-semibold tracking-[0.08em] text-[#8a795f]"
+                                  >
+                                    {dish.allergens.join(" · ")}
+                                  </sup>
+                                ) : null}
+                              </span>
                               {dish.price ? (
                                 <span className="whitespace-nowrap text-[#96703d]">{dish.price}</span>
                               ) : null}
                             </div>
-                            <p data-testid="dish-allergens" className="mt-1 text-[0.68rem] uppercase tracking-[0.12em] text-[#766952]">
-                              {dish.allergens?.length
-                                ? `Allergeni: ${dish.allergens.join(", ")}`
-                                : "Allergeni: chiedi al personale"}
-                            </p>
                           </li>
                         ))}
                       </ul>

@@ -404,6 +404,16 @@ assert.match(
   /data-testid="dish-allergens"/,
   "Menu page must render dish-level allergen declarations",
 );
+assert.match(
+  menuPage,
+  /dish\.allergens\.join\(" · "\)/,
+  "Dish allergens must render as compact numeric codes",
+);
+assert.doesNotMatch(
+  menuPage,
+  /Allergeni: chiedi al personale/,
+  "Menu rows without declared codes must remain visually clean",
+);
 const aperitivoScene = sourceBetween(
   siteContent,
   'id: "aperitivo"',
