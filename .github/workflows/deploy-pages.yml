@@ -110,6 +110,7 @@ jobs:
           name: verified-menu-release
           path: .verified-menu-release
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 90
 
       - uses: actions/configure-pages@v5
@@ -125,6 +126,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install restore dependencies
+        working-directory: web
+        run: npm ci
 
       - name: Verify source workflow run
         id: source-run

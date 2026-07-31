@@ -102,6 +102,13 @@ published menu document. A GitHub App installation token may replace the
 fine-grained token when a trusted intermediary mints its short-lived token;
 never store an App private key directly in Sanity.
 
+The webhook must always send `cms_revision`. With that input, missing or partial
+configuration, network/HTTP failures, invalid JSON and invalid document schemas
+all fail closed: CI does not build or retain an old snapshot. Pushes and manual
+runs without `cms_revision` remain reversible during activation; the same
+conditions emit only a generic warning and build the approved local menu
+fallback. The warning never includes tokens, endpoints or menu content.
+
 ## Identity and credential operations
 
 La rotazione e la revoca delle credenziali seguono queste regole:
@@ -137,6 +144,10 @@ An artifact from another workflow, branch, commit or with a modified
 snapshot/archive is rejected. Artifact retention is 90 days; longer-term Aruba
 rollback remains covered by the versioned release manifest and the WordPress
 backup under `OLD`.
+
+The release directory starts with a dot, so artifact upload explicitly includes
+hidden files. The restore job provisions Node.js 22 and installs the locked web
+dependencies before running the verifier.
 
 ## Prerequisites before activation
 

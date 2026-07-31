@@ -23,6 +23,10 @@ const snapshotFile = "menu-snapshot.json";
 const archiveFile = "site.tar.gz";
 const manifestFile = "content-manifest.json";
 const workflowPath = ".github/workflows/deploy-pages.yml";
+const fallbackWarning =
+  "[menu-release] Sanity unavailable; using local menu fallback.";
+const requiredSnapshotError =
+  "[menu-release] Required Sanity snapshot unavailable.";
 const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 const webRequire = createRequire(new URL("../web/package.json", import.meta.url));
 const { createJiti } = webRequire("jiti");
@@ -205,44 +209,66 @@ async function sanityDocuments() {
   const token = process.env.SANITY_API_TOKEN;
   const configuration = [projectId, dataset, apiVersion, token];
 
-  if (configuration.every((value) => !value)) return null;
-  if (configuration.some((value) => !value)) {
-    fail("Configurazione Sanity parziale: il rilascio è stato interrotto.");
+  if (
+    configuration.some((value) => !value) ||
+    !/^[a-z0-9-]+$/.test(projectId) ||
+    !/^[A-Za-z0-9_-]+$/.test(dataset) ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(apiVersion)
+  ) {
+    return null;
   }
-  if (!/^[a-z0-9-]+$/.test(projectId)) fail("SANITY_PROJECT_ID non valido.");
-  if (!/^[A-Za-z0-9_-]+$/.test(dataset)) fail("SANITY_DATASET non valido.");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(apiVersion)) fail("SANITY_API_VERSION non valida.");
 
-  const query =
-    '*[_id in ["menu-hawaii","menu-muulab"]]{_id,_rev,_updatedAt,venue,categories[]{_key,_type,title,note,dishes[]{_key,_type,name,price,note,available,allergens}}}';
-  const url =
-    `https://${projectId}.api.sanity.io/v${apiVersion}/data/query/` +
-    `${encodeURIComponent(dataset)}?query=${encodeURIComponent(query)}`;
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-  if (!response.ok) fail(`Sanity ha risposto con stato ${response.status}.`);
-  const payload = await response.json();
-  return normalizeDocuments(payload.result);
+  try {
+    const query =
+      '*[_id in ["menu-hawaii","menu-muulab"]]{_id,_rev,_updatedAt,venue,categories[]{_key,_type,title,note,dishes[]{_key,_type,name,price,note,available,allergens}}}';
+    const url =
+      `https://${projectId}.api.sanity.io/v${apiVersion}/data/query/` +
+      `${encodeURIComponent(dataset)}?query=${encodeURIComponent(query)}`;
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    return normalizeDocuments(payload.result);
+  } catch {
+    return null;
+  }
 }
 
 async function capture(releaseDirectory) {
   mkdirSync(releaseDirectory, { recursive: true });
+  const snapshotPath = join(releaseDirectory, snapshotFile);
+  rmSync(snapshotPath, { force: true });
   const cmsRevision = process.env.RELEASE_CMS_REVISION?.trim() || "";
   const remoteDocuments = await sanityDocuments();
-  if (!remoteDocuments && cmsRevision) {
-    fail("cms_revision richiede una configurazione Sanity completa.");
-  }
-  const source = remoteDocuments ? "sanity" : "local-fallback";
-  const documents = validateDocuments(remoteDocuments || localDocuments(), source);
+  let documents = null;
 
-  if (cmsRevision && !documents.some((document) => document._rev === cmsRevision)) {
+  if (remoteDocuments) {
+    try {
+      documents = validateDocuments(remoteDocuments, "sanity");
+    } catch {
+      documents = null;
+    }
+  }
+
+  if (!documents && cmsRevision) {
+    fail(requiredSnapshotError);
+  }
+
+  const source = documents ? "sanity" : "local-fallback";
+  if (!documents) {
+    console.warn(fallbackWarning);
+    documents = validateDocuments(localDocuments(), source);
+  } else if (
+    cmsRevision &&
+    !documents.some((document) => document._rev === cmsRevision)
+  ) {
     fail("cms_revision non coincide con nessuno dei documenti pubblicati.");
   }
 
   writeFileSync(
-    join(releaseDirectory, snapshotFile),
+    snapshotPath,
     `${JSON.stringify({ schemaVersion: 1, source, result: documents }, null, 2)}\n`,
     { mode: 0o600 },
   );

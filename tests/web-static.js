@@ -352,8 +352,7 @@ function assertVerifiedMenuReleaseBehavior() {
 
 function assertLocalMenuSnapshotCapture() {
   const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "hawaii-menu-capture-test-"));
-  const releaseDir = path.join(fixtureRoot, "release");
-  const env = {
+  const baseEnv = {
     ...process.env,
     GITHUB_SHA: "0123456789abcdef0123456789abcdef01234567",
   };
@@ -364,16 +363,21 @@ function assertLocalMenuSnapshotCapture() {
     "SANITY_API_VERSION",
     "SANITY_API_TOKEN",
   ]) {
-    delete env[variable];
+    delete baseEnv[variable];
   }
 
   try {
+    const releaseDir = path.join(fixtureRoot, "release");
     const capture = spawnSync(
       process.execPath,
       [verifiedMenuReleasePath, "capture", releaseDir],
-      { cwd: root, encoding: "utf8", env },
+      { cwd: root, encoding: "utf8", env: baseEnv },
     );
     assert.equal(capture.status, 0, capture.stderr || capture.stdout);
+    assert.equal(
+      capture.stderr.trim(),
+      "[menu-release] Sanity unavailable; using local menu fallback.",
+    );
 
     const snapshot = JSON.parse(
       fs.readFileSync(path.join(releaseDir, "menu-snapshot.json"), "utf8"),
@@ -396,6 +400,99 @@ function assertLocalMenuSnapshotCapture() {
       dishes.some((dish) => !Object.prototype.hasOwnProperty.call(dish, "allergens")),
       "Empty allergen lists must remain omitted instead of becoming required arrays",
     );
+
+    const fetchMockPath = path.join(fixtureRoot, "mock-fetch.mjs");
+    fs.writeFileSync(
+      fetchMockPath,
+      [
+        "globalThis.fetch = async () => {",
+        '  const secret = "TOKEN-AND-CONTENT-MUST-NOT-LEAK";',
+        '  if (process.env.CAPTURE_FAILURE === "fetch") throw new Error(secret);',
+        '  if (process.env.CAPTURE_FAILURE === "http") return { ok: false, status: 503 };',
+        '  if (process.env.CAPTURE_FAILURE === "json") return { ok: true, json: async () => { throw new Error(secret); } };',
+        '  if (process.env.CAPTURE_FAILURE === "schema") return { ok: true, json: async () => ({ result: [{ _id: secret }] }) };',
+        '  throw new Error("Unexpected capture test mode");',
+        "};",
+        "",
+      ].join("\n"),
+    );
+
+    const failureScenarios = [
+      {
+        name: "partial-config",
+        env: { SANITY_PROJECT_ID: "project-id" },
+      },
+      ...["fetch", "http", "json", "schema"].map((failure) => ({
+        name: failure,
+        env: {
+          CAPTURE_FAILURE: failure,
+          NODE_OPTIONS: `--import=${fetchMockPath}`,
+          SANITY_API_TOKEN: "TOKEN-AND-CONTENT-MUST-NOT-LEAK",
+          SANITY_API_VERSION: "2026-04-07",
+          SANITY_DATASET: "production",
+          SANITY_PROJECT_ID: "project-id",
+        },
+      })),
+    ];
+
+    for (const scenario of failureScenarios) {
+      const fallbackDir = path.join(fixtureRoot, `fallback-${scenario.name}`);
+      const fallback = spawnSync(
+        process.execPath,
+        [verifiedMenuReleasePath, "capture", fallbackDir],
+        {
+          cwd: root,
+          encoding: "utf8",
+          env: { ...baseEnv, ...scenario.env },
+        },
+      );
+      assert.equal(fallback.status, 0, fallback.stderr || fallback.stdout);
+      assert.equal(
+        fallback.stderr.trim(),
+        "[menu-release] Sanity unavailable; using local menu fallback.",
+      );
+      assert.doesNotMatch(
+        fallback.stderr,
+        /TOKEN-AND-CONTENT-MUST-NOT-LEAK|project-id|production|503/,
+      );
+      const fallbackSnapshot = JSON.parse(
+        fs.readFileSync(path.join(fallbackDir, "menu-snapshot.json"), "utf8"),
+      );
+      assert.equal(fallbackSnapshot.source, "local-fallback");
+
+      const requiredDir = path.join(fixtureRoot, `required-${scenario.name}`);
+      const required = spawnSync(
+        process.execPath,
+        [verifiedMenuReleasePath, "capture", requiredDir],
+        {
+          cwd: root,
+          encoding: "utf8",
+          env: {
+            ...baseEnv,
+            ...scenario.env,
+            RELEASE_CMS_REVISION: "required-revision",
+          },
+        },
+      );
+      assert.notEqual(
+        required.status,
+        0,
+        `${scenario.name} must fail closed when cms_revision is required`,
+      );
+      assert.equal(
+        required.stderr.trim(),
+        "[menu-release] Required Sanity snapshot unavailable.",
+      );
+      assert.doesNotMatch(
+        required.stderr,
+        /TOKEN-AND-CONTENT-MUST-NOT-LEAK|project-id|production|503/,
+      );
+      assert.equal(
+        fs.existsSync(path.join(requiredDir, "menu-snapshot.json")),
+        false,
+        "Fail-closed capture must not leave a stale snapshot",
+      );
+    }
   } finally {
     fs.rmSync(fixtureRoot, { force: true, recursive: true });
   }
@@ -1834,8 +1931,25 @@ assert.doesNotMatch(
 assert.match(cmsBuildStep, /verified-menu-release\.mjs capture/);
 assert.match(
   verifyJob,
-  /actions\/upload-artifact@v4[\s\S]*name:\s*verified-menu-release[\s\S]*retention-days:\s*90/,
+  /actions\/upload-artifact@v4[\s\S]*name:\s*verified-menu-release[\s\S]*include-hidden-files:\s*true[\s\S]*retention-days:\s*90/,
   "Every normal build must retain a private verified release artifact",
+);
+assert.match(
+  restoreJob,
+  /actions\/setup-node@v4[\s\S]*node-version:\s*22/,
+  "Rollback must provision the same Node runtime as the verified build",
+);
+assert.match(
+  restoreJob,
+  /name:\s*Install restore dependencies[\s\S]*working-directory:\s*web[\s\S]*run:\s*npm ci/,
+  "Rollback must install the web dependencies required by the verifier",
+);
+assert.ok(
+  restoreJob.indexOf("actions/setup-node@v4") <
+    restoreJob.indexOf("Install restore dependencies") &&
+    restoreJob.indexOf("Install restore dependencies") <
+      restoreJob.indexOf("verified-menu-release.mjs verify"),
+  "Restore runtime and dependencies must be ready before manifest verification",
 );
 assert.match(restoreJob, /actions\/github-script@v7/);
 assert.match(restoreJob, /getWorkflowRun/);
