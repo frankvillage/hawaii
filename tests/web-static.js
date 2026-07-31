@@ -365,6 +365,8 @@ const villagePage = fs.readFileSync(villagePagePath, "utf8");
 const eventPage = fs.readFileSync(eventPagePath, "utf8");
 const hawaiiWineList = fs.readFileSync(hawaiiWineListPath, "utf8");
 const menuContractPath = path.join(root, "shared", "menu-contract.ts");
+const menuSchemaPath = path.join(root, "studio", "schemaTypes", "menuType.ts");
+const studioEnvExamplePath = path.join(root, "studio", ".env.example");
 const propagatedBookingSources = [
   bookingConfig,
   siteContent,
@@ -441,6 +443,116 @@ assert.equal(
   menuContractCheck.status,
   0,
   menuContractCheck.stderr || menuContractCheck.stdout,
+);
+
+const menuSchema = fs.readFileSync(menuSchemaPath, "utf8");
+const menuDishSchema = sourceBetween(
+  menuSchema,
+  "const menuDish = defineArrayMember({",
+  "const menuCategory = defineArrayMember({",
+);
+const menuCategorySchema = sourceBetween(
+  menuSchema,
+  "const menuCategory = defineArrayMember({",
+  "export const menuType = defineType({",
+);
+const menuDocumentSchema = menuSchema.slice(
+  menuSchema.indexOf("export const menuType = defineType({"),
+);
+const menuDocumentIdMapping =
+  menuSchema.match(/const menuDocumentIds = \{([\s\S]*?)\} as const;/)?.[1] || "";
+
+assert.match(
+  menuSchema,
+  /import \{ allergenDefinitions, areUniqueAllergenCodes, isMenuPrice \} from "\.\.\/\.\.\/shared\/menu-contract";/,
+  "The Studio schema must import the dependency-free shared menu contract",
+);
+assert.deepEqual(
+  [...menuDocumentIdMapping.matchAll(/(\w+): "(menu-[^"]+)"/g)].map(
+    ([, venue, documentId]) => [venue, documentId],
+  ),
+  [
+    ["hawaii", "menu-hawaii"],
+    ["muulab", "menu-muulab"],
+  ],
+  "The Studio schema must expose exactly the two fixed venue/document ID mappings",
+);
+assert.match(menuSchema, /const menuVenueOptions = \[[\s\S]*?value: "hawaii"/);
+assert.match(menuSchema, /const menuVenueOptions = \[[\s\S]*?value: "muulab"/);
+assert.match(menuSchema, /function validateVenueDocumentPair\(/);
+assert.match(menuSchema, /menuDocumentIds\[venue\]/);
+assert.match(menuSchema, /replace\(\/\^drafts\\\.\/, ""\)/);
+
+assert.match(menuDishSchema, /type: "object"/);
+assert.match(
+  menuDishSchema,
+  /name: "name"[\s\S]*?type: "string"[\s\S]*?validation: \(Rule\) => Rule\.required\(\)/,
+  "Dish names must block publishing when absent",
+);
+assert.match(
+  menuDishSchema,
+  /name: "price"[\s\S]*?type: "string"[\s\S]*?Rule\.custom\(validateMenuPrice\)/,
+  "Optional dish prices must use the shared price validator",
+);
+assert.match(menuDishSchema, /name: "note"[\s\S]*?type: "text"/);
+assert.match(
+  menuDishSchema,
+  /name: "available"[\s\S]*?type: "boolean"[\s\S]*?initialValue: true[\s\S]*?Rule\.required\(\)/,
+  "Dish availability must default to true and remain explicit",
+);
+assert.match(
+  menuDishSchema,
+  /name: "allergens"[\s\S]*?type: "array"[\s\S]*?of: \[\{ type: "number" \}\][\s\S]*?list: allergenOptions[\s\S]*?Rule\.custom\(validateAllergens\)/,
+  "Dish allergens must be checkbox options backed by the shared definitions",
+);
+assert.match(menuSchema, /allergenDefinitions\.map\(/);
+assert.match(menuSchema, /areUniqueAllergenCodes\(allergens\)/);
+assert.match(menuSchema, /isMenuPrice\(price\)/);
+
+assert.match(menuCategorySchema, /type: "object"/);
+assert.match(
+  menuCategorySchema,
+  /name: "title"[\s\S]*?type: "string"[\s\S]*?validation: \(Rule\) => Rule\.required\(\)/,
+  "Category titles must block publishing when absent",
+);
+assert.match(menuCategorySchema, /name: "note"[\s\S]*?type: "text"/);
+assert.match(
+  menuCategorySchema,
+  /name: "dishes"[\s\S]*?type: "array"[\s\S]*?of: \[menuDish\][\s\S]*?Rule\.required\(\)\.min\(1\)/,
+  "Categories must contain ordered, keyed dish objects",
+);
+assert.match(
+  menuDocumentSchema,
+  /name: "venue"[\s\S]*?type: "string"[\s\S]*?list: menuVenueOptions[\s\S]*?Rule\.required\(\)\.custom\(validateVenueDocumentPair\)/,
+  "Venue selection must be fixed and paired with the document ID",
+);
+assert.match(
+  menuDocumentSchema,
+  /name: "categories"[\s\S]*?type: "array"[\s\S]*?of: \[menuCategory\][\s\S]*?Rule\.required\(\)\.min\(1\)/,
+  "Menus must contain ordered, keyed category objects",
+);
+assert.doesNotMatch(
+  menuSchema,
+  /name: "(?:_key|anchor|bookingLink|bookingUrl|html|image|media|pdfUrl)"/,
+  "Code-owned anchors, links, keys, HTML and media must not be editable",
+);
+
+const studioEnvExample = fs.readFileSync(studioEnvExamplePath, "utf8");
+assert.deepEqual(
+  studioEnvExample
+    .split(/\r?\n/)
+    .filter((line) => line && !line.startsWith("#")),
+  [
+    "SANITY_PROJECT_ID=your-project-id",
+    "SANITY_DATASET=your-dataset",
+    "SANITY_STUDIO_HOSTNAME=your-studio-hostname",
+  ],
+  "Studio environment documentation must contain placeholder-only project, dataset and host values",
+);
+assert.doesNotMatch(
+  studioEnvExample,
+  /TOKEN|SECRET|PASSWORD|AUTH/i,
+  "Studio environment documentation must not solicit credentials",
 );
 
 assert.match(
