@@ -5,6 +5,7 @@ const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 
 const root = process.cwd();
 
@@ -307,6 +308,8 @@ const bookingFormPath = path.join(
 const nextConfigPath = path.join(root, "web", "next.config.ts");
 const bookingConfigPath = path.join(root, "web", "src", "lib", "booking-config.ts");
 const siteContentPath = path.join(root, "web", "src", "lib", "site-content.ts");
+const menuCmsPath = path.join(root, "web", "src", "lib", "menu-cms.ts");
+const webEnvExamplePath = path.join(root, "web", ".env.example");
 const seoPath = path.join(root, "web", "src", "lib", "seo.ts");
 const sitemapPath = path.join(root, "web", "src", "app", "sitemap.ts");
 const whatsappButtonPath = path.join(
@@ -447,6 +450,354 @@ assert.equal(
   0,
   menuContractCheck.stderr || menuContractCheck.stdout,
 );
+
+assert.ok(fs.existsSync(menuCmsPath), "The build-only menu CMS adapter must exist");
+const menuCms = fs.readFileSync(menuCmsPath, "utf8");
+const webEnvExample = fs.readFileSync(webEnvExamplePath, "utf8");
+const zodModuleUrl = pathToFileURL(
+  require.resolve("zod", { paths: [path.join(root, "web")] }),
+).href;
+const executableMenuContract = fs
+  .readFileSync(menuContractPath, "utf8")
+  .replace(/^export type .*$/gm, "")
+  .replace(/^export /gm, "");
+const localVenueMenus = [
+  {
+    id: "ristorante-mare",
+    eyebrow: "Local Hawaii eyebrow",
+    title: "Local Hawaii title",
+    description: "Local Hawaii description",
+    action: { label: "Book Hawaii", href: "/book-hawaii" },
+    photos: [{ src: "/hawaii.jpg", alt: "Hawaii" }],
+    categories: [
+      {
+        title: "Local Hawaii category",
+        note: "Local Hawaii note",
+        anchor: "fixed-hawaii-anchor",
+        action: { label: "Fixed Hawaii action", href: "#fixed-hawaii" },
+        dishes: [{ name: "Local Hawaii dish", price: "€ 9" }],
+      },
+    ],
+  },
+  {
+    id: "muulab",
+    eyebrow: "Local MUULab eyebrow",
+    title: "Local MUULab title",
+    description: "Local MUULab description",
+    action: { label: "Book MUULab", href: "/book-muulab" },
+    documentAction: { label: "MUULab PDF", href: "https://example.test/menu.pdf" },
+    logo: { src: "/muulab.png", alt: "MUULab" },
+    photos: [{ src: "/muulab.jpg", alt: "MUULab" }],
+    categories: [
+      {
+        title: "Local MUULab category",
+        anchor: "fixed-muulab-anchor",
+        dishes: [{ name: "Local MUULab dish", price: "€ 10" }],
+      },
+    ],
+  },
+];
+const executableMenuCms = menuCms
+  .replace(/^import "server-only";\s*/m, "")
+  .replace(
+    'import { z } from "zod";',
+    `import { z } from ${JSON.stringify(zodModuleUrl)};`,
+  )
+  .replace(
+    /^import \{ areUniqueAllergenCodes, isMenuPrice \} from "\.\.\/\.\.\/\.\.\/shared\/menu-contract";$/m,
+    executableMenuContract,
+  )
+  .replace(
+    /^import \{ venueMenus, type MenuCategory, type VenueMenu \} from "\.\/site-content";$/m,
+    `const venueMenus = ${JSON.stringify(localVenueMenus)};`,
+  );
+const menuCmsCheck = spawnSync(
+  process.execPath,
+  [
+    "--no-warnings",
+    "--experimental-strip-types",
+    "--input-type=module-typescript",
+    "--eval",
+    `
+      ${executableMenuCms}
+      import assert from "node:assert/strict";
+
+      const validEnv = {
+        SANITY_PROJECT_ID: "project-id",
+        SANITY_DATASET: "production",
+        SANITY_API_VERSION: "2026-04-07",
+        SANITY_API_TOKEN: "super-secret-token",
+      };
+      const validDocuments = [
+        {
+          _id: "menu-muulab",
+          venue: "muulab",
+          categories: [
+            {
+              _key: "muulab-category",
+              title: "CMS MUULab category",
+              note: "CMS MUULab category note",
+              dishes: [
+                {
+                  _key: "muulab-hidden",
+                  name: "CMS hidden MUULab dish",
+                  available: false,
+                  price: "€ 12",
+                  allergens: [1],
+                },
+                {
+                  _key: "muulab-visible",
+                  name: "CMS visible MUULab dish",
+                  note: "CMS dish note",
+                  available: true,
+                  price: "€ 14,50",
+                  allergens: [1, 7],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          _id: "menu-hawaii",
+          venue: "hawaii",
+          categories: [
+            {
+              _key: "hawaii-category",
+              title: "CMS Hawaii category",
+              dishes: [
+                {
+                  _key: "hawaii-visible",
+                  name: "CMS visible Hawaii dish",
+                  available: true,
+                  price: "da € 16",
+                  allergens: [2, 14],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      function responseWith(documents) {
+        return new Response(JSON.stringify({ result: documents }), { status: 200 });
+      }
+
+      async function loadWith(documents, options = {}) {
+        const calls = [];
+        const warnings = [];
+        const menus = await loadBuildMenuContent({
+          env: options.env || validEnv,
+          fetcher:
+            options.fetcher ||
+            (async (...args) => {
+              calls.push(args);
+              return responseWith(documents);
+            }),
+          warn: (message) => warnings.push(message),
+        });
+        return { calls, menus, warnings };
+      }
+
+      const successful = await loadWith(validDocuments);
+      assert.deepEqual(
+        successful.menus.map(({ id }) => id),
+        ["ristorante-mare", "muulab"],
+        "CMS documents must map back onto the fixed local venue order",
+      );
+      assert.deepEqual(successful.menus[0], {
+        ...venueMenus[0],
+        categories: [
+          {
+            ...venueMenus[0].categories[0],
+            title: "CMS Hawaii category",
+            note: undefined,
+            dishes: [
+              {
+                name: "CMS visible Hawaii dish",
+                price: "da € 16",
+                allergens: [2, 14],
+                note: undefined,
+              },
+            ],
+          },
+        ],
+      });
+      assert.deepEqual(successful.menus[1], {
+        ...venueMenus[1],
+        categories: [
+          {
+            ...venueMenus[1].categories[0],
+            title: "CMS MUULab category",
+            note: "CMS MUULab category note",
+            dishes: [
+              {
+                name: "CMS visible MUULab dish",
+                price: "€ 14,50",
+                allergens: [1, 7],
+                note: "CMS dish note",
+              },
+            ],
+          },
+        ],
+      });
+      assert.deepEqual(successful.warnings, []);
+      assert.equal(successful.calls.length, 1);
+      const [requestUrl, requestInit] = successful.calls[0];
+      const parsedUrl = new URL(requestUrl);
+      assert.equal(parsedUrl.hostname, "project-id.api.sanity.io");
+      assert.equal(parsedUrl.pathname, "/v2026-04-07/data/query/production");
+      assert.equal(parsedUrl.searchParams.get("perspective"), "published");
+      assert.equal(
+        parsedUrl.searchParams.get("query"),
+        '*[_type == "menu" && _id in ["menu-hawaii", "menu-muulab"]]{_id, venue, categories[]{_key, title, note, dishes[]{_key, name, note, price, allergens, available}}}',
+      );
+      assert.equal(requestInit.cache, "no-store");
+      assert.equal(requestInit.headers.Authorization, "Bearer super-secret-token");
+      assert.doesNotMatch(requestUrl, /super-secret-token/);
+
+      for (const env of [
+        {},
+        { SANITY_PROJECT_ID: "project-id" },
+        {
+          SANITY_PROJECT_ID: "project-id",
+          SANITY_DATASET: "production",
+          SANITY_API_VERSION: "2026-04-07",
+        },
+      ]) {
+        let fetched = false;
+        const fallback = await loadBuildMenuContent({
+          env,
+          fetcher: async () => {
+            fetched = true;
+            return responseWith(validDocuments);
+          },
+          warn: () => {},
+        });
+        assert.equal(fallback, venueMenus);
+        assert.equal(fetched, false, "Absent or partial config must not make a request");
+      }
+
+      const atomicFailures = [
+        validDocuments.slice(0, 1),
+        [validDocuments[0], validDocuments[0]],
+        [
+          validDocuments[0],
+          { ...validDocuments[1], venue: "muulab" },
+        ],
+        [
+          validDocuments[0],
+          { ...validDocuments[1], _id: "drafts.menu-hawaii" },
+        ],
+      ];
+      for (const documents of atomicFailures) {
+        const fallback = await loadWith(documents);
+        assert.equal(fallback.menus, venueMenus);
+        assert.deepEqual(fallback.warnings, [
+          "[menu-cms] Using local menu fallback (invalid-schema).",
+        ]);
+      }
+
+      const requiredFieldFailures = [
+        ["categories", 0, "_key"],
+        ["categories", 0, "title"],
+        ["dishes", 0, "_key"],
+        ["dishes", 0, "name"],
+        ["dishes", 0, "available"],
+      ];
+      for (const [level, index, field] of requiredFieldFailures) {
+        const documents = structuredClone(validDocuments);
+        const hawaii = documents.find(({ _id }) => _id === "menu-hawaii");
+        const target =
+          level === "categories"
+            ? hawaii.categories[index]
+            : hawaii.categories[0].dishes[index];
+        delete target[field];
+        const fallback = await loadWith(documents);
+        assert.equal(fallback.menus, venueMenus, \`Missing required \${field} must reject both docs\`);
+      }
+
+      for (const invalidDish of [
+        { price: "€8" },
+        { allergens: [1, 1] },
+        { allergens: [15] },
+      ]) {
+        const documents = structuredClone(validDocuments);
+        Object.assign(
+          documents.find(({ _id }) => _id === "menu-hawaii").categories[0].dishes[0],
+          invalidDish,
+        );
+        const fallback = await loadWith(documents);
+        assert.equal(fallback.menus, venueMenus);
+      }
+
+      const invalidUnavailable = structuredClone(validDocuments);
+      Object.assign(invalidUnavailable[0].categories[0].dishes[0], {
+        available: false,
+        price: "not a price",
+      });
+      const invalidUnavailableResult = await loadWith(invalidUnavailable);
+      assert.equal(
+        invalidUnavailableResult.menus,
+        venueMenus,
+        "Unavailable dishes must be validated before they are filtered",
+      );
+
+      const warningScenarios = [
+        {
+          expected: "fetch-failed",
+          fetcher: async () => {
+            throw new Error("super-secret-token CMS visible Hawaii dish");
+          },
+        },
+        {
+          expected: "http-error",
+          fetcher: async () =>
+            new Response("super-secret-token CMS visible Hawaii dish", { status: 503 }),
+        },
+        {
+          expected: "invalid-json",
+          fetcher: async () => new Response("{not-json", { status: 200 }),
+        },
+      ];
+      for (const { expected, fetcher } of warningScenarios) {
+        const fallback = await loadWith(validDocuments, { fetcher });
+        assert.equal(fallback.menus, venueMenus);
+        assert.deepEqual(fallback.warnings, [
+          \`[menu-cms] Using local menu fallback (\${expected}).\`,
+        ]);
+        assert.doesNotMatch(fallback.warnings[0], /super-secret-token|CMS visible/i);
+      }
+    `,
+  ],
+  { cwd: root, encoding: "utf8" },
+);
+assert.equal(menuCmsCheck.status, 0, menuCmsCheck.stderr || menuCmsCheck.stdout);
+
+assert.match(menuCms, /^import "server-only";/);
+assert.match(menuCms, /from "zod"/);
+assert.match(
+  menuCms,
+  /from "\.\.\/\.\.\/\.\.\/shared\/menu-contract"/,
+  "The adapter must use the dependency-free shared price and allergen contract",
+);
+assert.doesNotMatch(menuCms, /NEXT_PUBLIC_/);
+for (const variable of [
+  "SANITY_PROJECT_ID",
+  "SANITY_DATASET",
+  "SANITY_API_VERSION",
+  "SANITY_API_TOKEN",
+]) {
+  assert.match(menuCms, new RegExp(`process\\.env\\.${variable}`));
+  assert.match(webEnvExample, new RegExp(`^${variable}=`, "m"));
+}
+assert.doesNotMatch(webEnvExample, /^NEXT_PUBLIC_SANITY_/m);
+assert.match(
+  menuPage,
+  /export default async function MenuPage\(\)[\s\S]*?await loadBuildMenuContent\(\)/,
+);
+assert.match(menuPage, /const menus = await loadBuildMenuContent\(\)/);
+assert.match(menuPage, /\{menus\.map\(\(menu\) => \(/);
+assert.match(menuPage, /dish\.note[\s\S]{0,220}text-\[0\.72rem\]/);
 
 const menuSchema = fs.readFileSync(menuSchemaPath, "utf8");
 const menuDishSchema = sourceBetween(

@@ -100,6 +100,7 @@ export type FaqItem = {
 export type MenuDish = {
   name: string;
   price?: string;
+  note?: string;
   /* Codes declared in the venue's official menu. Omit only when not yet verified. */
   allergens?: readonly number[];
 };

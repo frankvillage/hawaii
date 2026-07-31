@@ -3,13 +3,13 @@ import Link from "next/link";
 import { Fragment } from "react";
 
 import { bookingVenues } from "@/lib/booking-config";
+import { loadBuildMenuContent } from "@/lib/menu-cms";
 import { muulabWineSections } from "@/lib/muulab-wines";
 import { buildMetadata } from "@/lib/seo";
 import {
   hawaiiWineSections,
   allergenLegend,
   menuHighlights,
-  venueMenus,
 } from "@/lib/site-content";
 
 export const metadata = buildMetadata({
@@ -76,7 +76,9 @@ function WineList({
   );
 }
 
-export default function MenuPage() {
+export default async function MenuPage() {
+  const menus = await loadBuildMenuContent();
+
   return (
     <main className="theme-light bg-[#f8f5ee]">
       <section className="mx-auto max-w-7xl px-4 pt-32 pb-16 sm:px-6 lg:px-8">
@@ -129,7 +131,7 @@ export default function MenuPage() {
         </section>
 
         <div className="mt-16 grid gap-20">
-          {venueMenus.map((menu) => (
+          {menus.map((menu) => (
             <Fragment key={menu.id}>
             <section id={menu.id} className="scroll-mt-24">
               <div className="max-w-2xl">
@@ -222,6 +224,11 @@ export default function MenuPage() {
                                 <span className="whitespace-nowrap text-[#96703d]">{dish.price}</span>
                               ) : null}
                             </div>
+                            {dish.note ? (
+                              <p className="mt-1 text-[0.72rem] leading-5 text-[#6d7472]">
+                                {dish.note}
+                              </p>
+                            ) : null}
                           </li>
                         ))}
                       </ul>
