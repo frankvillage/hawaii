@@ -364,6 +364,7 @@ const muulabWines = fs.existsSync(muulabWinesPath)
 const villagePage = fs.readFileSync(villagePagePath, "utf8");
 const eventPage = fs.readFileSync(eventPagePath, "utf8");
 const hawaiiWineList = fs.readFileSync(hawaiiWineListPath, "utf8");
+const menuContractPath = path.join(root, "shared", "menu-contract.ts");
 const propagatedBookingSources = [
   bookingConfig,
   siteContent,
@@ -373,6 +374,61 @@ const propagatedBookingSources = [
   menuPage,
   villagePage,
 ].join("\n");
+
+assert.ok(fs.existsSync(menuContractPath), "The shared menu contract must exist");
+const menuContractCheck = spawnSync(
+  process.execPath,
+  [
+    "--no-warnings",
+    "--experimental-strip-types",
+    "--input-type=module-typescript",
+    "--eval",
+    `
+      ${fs.readFileSync(menuContractPath, "utf8")}
+      import assert from "node:assert/strict";
+      const expectedDefinitions = [
+        { code: 1, label: "Cereali contenenti glutine" },
+        { code: 2, label: "Crostacei e prodotti a base di crostacei" },
+        { code: 3, label: "Uova e prodotti a base di uova" },
+        { code: 4, label: "Pesce e prodotti a base di pesce" },
+        { code: 5, label: "Arachidi e prodotti a base di arachidi" },
+        { code: 6, label: "Soia e prodotti a base di soia" },
+        { code: 7, label: "Latte e prodotti a base di latte (incluso lattosio)" },
+        { code: 8, label: "Frutta a guscio" },
+        { code: 9, label: "Sedano e prodotti a base di sedano" },
+        { code: 10, label: "Senape e prodotti a base di senape" },
+        { code: 11, label: "Semi di sesamo e prodotti a base di semi di sesamo" },
+        { code: 12, label: "Anidride solforosa e solfiti" },
+        { code: 13, label: "Lupini e prodotti a base di lupini" },
+        { code: 14, label: "Molluschi e prodotti a base di molluschi" },
+      ];
+
+      assert.deepEqual(allergenDefinitions, expectedDefinitions);
+      assert.deepEqual(allergenCodes, expectedDefinitions.map(({ code }) => code));
+      assert.equal(isAllergenCode(1), true);
+      assert.equal(isAllergenCode(14), true);
+      for (const value of [0, 15, 1.5, "1", null, undefined]) {
+        assert.equal(isAllergenCode(value), false);
+      }
+      assert.equal(areUniqueAllergenCodes([]), true);
+      assert.equal(areUniqueAllergenCodes([1, 8, 14]), true);
+      assert.equal(areUniqueAllergenCodes([1, 1]), false);
+      assert.equal(areUniqueAllergenCodes([1, 15]), false);
+      for (const value of ["€ 8", "€ 8,50", "da € 8", "€ 12 l'etto"]) {
+        assert.equal(isMenuPrice(value), true, \`Expected valid menu price: \${value}\`);
+      }
+      for (const value of ["", "8", "€8", "€ 0", "€ -2", "€ 8,5", "€ 8 each", 8, null]) {
+        assert.equal(isMenuPrice(value), false, \`Expected invalid menu price: \${value}\`);
+      }
+    `,
+  ],
+  { cwd: root, encoding: "utf8" },
+);
+assert.equal(
+  menuContractCheck.status,
+  0,
+  menuContractCheck.stderr || menuContractCheck.stdout,
+);
 
 assert.match(
   siteContent,
