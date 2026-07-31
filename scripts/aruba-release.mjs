@@ -206,6 +206,39 @@ function artifactInventory() {
   }
   const files = walkFiles(artifactDir);
   if (!files.length) fail("L'artefatto Aruba è vuoto.");
+  const releasePath = join(artifactDir, "RELEASE.txt");
+  if (!existsSync(releasePath)) fail("RELEASE.txt assente dall'artefatto Aruba.");
+
+  const release = Object.fromEntries(
+    readFileSync(releasePath, "utf8")
+      .trim()
+      .split(/\r?\n/)
+      .map((line) => {
+        const separator = line.indexOf("=");
+        return [line.slice(0, separator), line.slice(separator + 1)];
+      }),
+  );
+  const head = spawnSync("git", ["-C", rootDir, "rev-parse", "HEAD"], {
+    encoding: "utf8",
+  });
+  if (head.status !== 0) fail("Impossibile verificare il commit Git corrente.");
+  if (
+    release.commit !== head.stdout.trim() ||
+    release.worktree !== "clean" ||
+    release.base_path !== "root"
+  ) {
+    fail("L'artefatto non corrisponde al commit corrente pulito e al base path root.");
+  }
+
+  const readiness = spawnSync(
+    process.execPath,
+    [join(rootDir, "tests/aruba-static-readiness.js"), artifactDir],
+    { encoding: "utf8" },
+  );
+  if (readiness.status !== 0) {
+    fail(readiness.stderr.trim() || readiness.stdout.trim() || "Readiness Aruba fallita.");
+  }
+
   return files.map((path) => {
     const content = readFileSync(path);
     return {
@@ -312,12 +345,14 @@ function deploy() {
       moveRemote(move.from, move.to);
       backupMoves.push(move);
     }
+    uploadFile(
+      localManifestPath,
+      joinRemote(backupDirectory, "ROLLBACK-MANIFEST.json"),
+    );
   } catch (error) {
     restoreMoves(backupMoves);
     throw error;
   }
-
-  uploadFile(localManifestPath, joinRemote(backupDirectory, "ROLLBACK-MANIFEST.json"));
 
   const promotionMoves = [];
   try {

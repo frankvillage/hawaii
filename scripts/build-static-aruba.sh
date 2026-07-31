@@ -42,13 +42,14 @@ if [[ "${ARUBA_REQUIRE_CLEAN:-0}" == "1" && "$WORKTREE_STATE" != "clean" ]]; the
   exit 1
 fi
 
-mkdir -p "$TMP_ROOT/web" "$OUTPUT_PARENT" "$STAGED_OUTPUT"
+mkdir -p "$TMP_ROOT/web" "$TMP_ROOT/shared" "$OUTPUT_PARENT" "$STAGED_OUTPUT"
 rsync -a \
   --exclude node_modules \
   --exclude .next \
   --exclude out \
   --exclude src/app/api \
   "$WEB_DIR/" "$TMP_ROOT/web/"
+rsync -a "$ROOT_DIR/shared/" "$TMP_ROOT/shared/"
 ln -s "$WEB_DIR/node_modules" "$TMP_ROOT/web/node_modules"
 
 (

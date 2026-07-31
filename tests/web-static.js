@@ -240,6 +240,8 @@ const arubaBuildPath = path.join(root, "scripts", "build-static-aruba.sh");
 const arubaHeadersPath = path.join(root, "deploy", "aruba", ".htaccess.example");
 const arubaReadinessPath = path.join(root, "tests", "aruba-static-readiness.js");
 const arubaGuidePath = path.join(root, "docs", "deploy", "aruba-static-readiness.md");
+const arubaReleasePath = path.join(root, "scripts", "aruba-release.mjs");
+const homePagePath = path.join(root, "web", "src", "app", "page.tsx");
 const arubaBuild = fs.existsSync(arubaBuildPath) ? fs.readFileSync(arubaBuildPath, "utf8") : "";
 const pagesPreviewBuild = fs.existsSync(pagesPreviewBuildPath)
   ? fs.readFileSync(pagesPreviewBuildPath, "utf8")
@@ -251,6 +253,8 @@ const arubaReadiness = fs.existsSync(arubaReadinessPath)
   ? fs.readFileSync(arubaReadinessPath, "utf8")
   : "";
 const arubaGuide = fs.existsSync(arubaGuidePath) ? fs.readFileSync(arubaGuidePath, "utf8") : "";
+const arubaRelease = fs.readFileSync(arubaReleasePath, "utf8");
+const homePage = fs.readFileSync(homePagePath, "utf8");
 const verifyJob = pagesWorkflow.match(/\n  verify:\n([\s\S]*?)\n  deploy:/)?.[1] || "";
 const layoutPath = path.join(root, "web", "src", "app", "layout.tsx");
 const stagePath = path.join(
@@ -1531,6 +1535,11 @@ assert.match(
   /rsync -a[\s\S]*--exclude node_modules[\s\S]*--exclude \.next[\s\S]*--exclude out[\s\S]*--exclude src\/app\/api[\s\S]*"\$WEB_DIR\/" "\$TMP_ROOT\/web\/"/,
 );
 assert.match(pagesPreviewBuild, /ln -s "\$WEB_DIR\/node_modules" "\$TMP_ROOT\/web\/node_modules"/);
+assert.match(
+  pagesPreviewBuild,
+  /rsync -a "\$ROOT_DIR\/shared\/" "\$TMP_ROOT\/shared\/"/,
+  "The Pages builder must copy the shared menu contract into its temporary monorepo",
+);
 assert.match(pagesPreviewBuild, /STATIC_EXPORT=1/);
 assert.match(pagesPreviewBuild, /NEXT_PUBLIC_BASE_PATH=\/hawaii/);
 assert.match(
@@ -1599,9 +1608,38 @@ assert.match(arubaBuild, /NEXT_PUBLIC_BASE_PATH=""/);
 assert.match(arubaBuild, /OUTPUT_PARENT="\$ROOT_DIR\/output"/);
 assert.match(arubaBuild, /OUTPUT_DIR="\$OUTPUT_PARENT\/aruba-static"/);
 assert.match(arubaBuild, /aruba-static-readiness\.js/);
+assert.match(
+  arubaBuild,
+  /rsync -a "\$ROOT_DIR\/shared\/" "\$TMP_ROOT\/shared\/"/,
+  "The Aruba builder must copy the shared menu contract into its temporary monorepo",
+);
 assert.match(arubaHeaders, /Accept-Ranges/);
 assert.match(arubaHeaders, /Content-Security-Policy/);
 assert.match(arubaHeaders, /X-Content-Type-Options/);
+assert.match(
+  arubaHeaders,
+  /RewriteRule \^OLD\(\?:\/\|\$\) - \[F,L,NC\]/,
+  "The WordPress backup directory must be denied over HTTP",
+);
+assert.match(arubaRelease, /release\.worktree !== "clean"/);
+assert.match(arubaRelease, /release\.commit !== head\.stdout\.trim\(\)/);
+assert.match(arubaRelease, /tests\/aruba-static-readiness\.js/);
+assert.doesNotMatch(
+  arubaRelease,
+  /(?:DELE|RMD)\s/,
+  "The reversible deployer must not delete remote files or directories",
+);
+const backupTransaction = sourceBetween(
+  arubaRelease,
+  "const backupMoves = [];",
+  "const promotionMoves = [];",
+);
+assert.ok(
+  backupTransaction.indexOf("ROLLBACK-MANIFEST.json") <
+    backupTransaction.indexOf("} catch (error)"),
+  "Manifest upload failure must remain inside the automatic WordPress rollback boundary",
+);
+assert.match(homePage, /title:\s*"Urban Village"/);
 assert.match(arubaReadiness, /journey-desktop\.mp4/);
 assert.match(arubaReadiness, /\/hawaii\//);
 assert.match(arubaGuide, /form/i);

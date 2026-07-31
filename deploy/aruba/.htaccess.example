@@ -2,6 +2,11 @@ Options -Indexes
 DirectoryIndex index.html
 ErrorDocument 404 /404.html
 
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^OLD(?:/|$) - [F,L,NC]
+</IfModule>
+
 <IfModule mod_mime.c>
   AddType video/mp4 .mp4
   AddType font/woff2 .woff2

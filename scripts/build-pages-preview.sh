@@ -154,13 +154,14 @@ if [[ ! -x "$WEB_DIR/node_modules/.bin/next" ]]; then
   exit 1
 fi
 
-mkdir -p "$TMP_ROOT/web"
+mkdir -p "$TMP_ROOT/web" "$TMP_ROOT/shared"
 rsync -a \
   --exclude node_modules \
   --exclude .next \
   --exclude out \
   --exclude src/app/api \
   "$WEB_DIR/" "$TMP_ROOT/web/"
+rsync -a "$ROOT_DIR/shared/" "$TMP_ROOT/shared/"
 ln -s "$WEB_DIR/node_modules" "$TMP_ROOT/web/node_modules"
 
 (
