@@ -7,6 +7,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
+const { gzipSync } = require("node:zlib");
 
 const root = process.cwd();
 
@@ -231,6 +232,36 @@ function sha256File(filePath) {
   return createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
 }
 
+function writeTarGzEntry(filePath, entryName, contents) {
+  const body = Buffer.from(contents);
+  const header = Buffer.alloc(512);
+  const writeString = (value, offset, length) => {
+    header.write(value, offset, Math.min(Buffer.byteLength(value), length), "utf8");
+  };
+  const writeOctal = (value, offset, length) => {
+    writeString(`${value.toString(8).padStart(length - 1, "0")}\0`, offset, length);
+  };
+
+  writeString(entryName, 0, 100);
+  writeOctal(0o644, 100, 8);
+  writeOctal(0, 108, 8);
+  writeOctal(0, 116, 8);
+  writeOctal(body.length, 124, 12);
+  writeOctal(0, 136, 12);
+  header.fill(0x20, 148, 156);
+  header[156] = "0".charCodeAt(0);
+  writeString("ustar\0", 257, 6);
+  writeString("00", 263, 2);
+  const checksum = header.reduce((total, byte) => total + byte, 0);
+  writeString(`${checksum.toString(8).padStart(6, "0")}\0 `, 148, 8);
+
+  const padding = Buffer.alloc((512 - (body.length % 512)) % 512);
+  fs.writeFileSync(
+    filePath,
+    gzipSync(Buffer.concat([header, body, padding, Buffer.alloc(1024)])),
+  );
+}
+
 function assertVerifiedMenuReleaseBehavior() {
   const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "hawaii-menu-release-test-"));
   const releaseDir = path.join(fixtureRoot, "release");
@@ -397,13 +428,7 @@ function assertVerifiedMenuReleaseBehavior() {
     assert.match(hardLinked.stderr, /link|tipi di file/i);
     fs.unlinkSync(path.join(siteDir, "hard-linked-index.html"));
 
-    fs.writeFileSync(path.join(fixtureRoot, "escape.html"), "must-not-extract\n");
-    const unsafeArchive = spawnSync(
-      "tar",
-      ["-czf", archivePath, "-C", siteDir, "../escape.html"],
-      { encoding: "utf8" },
-    );
-    assert.equal(unsafeArchive.status, 0, unsafeArchive.stderr || unsafeArchive.stdout);
+    writeTarGzEntry(archivePath, "../escape.html", "must-not-extract\n");
     manifest.snapshot.sha256 = sha256File(snapshotPath);
     manifest.site.sha256 = sha256File(archivePath);
     fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
