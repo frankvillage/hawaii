@@ -372,6 +372,31 @@ function assertVerifiedMenuReleaseBehavior() {
     assert.match(linked.stderr, /link|tipi di file/i);
     fs.unlinkSync(path.join(siteDir, "external-link"));
 
+    fs.linkSync(
+      path.join(siteDir, "index.html"),
+      path.join(siteDir, "hard-linked-index.html"),
+    );
+    const hardLinkedArchive = spawnSync(
+      "tar",
+      ["-czf", archivePath, "-C", siteDir, "."],
+      { encoding: "utf8" },
+    );
+    assert.equal(
+      hardLinkedArchive.status,
+      0,
+      hardLinkedArchive.stderr || hardLinkedArchive.stdout,
+    );
+    manifest.site.sha256 = sha256File(archivePath);
+    fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    const hardLinked = spawnSync(
+      process.execPath,
+      [verifiedMenuReleasePath, "verify", releaseDir, outputDir],
+      { cwd: root, encoding: "utf8", env },
+    );
+    assert.notEqual(hardLinked.status, 0, "Hardlink entries must never be extracted");
+    assert.match(hardLinked.stderr, /link|tipi di file/i);
+    fs.unlinkSync(path.join(siteDir, "hard-linked-index.html"));
+
     fs.writeFileSync(path.join(fixtureRoot, "escape.html"), "must-not-extract\n");
     const unsafeArchive = spawnSync(
       "tar",
