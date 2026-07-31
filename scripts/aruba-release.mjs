@@ -268,6 +268,18 @@ function restoreMoves(moves) {
   if (errors.length) fail(`Ripristino automatico incompleto: ${errors.join("; ")}`);
 }
 
+function attemptAllRestores(moveGroups) {
+  const errors = [];
+  for (const moves of moveGroups) {
+    try {
+      restoreMoves(moves);
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+  if (errors.length) fail(errors.join("; "));
+}
+
 function inspect() {
   const entries = listRemote();
   console.log(
@@ -365,8 +377,7 @@ function deploy() {
       promotionMoves.push(move);
     }
   } catch (error) {
-    restoreMoves(promotionMoves);
-    restoreMoves(backupMoves);
+    attemptAllRestores([promotionMoves, backupMoves]);
     throw error;
   }
 
@@ -423,8 +434,7 @@ function rollback(manifestPath) {
       restoreMovesLog.push(move);
     }
   } catch (error) {
-    restoreMoves(restoreMovesLog);
-    restoreMoves(staticMoves);
+    attemptAllRestores([restoreMovesLog, staticMoves]);
     throw error;
   }
 
