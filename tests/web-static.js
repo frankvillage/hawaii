@@ -367,7 +367,9 @@ const hawaiiWineList = fs.readFileSync(hawaiiWineListPath, "utf8");
 const menuContractPath = path.join(root, "shared", "menu-contract.ts");
 const menuSchemaPath = path.join(root, "studio", "schemaTypes", "menuType.ts");
 const sanityCliPath = path.join(root, "studio", "sanity.cli.ts");
+const sanityConfigPath = path.join(root, "studio", "sanity.config.ts");
 const studioEnvExamplePath = path.join(root, "studio", ".env.example");
+const studioStructurePath = path.join(root, "studio", "structure.ts");
 const propagatedBookingSources = [
   bookingConfig,
   siteContent,
@@ -544,8 +546,8 @@ assert.deepEqual(
     .split(/\r?\n/)
     .filter((line) => line && !line.startsWith("#")),
   [
-    "SANITY_PROJECT_ID=your-project-id",
-    "SANITY_DATASET=your-dataset",
+    "SANITY_STUDIO_PROJECT_ID=your-project-id",
+    "SANITY_STUDIO_DATASET=your-dataset",
     "SANITY_STUDIO_HOSTNAME=your-studio-hostname",
   ],
   "Studio environment documentation must contain placeholder-only project, dataset and host values",
@@ -561,12 +563,12 @@ const sanityCli = fs.readFileSync(sanityCliPath, "utf8");
 assert.match(sanityCli, /import \{ defineCliConfig \} from "sanity\/cli";/);
 assert.match(
   sanityCli,
-  /projectId: process\.env\.SANITY_PROJECT_ID \|\| "your-project-id"/,
+  /projectId: process\.env\.SANITY_STUDIO_PROJECT_ID \|\| "your-project-id"/,
   "Studio deployment must read the documented project ID with a placeholder fallback",
 );
 assert.match(
   sanityCli,
-  /dataset: process\.env\.SANITY_DATASET \|\| "your-dataset"/,
+  /dataset: process\.env\.SANITY_STUDIO_DATASET \|\| "your-dataset"/,
   "Studio deployment must read the documented dataset with a placeholder fallback",
 );
 assert.match(
@@ -578,6 +580,61 @@ assert.doesNotMatch(
   sanityCli,
   /TOKEN|SECRET|PASSWORD|AUTH/i,
   "Studio deployment config must not read or contain credentials",
+);
+
+const sanityConfig = fs.readFileSync(sanityConfigPath, "utf8");
+assert.match(sanityConfig, /import \{ structureTool \} from "sanity\/structure";/);
+assert.match(sanityConfig, /import \{ structure \} from "\.\/structure";/);
+assert.match(
+  sanityConfig,
+  /projectId: process\.env\.SANITY_STUDIO_PROJECT_ID \|\| "your-project-id"/,
+  "Studio runtime must read the same documented project ID as the CLI",
+);
+assert.match(
+  sanityConfig,
+  /dataset: process\.env\.SANITY_STUDIO_DATASET \|\| "your-dataset"/,
+  "Studio runtime must read the same documented dataset as the CLI",
+);
+assert.match(sanityConfig, /plugins: \[structureTool\(\{ structure \}\)\]/);
+assert.match(
+  sanityConfig,
+  /templates: \(templates\) =>[\s\S]*?schemaType !== "menu"/,
+  "The global create menu template must be removed",
+);
+assert.match(
+  sanityConfig,
+  /schemaType === "menu"[\s\S]*?action !== "duplicate"/,
+  "Menu singleton documents must not expose duplicate creation",
+);
+
+assert.ok(fs.existsSync(studioStructurePath), "The fixed Studio structure must exist");
+const studioStructure = fs.readFileSync(studioStructurePath, "utf8");
+assert.match(
+  studioStructure,
+  /import type \{ StructureBuilder, StructureResolver \} from "sanity\/structure";/,
+);
+const menuSingletonMapping =
+  studioStructure.match(/const menuSingletons = \[([\s\S]*?)\] as const;/)?.[1] || "";
+assert.deepEqual(
+  [...menuSingletonMapping.matchAll(/documentId: "(menu-[^"]+)", title: "([^"]+)"/g)].map(
+    ([, documentId, title]) => [documentId, title],
+  ),
+  [
+    ["menu-hawaii", "Menu Hawaii"],
+    ["menu-muulab", "Menu MUULab"],
+  ],
+  "The Studio structure must expose exactly the two fixed menu singletons",
+);
+assert.match(studioStructure, /\.schemaType\("menu"\)\.documentId\(documentId\)/);
+assert.match(
+  studioStructure,
+  /documentTypeListItems\(\)[\s\S]*?filter\([\s\S]*?getId\(\) !== "menu"/,
+  "The generic menu document list must be removed from the Studio structure",
+);
+assert.doesNotMatch(
+  [sanityCli, sanityConfig, studioEnvExample].join("\n"),
+  /\bSANITY_(?:PROJECT_ID|DATASET)\b/,
+  "Studio configuration must use only browser-safe SANITY_STUDIO-prefixed variables",
 );
 
 assert.match(
