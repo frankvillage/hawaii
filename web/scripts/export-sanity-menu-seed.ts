@@ -11,6 +11,7 @@ const jiti = createJiti(import.meta.url, {
   alias: {
     "@": fileURLToPath(new URL("../src", import.meta.url)),
   },
+  fsCache: false,
 });
 const { venueMenus } = await jiti.import<{ venueMenus: VenueMenu[] }>(
   "../src/lib/site-content.ts",

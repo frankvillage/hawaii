@@ -946,6 +946,7 @@ assert.match(
   /import \{ menuCategoryKeys \} from "\.\.\/\.\.\/shared\/menu-contract";/,
   "The seed must consume the shared stable category keys",
 );
+assert.match(menuSeed, /fsCache:\s*false/);
 assert.doesNotMatch(
   menuSeed,
   /\bfetch\s*\(|https?:\/\/|process\.env|SANITY_API_TOKEN|writeFile|appendFile|createWriteStream/,
@@ -1039,15 +1040,54 @@ for (const document of menuSeedDocuments) {
     }
   }
 }
-assert.deepEqual(
-  menuSeedDocuments[0].categories[0].dishes[0].allergens,
-  [2],
-  "Hawaii allergens must be preserved",
+const localMenuSeedResult = spawnSync(
+  process.execPath,
+  [
+    "--input-type=module",
+    "--eval",
+    `
+      import { createRequire } from "node:module";
+      import { pathToFileURL } from "node:url";
+      const require = createRequire(import.meta.url);
+      const { createJiti } = require(${JSON.stringify(
+        path.join(root, "web", "node_modules", "jiti"),
+      )});
+      const sourceUrl = pathToFileURL(${JSON.stringify(
+        path.join(root, "web", "scripts", "seed-test-loader.ts"),
+      )}).href;
+      const loader = createJiti(sourceUrl, {
+        alias: { "@": ${JSON.stringify(path.join(root, "web", "src"))} },
+        fsCache: false,
+      });
+      const { venueMenus } = await loader.import(${JSON.stringify(
+        path.join(root, "web", "src", "lib", "site-content.ts"),
+      )});
+      console.log(JSON.stringify(venueMenus));
+    `,
+  ],
+  { cwd: path.join(root, "web"), encoding: "utf8" },
+);
+assert.equal(
+  localMenuSeedResult.status,
+  0,
+  localMenuSeedResult.stderr || localMenuSeedResult.stdout,
 );
 assert.deepEqual(
-  menuSeedDocuments[1].categories[0].dishes[1].allergens,
-  [1, 3, 7],
-  "MUULab allergens must be preserved",
+  JSON.parse(localMenuSeedResult.stdout).map(({ id, categories }) => ({
+    id,
+    categories: categories.map(({ title, note, dishes }) => ({ title, note, dishes })),
+  })),
+  menuSeedDocuments.map(({ _id, categories }) => ({
+    id: _id === "menu-hawaii" ? "ristorante-mare" : "muulab",
+    categories: categories.map(({ title, note, dishes }) => ({
+      title,
+      note,
+      dishes: dishes.map(
+        ({ _key: _dishKey, _type: _dishType, available: _available, ...dish }) => dish,
+      ),
+    })),
+  })),
+  "Every local dish, price, note and allergen array must survive the seed export",
 );
 
 const menuSchema = fs.readFileSync(menuSchemaPath, "utf8");
@@ -1123,8 +1163,8 @@ assert.match(
 assert.match(menuCategorySchema, /name: "note"[\s\S]*?type: "text"/);
 assert.match(
   menuCategorySchema,
-  /name: "dishes"[\s\S]*?type: "array"[\s\S]*?of: \[menuDish\][\s\S]*?Rule\.required\(\)\.min\(1\)/,
-  "Categories must contain ordered, keyed dish objects",
+  /name: "dishes"[\s\S]*?type: "array"[\s\S]*?of: \[menuDish\][\s\S]*?Rule\.required\(\)/,
+  "Categories must contain an explicit ordered dish array, including empty code-owned wine sections",
 );
 assert.match(
   menuDocumentSchema,

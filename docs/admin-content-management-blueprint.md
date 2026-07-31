@@ -70,3 +70,15 @@ code-owned to protect page layout, accessibility and links.
 The public site remains on local menu content until an approved CMS revision is
 explicitly enabled. Every release is versioned; rollback means re-promoting the
 prior verified artifact, not manually editing production files.
+
+## Initial import
+
+Generate import-ready NDJSON without lifecycle log lines:
+
+```bash
+npm run --silent menu:seed:studio > menu-seed.ndjson
+```
+
+The exporter reads the approved local menus, performs no network request and
+does not write files by itself. The redirected seed file is an operator-created
+temporary artifact and must not be committed.

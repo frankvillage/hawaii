@@ -133,7 +133,9 @@ const menuCategory = defineArrayMember({
       title: "Dishes",
       type: "array",
       of: [menuDish],
-      validation: (Rule) => Rule.required().min(1),
+      description:
+        "May be empty for code-owned wine-list sections that only expose a document link.",
+      validation: (Rule) => Rule.required(),
     }),
   ],
   preview: {
