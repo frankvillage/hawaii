@@ -42,6 +42,22 @@ Il deployer:
 Se backup o promozione falliscono, gli spostamenti completati vengono invertiti.
 Il deploy non esegue comandi SQL e non rimuove file remoti.
 
+## Aggiornamenti successivi
+
+Dopo il primo rilascio, una nuova versione statica si pubblica con:
+
+```bash
+ARUBA_REQUIRE_CLEAN=1 npm run build:web:aruba
+npm run test:web:aruba
+npm run deploy:aruba:update
+```
+
+L'aggiornamento riutilizza la directory `media` già online, carica e verifica
+singolarmente HTML e asset applicativi in uno staging protetto dentro `old`,
+quindi archivia la release attiva in `old/static-pre-*` prima della promozione.
+In questo modo i video non vengono duplicati e la versione precedente resta
+ripristinabile tramite il manifest locale generato dal comando.
+
 ## Riparazione atomica degli entrypoint
 
 Se una verifica successiva rileva pagine incomplete, gli entrypoint possono

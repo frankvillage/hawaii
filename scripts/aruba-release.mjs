@@ -220,6 +220,14 @@ function remoteFileMatches(remotePath, expected) {
   return actual.bytes === expected.bytes && actual.sha256 === expected.sha256;
 }
 
+function localFileInventory(localPath) {
+  const content = readFileSync(localPath);
+  return {
+    bytes: content.length,
+    sha256: createHash("sha256").update(content).digest("hex"),
+  };
+}
+
 function verifyRemoteFile(remotePath, expected) {
   const actual = remoteFileInventory(remotePath);
   if (actual.bytes !== expected.bytes || actual.sha256 !== expected.sha256) {
@@ -474,6 +482,118 @@ function deploy() {
   console.log(`Manifest locale: ${localManifestPath}`);
 }
 
+function updateStatic() {
+  const rootEntries = listRemote();
+  const requiredEntries = [oldName, "media", "_next", "index.html", "RELEASE.txt"];
+  const missingEntries = requiredEntries.filter((entry) => !rootEntries.includes(entry));
+  if (missingEntries.length) {
+    fail(
+      `Document root non riconosciuta come release statica; mancano: ${missingEntries.join(", ")}`,
+    );
+  }
+
+  const files = artifactInventory();
+  const preservedTopLevelEntries = ["media"];
+  const applicationFiles = files.filter(
+    ({ path }) => !preservedTopLevelEntries.includes(path.split("/")[0]),
+  );
+  const entrypointFiles = findEntrypoints(applicationFiles);
+  if (!entrypointFiles.some((file) => file.path === "index.html")) {
+    fail("index.html assente dall'artefatto Aruba.");
+  }
+
+  const releaseId = `hawaii-static-${releaseStamp}`;
+  const backupDirectory = joinRemote(remoteRoot, oldName, `static-pre-${releaseId}`);
+  const stagingDirectory = joinRemote(remoteRoot, oldName, `.staging-${releaseId}`);
+  const previousRootEntries = rootEntries.filter(
+    (entry) => entry !== oldName && !preservedTopLevelEntries.includes(entry),
+  );
+  const topLevelEntries = [
+    ...new Set(applicationFiles.map(({ path }) => path.split("/")[0])),
+  ].sort();
+  const manifest = {
+    schema: 2,
+    releaseKind: "static-update",
+    releaseId,
+    createdAt: new Date().toISOString(),
+    host,
+    remoteRoot,
+    oldDirectory: joinRemote(remoteRoot, oldName),
+    backupDirectory,
+    stagingDirectory,
+    preservedTopLevelEntries,
+    previousRootEntries,
+    releaseTopLevelEntries: [...topLevelEntries, "DEPLOY-MANIFEST.json"].sort(),
+    files,
+  };
+  const localManifestPath = writeManifest(manifest);
+  const manifestInventory = localFileInventory(localManifestPath);
+
+  if (!existsSync(oldAccessGuard)) fail("Protezione HTTP della cartella old assente.");
+  verifyRemoteFile(
+    joinRemote(remoteRoot, oldName, ".htaccess"),
+    localFileInventory(oldAccessGuard),
+  );
+  makeRemoteDirectory(backupDirectory);
+  makeRemoteDirectory(stagingDirectory);
+
+  for (const file of applicationFiles) {
+    uploadVerifiedFile(
+      join(artifactDir, ...file.path.split("/")),
+      joinRemote(stagingDirectory, file.path),
+      file,
+    );
+  }
+  uploadVerifiedFile(
+    localManifestPath,
+    joinRemote(stagingDirectory, "DEPLOY-MANIFEST.json"),
+    manifestInventory,
+  );
+
+  const backupMoves = [];
+  try {
+    for (const entry of previousRootEntries) {
+      const move = {
+        from: joinRemote(remoteRoot, entry),
+        to: joinRemote(backupDirectory, entry),
+      };
+      moveRemote(move.from, move.to);
+      backupMoves.push(move);
+    }
+    uploadVerifiedFile(
+      localManifestPath,
+      joinRemote(backupDirectory, "ROLLBACK-MANIFEST.json"),
+      manifestInventory,
+    );
+  } catch (error) {
+    restoreMoves(backupMoves);
+    throw error;
+  }
+
+  const promotionMoves = [];
+  try {
+    for (const entry of manifest.releaseTopLevelEntries) {
+      const move = {
+        from: joinRemote(stagingDirectory, entry),
+        to: joinRemote(remoteRoot, entry),
+      };
+      moveRemote(move.from, move.to);
+      promotionMoves.push(move);
+    }
+    for (const entrypoint of entrypointFiles) {
+      verifyRemoteFile(joinRemote(remoteRoot, entrypoint.path), entrypoint);
+    }
+  } catch (error) {
+    attemptAllRestores([promotionMoves, backupMoves]);
+    throw error;
+  }
+
+  console.log(`Release statica aggiornata: ${releaseId}`);
+  console.log(`Versione precedente: ${backupDirectory}`);
+  console.log(`Media preservati: ${preservedTopLevelEntries.join(", ")}`);
+  console.log(`Manifest locale: ${localManifestPath}`);
+}
+
 function repairEntrypoints(manifestPath) {
   if (!manifestPath) fail("Specifica il manifest locale del rilascio da riparare.");
   const manifest = JSON.parse(readFileSync(resolve(manifestPath), "utf8"));
@@ -565,7 +685,14 @@ function rollback(manifestPath) {
   }
 
   const rootEntries = listRemote();
-  const allowed = new Set([oldName, ...manifest.releaseTopLevelEntries]);
+  const preservedTopLevelEntries = Array.isArray(manifest.preservedTopLevelEntries)
+    ? manifest.preservedTopLevelEntries.map(validateEntryName)
+    : [];
+  const allowed = new Set([
+    oldName,
+    ...preservedTopLevelEntries,
+    ...manifest.releaseTopLevelEntries,
+  ]);
   const unexpected = rootEntries.filter((entry) => !allowed.has(entry));
   if (unexpected.length) {
     fail(`Rollback interrotto: elementi inattesi nella root: ${unexpected.join(", ")}`);
@@ -604,7 +731,9 @@ function rollback(manifestPath) {
     throw error;
   }
 
-  console.log(`WordPress ripristinato da: ${manifest.backupDirectory}`);
+  const restoredLabel =
+    manifest.releaseKind === "static-update" ? "Release statica" : "WordPress";
+  console.log(`${restoredLabel} ripristinata da: ${manifest.backupDirectory}`);
   console.log(`Release statica conservata in: ${failedReleaseDirectory}`);
 }
 
@@ -612,9 +741,12 @@ try {
   credentials = resolveNetrc();
   if (command === "inspect") inspect();
   else if (command === "deploy") deploy();
+  else if (command === "update-static") updateStatic();
   else if (command === "repair-entrypoints") repairEntrypoints(process.argv[3]);
   else if (command === "rollback") rollback(process.argv[3]);
-  else fail("Comando supportato: inspect, deploy, repair-entrypoints, rollback.");
+  else fail(
+    "Comando supportato: inspect, deploy, update-static, repair-entrypoints, rollback.",
+  );
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;

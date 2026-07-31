@@ -90,6 +90,19 @@ export default async function MenuPage() {
           La cura per la materia prima, la semplicità e la bontà di piatti
           studiati per sapere di mare.
         </p>
+        <p
+          data-testid="allergen-summary-note"
+          className="mt-5 max-w-3xl text-sm leading-7 text-[#6d7472]"
+        >
+          Le informazioni sugli allergeni sono consultabili{" "}
+          <a
+            href="#allergeni"
+            className="font-medium text-[#16292d] underline decoration-[#96703d]/55 underline-offset-4 transition hover:decoration-[#96703d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#96703d]"
+          >
+            alla fine del menu
+          </a>
+          .
+        </p>
         <div className="mt-10 grid gap-4 lg:grid-cols-2">
           {menuHighlights.map((item) => (
             <Link
@@ -103,32 +116,6 @@ export default async function MenuPage() {
             </Link>
           ))}
         </div>
-
-        <section
-          data-testid="allergen-legend"
-          aria-labelledby="allergen-legend-title"
-          className="mt-10 rounded-[2rem] border border-[#1c2b2e]/10 bg-[#16292d] p-6 text-[#f8f5ee] shadow-[0_14px_40px_rgba(23,32,34,0.12)] sm:p-8"
-        >
-          <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#d6b887]">Allergeni</p>
-          <h2 id="allergen-legend-title" className="mt-3 font-serif text-3xl sm:text-4xl">
-            Informazioni per il tuo tavolo.
-          </h2>
-          <p className="mt-4 max-w-3xl text-sm leading-7 text-[#d9dfdc]">
-            Comunica sempre allergie o intolleranze al personale prima dell&apos;ordine.
-            Le sigle accanto ai piatti corrispondono alla legenda; per ingredienti,
-            ricette aggiornate e possibili contaminazioni crociate chiedi al personale.
-          </p>
-          <ol className="mt-6 grid gap-x-5 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
-            {allergenLegend.map((allergen) => (
-              <li key={allergen.id} className="flex items-baseline gap-3">
-                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[#d6b887]/60 text-xs font-semibold text-[#f1d39d]">
-                  {allergen.id}
-                </span>
-                <span>{allergen.label}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
 
         <div className="mt-16 grid gap-20">
           {menus.map((menu) => (
@@ -270,6 +257,33 @@ export default async function MenuPage() {
             </Fragment>
           ))}
         </div>
+
+        <section
+          id="allergeni"
+          data-testid="allergen-legend"
+          aria-labelledby="allergen-legend-title"
+          className="mt-16 scroll-mt-24 rounded-[2rem] border border-[#1c2b2e]/10 bg-[#16292d] p-6 text-[#f8f5ee] shadow-[0_14px_40px_rgba(23,32,34,0.12)] sm:p-8"
+        >
+          <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[#d6b887]">Allergeni</p>
+          <h2 id="allergen-legend-title" className="mt-3 font-serif text-3xl sm:text-4xl">
+            Legenda allergeni.
+          </h2>
+          <p className="mt-4 max-w-3xl text-sm leading-7 text-[#d9dfdc]">
+            Comunica sempre allergie o intolleranze al personale prima dell&apos;ordine.
+            Le sigle accanto ai piatti corrispondono alla legenda; per ingredienti,
+            ricette aggiornate e possibili contaminazioni crociate chiedi al personale.
+          </p>
+          <ol className="mt-6 grid gap-x-5 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            {allergenLegend.map((allergen) => (
+              <li key={allergen.id} className="flex items-baseline gap-3">
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[#d6b887]/60 text-xs font-semibold text-[#f1d39d]">
+                  {allergen.id}
+                </span>
+                <span>{allergen.label}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
 
         <div className="mt-14 flex flex-col gap-4 rounded-[2rem] border border-[#1c2b2e]/10 bg-white shadow-[0_14px_40px_rgba(23,32,34,0.07)] p-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">

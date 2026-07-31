@@ -19,6 +19,7 @@
     "test:web:aruba": "node tests/aruba-static-readiness.js output/aruba-static",
     "deploy:aruba:inspect": "node scripts/aruba-release.mjs inspect",
     "deploy:aruba": "node scripts/aruba-release.mjs deploy",
+    "deploy:aruba:update": "node scripts/aruba-release.mjs update-static",
     "rollback:aruba": "node scripts/aruba-release.mjs rollback",
     "menu:seed:studio": "web/node_modules/.bin/jiti web/scripts/export-sanity-menu-seed.ts",
     "test:web:hardening": "node tests/web-go-live-hardening.js",

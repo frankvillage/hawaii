@@ -1748,6 +1748,26 @@ assert.match(
 );
 assert.match(
   menuPage,
+  /data-testid="allergen-summary-note"/,
+  "Menu page must introduce the allergen information with a discreet summary note",
+);
+assert.match(
+  menuPage,
+  /Le informazioni sugli allergeni sono consultabili/,
+  "The menu introduction must direct guests to the allergen legend",
+);
+assert.ok(
+  menuPage.indexOf('data-testid="allergen-summary-note"') <
+    menuPage.indexOf('data-testid="menu-section"'),
+  "The allergen summary note must appear before the menu sections",
+);
+assert.ok(
+  menuPage.indexOf('data-testid="menu-section"') <
+    menuPage.indexOf('data-testid="allergen-legend"'),
+  "The full allergen legend must appear after the menu sections",
+);
+assert.match(
+  menuPage,
   /data-testid="dish-allergens"/,
   "Menu page must render dish-level allergen declarations",
 );
@@ -2289,6 +2309,32 @@ assert.ok(
 );
 assert.match(entrypointRepair, /restoreMoves\(repairMoves\)/);
 assert.match(arubaRelease, /command === "repair-entrypoints"/);
+const staticUpdate = sourceBetween(
+  arubaRelease,
+  "function updateStatic(",
+  "function repairEntrypoints(",
+);
+assert.match(
+  staticUpdate,
+  /const preservedTopLevelEntries = \["media"\]/,
+  "Static updates must reuse the verified media directory instead of uploading videos again",
+);
+assert.match(
+  staticUpdate,
+  /uploadVerifiedFile\(/,
+  "Every staged application file must be verified before promotion",
+);
+assert.match(
+  staticUpdate,
+  /static-pre-/,
+  "The active static application must be archived before an update",
+);
+assert.match(
+  staticUpdate,
+  /attemptAllRestores\(\[promotionMoves, backupMoves\]\)/,
+  "A failed static update must restore both the promoted and archived entries",
+);
+assert.match(arubaRelease, /command === "update-static"/);
 assert.doesNotMatch(
   arubaRelease,
   /(?:DELE|RMD)\s/,
