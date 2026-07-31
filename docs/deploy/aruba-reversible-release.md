@@ -58,6 +58,16 @@ quindi archivia la release attiva in `old/static-pre-*` prima della promozione.
 In questo modo i video non vengono duplicati e la versione precedente resta
 ripristinabile tramite il manifest locale generato dal comando.
 
+Se Aruba interrompe lo staging restituendo un file vuoto, la produzione non
+viene modificata. La release può riprendere dal primo percorso non completato:
+
+```bash
+npm run deploy:aruba:resume -- output/aruba-releases/<release-id>.json <percorso>
+```
+
+La ripresa conserva i file già verificati e usa un nome temporaneo diverso per
+ogni nuovo tentativo, evitando di riutilizzare un oggetto FTP vuoto.
+
 ## Riparazione atomica degli entrypoint
 
 Se una verifica successiva rileva pagine incomplete, gli entrypoint possono

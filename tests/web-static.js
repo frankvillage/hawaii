@@ -2321,19 +2321,29 @@ assert.match(
 );
 assert.match(
   staticUpdate,
-  /uploadVerifiedFile\(/,
+  /stageApplicationFile\(/,
   "Every staged application file must be verified before promotion",
 );
 assert.match(
   staticUpdate,
-  /const stagedFile = joinRemote\(\s*remoteRoot,\s*oldName,/,
+  /const stagedFile = stageApplicationFile\(/,
   "Static updates must upload into the proven old root before assembling fresh directories",
 );
-assert.ok(
-  staticUpdate.indexOf("uploadVerifiedFile(localFile, stagedFile, file)") <
-    staticUpdate.indexOf("moveRemote(stagedFile, nestedStagedFile)"),
-  "A flat staged file must be verified before it is moved into the release tree",
+const flatApplicationStage = sourceBetween(
+  arubaRelease,
+  "function stageApplicationFile(",
+  "function artifactInventory(",
 );
+assert.match(flatApplicationStage, /uploadVerifiedFlatFile\(/);
+assert.match(flatApplicationStage, /moveRemote\(stagedFile, nestedStagedFile\)/);
+const verifiedFlatUpload = sourceBetween(
+  arubaRelease,
+  "function uploadVerifiedFlatFile(",
+  "function walkFiles(",
+);
+assert.match(verifiedFlatUpload, /for \(let attempt = 0;/);
+assert.match(verifiedFlatUpload, /validateEntryName\(`\$\{baseName\}-\$\{attempt\}`\)/);
+assert.match(verifiedFlatUpload, /verifyRemoteFile\(remotePath, expected\)/);
 assert.match(
   staticUpdate,
   /static-pre-/,
@@ -2345,6 +2355,8 @@ assert.match(
   "A failed static update must restore both the promoted and archived entries",
 );
 assert.match(arubaRelease, /command === "update-static"/);
+assert.match(arubaRelease, /function resumeStaticUpdate\(/);
+assert.match(arubaRelease, /command === "resume-static"/);
 assert.doesNotMatch(
   arubaRelease,
   /(?:DELE|RMD)\s/,

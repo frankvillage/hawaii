@@ -270,6 +270,27 @@ function uploadVerifiedFile(localPath, remotePath, expected) {
   throw lastError;
 }
 
+function uploadVerifiedFlatFile(localPath, baseName, expected) {
+  const retryDelays = [0, 3_000, 8_000, 15_000];
+  let lastError;
+  for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
+    if (retryDelays[attempt]) sleep(retryDelays[attempt]);
+    const remotePath = joinRemote(
+      remoteRoot,
+      oldName,
+      validateEntryName(`${baseName}-${attempt}`),
+    );
+    try {
+      uploadFile(localPath, remotePath);
+      verifyRemoteFile(remotePath, expected);
+      return remotePath;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
 function walkFiles(directory) {
   const files = [];
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -298,6 +319,18 @@ function parentDirectories(files) {
 function flatStageName(releaseId, path) {
   const digest = createHash("sha256").update(path).digest("hex").slice(0, 24);
   return validateEntryName(`stage-${releaseId}-${digest}`);
+}
+
+function stageApplicationFile(releaseId, stagingDirectory, file) {
+  const localFile = join(artifactDir, ...file.path.split("/"));
+  const stagedFile = uploadVerifiedFlatFile(
+    localFile,
+    flatStageName(releaseId, file.path),
+    file,
+  );
+  const nestedStagedFile = joinRemote(stagingDirectory, file.path);
+  moveRemote(stagedFile, nestedStagedFile);
+  return nestedStagedFile;
 }
 
 function artifactInventory() {
@@ -561,34 +594,23 @@ function updateStatic() {
   }
 
   for (const file of applicationFiles) {
-    const localFile = join(artifactDir, ...file.path.split("/"));
-    const stagedFile = joinRemote(
-      remoteRoot,
-      oldName,
-      flatStageName(releaseId, file.path),
-    );
-    const nestedStagedFile = joinRemote(stagingDirectory, file.path);
-    uploadVerifiedFile(localFile, stagedFile, file);
-    moveRemote(stagedFile, nestedStagedFile);
+    const stagedFile = stageApplicationFile(releaseId, stagingDirectory, file);
+    if (!stagedFile.startsWith(`${stagingDirectory}/`)) {
+      fail(`Staging remoto non valido per ${file.path}.`);
+    }
   }
-  const stagedManifestFile = joinRemote(
-    remoteRoot,
-    oldName,
+  const stagedManifestFile = uploadVerifiedFlatFile(
+    localManifestPath,
     flatStageName(releaseId, "DEPLOY-MANIFEST.json"),
+    manifestInventory,
   );
-  uploadVerifiedFile(localManifestPath, stagedManifestFile, manifestInventory);
   moveRemote(
     stagedManifestFile,
     joinRemote(stagingDirectory, "DEPLOY-MANIFEST.json"),
   );
-  const stagedRollbackManifest = joinRemote(
-    remoteRoot,
-    oldName,
-    flatStageName(releaseId, "ROLLBACK-MANIFEST.json"),
-  );
-  uploadVerifiedFile(
+  const stagedRollbackManifest = uploadVerifiedFlatFile(
     localManifestPath,
-    stagedRollbackManifest,
+    flatStageName(releaseId, "ROLLBACK-MANIFEST.json"),
     manifestInventory,
   );
 
@@ -632,6 +654,122 @@ function updateStatic() {
   console.log(`Release statica aggiornata: ${releaseId}`);
   console.log(`Versione precedente: ${backupDirectory}`);
   console.log(`Media preservati: ${preservedTopLevelEntries.join(", ")}`);
+  console.log(`Manifest locale: ${localManifestPath}`);
+}
+
+function resumeStaticUpdate(manifestPath, resumeFromPath) {
+  if (!manifestPath || !resumeFromPath) {
+    fail("Specifica il manifest locale e il primo percorso da riprendere.");
+  }
+  const localManifestPath = resolve(manifestPath);
+  const manifest = JSON.parse(readFileSync(localManifestPath, "utf8"));
+  if (
+    manifest.releaseKind !== "static-update" ||
+    manifest.host !== host ||
+    normalizeRemotePath(manifest.remoteRoot) !== remoteRoot ||
+    !Array.isArray(manifest.files) ||
+    !Array.isArray(manifest.previousRootEntries) ||
+    !Array.isArray(manifest.releaseTopLevelEntries)
+  ) {
+    fail("Manifest di ripresa non valido per questo host/root.");
+  }
+
+  const releaseId = validateEntryName(manifest.releaseId);
+  const stagingDirectory = normalizeRemotePath(manifest.stagingDirectory);
+  const backupDirectory = normalizeRemotePath(manifest.backupDirectory);
+  const expectedStagingPrefix = joinRemote(remoteRoot, oldName, ".staging-");
+  const expectedBackupPrefix = joinRemote(remoteRoot, oldName, "static-pre-");
+  if (
+    !stagingDirectory.startsWith(expectedStagingPrefix) ||
+    !backupDirectory.startsWith(expectedBackupPrefix)
+  ) {
+    fail("Directory di ripresa esterne all'area protetta old.");
+  }
+
+  const files = artifactInventory();
+  if (JSON.stringify(files) !== JSON.stringify(manifest.files)) {
+    fail("L'artefatto locale non corrisponde al manifest da riprendere.");
+  }
+  const preservedTopLevelEntries = Array.isArray(manifest.preservedTopLevelEntries)
+    ? manifest.preservedTopLevelEntries
+    : [];
+  const applicationFiles = files.filter(
+    ({ path }) => !preservedTopLevelEntries.includes(path.split("/")[0]),
+  );
+  const resumeIndex = applicationFiles.findIndex(({ path }) => path === resumeFromPath);
+  if (resumeIndex < 0) fail(`Percorso di ripresa assente: ${resumeFromPath}`);
+
+  const rootEntries = listRemote();
+  const missingActiveEntries = manifest.previousRootEntries.filter(
+    (entry) => !rootEntries.includes(entry),
+  );
+  if (missingActiveEntries.length) {
+    fail(`Release attiva incompleta: ${missingActiveEntries.join(", ")}`);
+  }
+  if (listRemote(backupDirectory).length) {
+    fail("Il backup della release contiene già file; ripresa interrotta.");
+  }
+
+  for (const file of applicationFiles.slice(resumeIndex)) {
+    stageApplicationFile(releaseId, stagingDirectory, file);
+  }
+
+  const manifestInventory = localFileInventory(localManifestPath);
+  const stagedManifestFile = uploadVerifiedFlatFile(
+    localManifestPath,
+    flatStageName(releaseId, "DEPLOY-MANIFEST.json-resume"),
+    manifestInventory,
+  );
+  moveRemote(
+    stagedManifestFile,
+    joinRemote(stagingDirectory, "DEPLOY-MANIFEST.json"),
+  );
+  const stagedRollbackManifest = uploadVerifiedFlatFile(
+    localManifestPath,
+    flatStageName(releaseId, "ROLLBACK-MANIFEST.json-resume"),
+    manifestInventory,
+  );
+
+  const backupMoves = [];
+  try {
+    for (const entry of manifest.previousRootEntries) {
+      const move = {
+        from: joinRemote(remoteRoot, entry),
+        to: joinRemote(backupDirectory, entry),
+      };
+      moveRemote(move.from, move.to);
+      backupMoves.push(move);
+    }
+    moveRemote(
+      stagedRollbackManifest,
+      joinRemote(backupDirectory, "ROLLBACK-MANIFEST.json"),
+    );
+  } catch (error) {
+    restoreMoves(backupMoves);
+    throw error;
+  }
+
+  const entrypointFiles = findEntrypoints(applicationFiles);
+  const promotionMoves = [];
+  try {
+    for (const entry of manifest.releaseTopLevelEntries) {
+      const move = {
+        from: joinRemote(stagingDirectory, entry),
+        to: joinRemote(remoteRoot, entry),
+      };
+      moveRemote(move.from, move.to);
+      promotionMoves.push(move);
+    }
+    for (const entrypoint of entrypointFiles) {
+      verifyRemoteFile(joinRemote(remoteRoot, entrypoint.path), entrypoint);
+    }
+  } catch (error) {
+    attemptAllRestores([promotionMoves, backupMoves]);
+    throw error;
+  }
+
+  console.log(`Release statica ripresa e aggiornata: ${releaseId}`);
+  console.log(`Versione precedente: ${backupDirectory}`);
   console.log(`Manifest locale: ${localManifestPath}`);
 }
 
@@ -783,10 +921,13 @@ try {
   if (command === "inspect") inspect();
   else if (command === "deploy") deploy();
   else if (command === "update-static") updateStatic();
+  else if (command === "resume-static") {
+    resumeStaticUpdate(process.argv[3], process.argv[4]);
+  }
   else if (command === "repair-entrypoints") repairEntrypoints(process.argv[3]);
   else if (command === "rollback") rollback(process.argv[3]);
   else fail(
-    "Comando supportato: inspect, deploy, update-static, repair-entrypoints, rollback.",
+    "Comando supportato: inspect, deploy, update-static, resume-static, repair-entrypoints, rollback.",
   );
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
