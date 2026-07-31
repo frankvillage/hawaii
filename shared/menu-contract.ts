@@ -21,6 +21,30 @@ export const allergenCodes: readonly AllergenCode[] = allergenDefinitions.map(
   ({ code }) => code,
 );
 
+export const menuCategoryKeys = {
+  "menu-hawaii": {
+    antipasti: "hawaii-antipasti",
+    primi: "hawaii-primi",
+    secondiGriglia: "hawaii-secondi-griglia",
+    contorni: "hawaii-contorni",
+    pizzaCena: "hawaii-pizza-cena",
+    dessert: "hawaii-dessert",
+    cantina: "hawaii-cantina",
+  },
+  "menu-muulab": {
+    perCominciare: "muulab-per-cominciare",
+    crudiCarne: "muulab-crudi-carne",
+    secondiBrace: "muulab-secondi-brace",
+    tagliBrace: "muulab-tagli-brace",
+    contorni: "muulab-contorni",
+    dolci: "muulab-dolci",
+    cocktailAperitivo: "muulab-cocktail-aperitivo",
+    cantinaCoravin: "muulab-cantina-coravin",
+  },
+} as const;
+
+export type MenuDocumentId = keyof typeof menuCategoryKeys;
+
 export function isAllergenCode(value: unknown): value is AllergenCode {
   return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 14;
 }

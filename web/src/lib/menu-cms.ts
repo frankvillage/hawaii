@@ -2,8 +2,18 @@ import "server-only";
 
 import { z } from "zod";
 
-import { areUniqueAllergenCodes, isMenuPrice } from "../../../shared/menu-contract";
+import { areUniqueAllergenCodes, isMenuPrice, menuCategoryKeys } from "../../../shared/menu-contract";
 import { venueMenus, type MenuCategory, type VenueMenu } from "./site-content";
+
+type MenuDocumentId = keyof typeof menuCategoryKeys;
+type MenuCategoryKey<DocumentId extends MenuDocumentId> =
+  Extract<
+    (typeof menuCategoryKeys)[DocumentId][keyof (typeof menuCategoryKeys)[DocumentId]],
+    string
+  >;
+type LocalCategoryTitlesByKey = {
+  [DocumentId in MenuDocumentId]: Record<MenuCategoryKey<DocumentId>, string>;
+};
 
 const menuQuery =
   '*[_type == "menu" && _id in ["menu-hawaii", "menu-muulab"]]{_id, venue, categories[]{_key, title, note, dishes[]{_key, name, note, price, allergens, available}}}';
@@ -26,28 +36,54 @@ const menuDishSchema = z
   })
   .strict();
 
+function addDuplicateKeyIssues(
+  values: readonly { _key: string }[],
+  context: z.RefinementCtx,
+) {
+  const seen = new Set<string>();
+
+  values.forEach(({ _key }, index) => {
+    if (seen.has(_key)) {
+      context.addIssue({
+        code: "custom",
+        message: "Sanity array keys must be unique.",
+        path: [index, "_key"],
+      });
+    }
+    seen.add(_key);
+  });
+}
+
+const menuDishesSchema = z
+  .array(menuDishSchema)
+  .superRefine(addDuplicateKeyIssues);
+
 const menuCategorySchema = z
   .object({
     _key: requiredText,
     title: requiredText,
     note: z.string().optional(),
-    dishes: z.array(menuDishSchema),
+    dishes: menuDishesSchema,
   })
   .strict();
+
+const menuCategoriesSchema = z
+  .array(menuCategorySchema)
+  .superRefine(addDuplicateKeyIssues);
 
 const menuDocumentSchema = z.discriminatedUnion("_id", [
   z
     .object({
       _id: z.literal("menu-hawaii"),
       venue: z.literal("hawaii"),
-      categories: z.array(menuCategorySchema),
+      categories: menuCategoriesSchema,
     })
     .strict(),
   z
     .object({
       _id: z.literal("menu-muulab"),
       venue: z.literal("muulab"),
-      categories: z.array(menuCategorySchema),
+      categories: menuCategoriesSchema,
     })
     .strict(),
 ]);
@@ -134,6 +170,43 @@ function mapCategory(
   };
 }
 
+const localCategoryTitlesByKey = {
+  "menu-hawaii": {
+    [menuCategoryKeys["menu-hawaii"].antipasti]: "Antipasti",
+    [menuCategoryKeys["menu-hawaii"].primi]: "I primi",
+    [menuCategoryKeys["menu-hawaii"].secondiGriglia]: "Secondi e griglia",
+    [menuCategoryKeys["menu-hawaii"].contorni]: "Contorni",
+    [menuCategoryKeys["menu-hawaii"].pizzaCena]: "La pizza, a cena",
+    [menuCategoryKeys["menu-hawaii"].dessert]: "I dessert",
+    [menuCategoryKeys["menu-hawaii"].cantina]: "Bevande, birre e cantina",
+  },
+  "menu-muulab": {
+    [menuCategoryKeys["menu-muulab"].perCominciare]: "Per cominciare",
+    [menuCategoryKeys["menu-muulab"].crudiCarne]: "Crudi di carne",
+    [menuCategoryKeys["menu-muulab"].secondiBrace]: "I secondi alla brace",
+    [menuCategoryKeys["menu-muulab"].tagliBrace]: "Tagli alla brace",
+    [menuCategoryKeys["menu-muulab"].contorni]: "Contorni",
+    [menuCategoryKeys["menu-muulab"].dolci]: "Dolci",
+    [menuCategoryKeys["menu-muulab"].cocktailAperitivo]:
+      "Cocktail e aperitivo",
+    [menuCategoryKeys["menu-muulab"].cantinaCoravin]: "Cantina e Coravin",
+  },
+} as const satisfies LocalCategoryTitlesByKey;
+
+function findLocalCategory(
+  documentId: MenuDocumentId,
+  categoryKey: string,
+  localMenu: VenueMenu,
+): MenuCategory | undefined {
+  const categoryTitles: Record<string, string> =
+    localCategoryTitlesByKey[documentId];
+  const categoryTitle = categoryTitles[categoryKey];
+
+  if (!categoryTitle) return undefined;
+
+  return localMenu.categories.find(({ title }) => title === categoryTitle);
+}
+
 function mapDocument(document: MenuDocument): VenueMenu {
   const localMenuId =
     document._id === "menu-hawaii" ? "ristorante-mare" : "muulab";
@@ -145,8 +218,11 @@ function mapDocument(document: MenuDocument): VenueMenu {
 
   return {
     ...localMenu,
-    categories: document.categories.map((category, index) =>
-      mapCategory(category, localMenu.categories[index]),
+    categories: document.categories.map((category) =>
+      mapCategory(
+        category,
+        findLocalCategory(document._id, category._key, localMenu),
+      ),
     ),
   };
 }
@@ -173,7 +249,7 @@ export async function loadBuildMenuContent({
   let response: Response;
   try {
     response = await fetcher(endpoint.toString(), {
-      cache: "no-store",
+      cache: "force-cache",
       headers: {
         Authorization: `Bearer ${SANITY_API_TOKEN}`,
       },

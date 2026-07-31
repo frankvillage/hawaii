@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import type { NextConfig } from "next";
 
 /* STATIC_EXPORT=1 builds the fully static variant used by the GitHub Pages
@@ -9,7 +11,7 @@ const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 const nextConfig: NextConfig = {
   turbopack: {
-    root: __dirname,
+    root: path.resolve(__dirname, ".."),
   },
   ...(isStaticExport
     ? {

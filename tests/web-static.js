@@ -368,6 +368,7 @@ const villagePage = fs.readFileSync(villagePagePath, "utf8");
 const eventPage = fs.readFileSync(eventPagePath, "utf8");
 const hawaiiWineList = fs.readFileSync(hawaiiWineListPath, "utf8");
 const menuContractPath = path.join(root, "shared", "menu-contract.ts");
+const sharedPackagePath = path.join(root, "shared", "package.json");
 const menuSchemaPath = path.join(root, "studio", "schemaTypes", "menuType.ts");
 const sanityCliPath = path.join(root, "studio", "sanity.cli.ts");
 const sanityConfigPath = path.join(root, "studio", "sanity.config.ts");
@@ -384,6 +385,11 @@ const propagatedBookingSources = [
 ].join("\n");
 
 assert.ok(fs.existsSync(menuContractPath), "The shared menu contract must exist");
+assert.deepEqual(
+  JSON.parse(fs.readFileSync(sharedPackagePath, "utf8")),
+  { private: true, type: "module" },
+  "The shared contract needs a local ESM boundary for Turbopack",
+);
 const menuContractCheck = spawnSync(
   process.execPath,
   [
@@ -413,6 +419,27 @@ const menuContractCheck = spawnSync(
 
       assert.deepEqual(allergenDefinitions, expectedDefinitions);
       assert.deepEqual(allergenCodes, expectedDefinitions.map(({ code }) => code));
+      assert.deepEqual(menuCategoryKeys, {
+        "menu-hawaii": {
+          antipasti: "hawaii-antipasti",
+          primi: "hawaii-primi",
+          secondiGriglia: "hawaii-secondi-griglia",
+          contorni: "hawaii-contorni",
+          pizzaCena: "hawaii-pizza-cena",
+          dessert: "hawaii-dessert",
+          cantina: "hawaii-cantina",
+        },
+        "menu-muulab": {
+          perCominciare: "muulab-per-cominciare",
+          crudiCarne: "muulab-crudi-carne",
+          secondiBrace: "muulab-secondi-brace",
+          tagliBrace: "muulab-tagli-brace",
+          contorni: "muulab-contorni",
+          dolci: "muulab-dolci",
+          cocktailAperitivo: "muulab-cocktail-aperitivo",
+          cantinaCoravin: "muulab-cantina-coravin",
+        },
+      });
       assert.equal(isAllergenCode(1), true);
       assert.equal(isAllergenCode(14), true);
       for (const value of [0, 15, 1.5, "1", null, undefined]) {
@@ -471,10 +498,15 @@ const localVenueMenus = [
     photos: [{ src: "/hawaii.jpg", alt: "Hawaii" }],
     categories: [
       {
-        title: "Local Hawaii category",
-        note: "Local Hawaii note",
-        anchor: "fixed-hawaii-anchor",
-        action: { label: "Fixed Hawaii action", href: "#fixed-hawaii" },
+        title: "Antipasti",
+        anchor: "fixed-hawaii-antipasti",
+        dishes: [{ name: "Local Hawaii antipasto", price: "€ 9" }],
+      },
+      {
+        title: "I primi",
+        note: "Local Hawaii primi note",
+        anchor: "fixed-hawaii-primi",
+        action: { label: "Fixed Hawaii primi action", href: "#fixed-hawaii-primi" },
         dishes: [{ name: "Local Hawaii dish", price: "€ 9" }],
       },
     ],
@@ -490,8 +522,13 @@ const localVenueMenus = [
     photos: [{ src: "/muulab.jpg", alt: "MUULab" }],
     categories: [
       {
-        title: "Local MUULab category",
-        anchor: "fixed-muulab-anchor",
+        title: "Per cominciare",
+        anchor: "fixed-muulab-starter",
+        dishes: [{ name: "Local MUULab starter", price: "€ 10" }],
+      },
+      {
+        title: "Cocktail e aperitivo",
+        anchor: "fixed-muulab-cocktail",
         dishes: [{ name: "Local MUULab dish", price: "€ 10" }],
       },
     ],
@@ -504,7 +541,7 @@ const executableMenuCms = menuCms
     `import { z } from ${JSON.stringify(zodModuleUrl)};`,
   )
   .replace(
-    /^import \{ areUniqueAllergenCodes, isMenuPrice \} from "\.\.\/\.\.\/\.\.\/shared\/menu-contract";$/m,
+    /^import \{ areUniqueAllergenCodes, isMenuPrice, menuCategoryKeys \} from "\.\.\/\.\.\/\.\.\/shared\/menu-contract";$/m,
     executableMenuContract,
   )
   .replace(
@@ -534,7 +571,7 @@ const menuCmsCheck = spawnSync(
           venue: "muulab",
           categories: [
             {
-              _key: "muulab-category",
+              _key: "muulab-cocktail-aperitivo",
               title: "CMS MUULab category",
               note: "CMS MUULab category note",
               dishes: [
@@ -562,7 +599,7 @@ const menuCmsCheck = spawnSync(
           venue: "hawaii",
           categories: [
             {
-              _key: "hawaii-category",
+              _key: "hawaii-primi",
               title: "CMS Hawaii category",
               dishes: [
                 {
@@ -608,7 +645,7 @@ const menuCmsCheck = spawnSync(
         ...venueMenus[0],
         categories: [
           {
-            ...venueMenus[0].categories[0],
+            ...venueMenus[0].categories[1],
             title: "CMS Hawaii category",
             note: undefined,
             dishes: [
@@ -626,7 +663,7 @@ const menuCmsCheck = spawnSync(
         ...venueMenus[1],
         categories: [
           {
-            ...venueMenus[1].categories[0],
+            ...venueMenus[1].categories[1],
             title: "CMS MUULab category",
             note: "CMS MUULab category note",
             dishes: [
@@ -651,7 +688,7 @@ const menuCmsCheck = spawnSync(
         parsedUrl.searchParams.get("query"),
         '*[_type == "menu" && _id in ["menu-hawaii", "menu-muulab"]]{_id, venue, categories[]{_key, title, note, dishes[]{_key, name, note, price, allergens, available}}}',
       );
-      assert.equal(requestInit.cache, "no-store");
+      assert.equal(requestInit.cache, "force-cache");
       assert.equal(requestInit.headers.Authorization, "Bearer super-secret-token");
       assert.doesNotMatch(requestUrl, /super-secret-token/);
 
@@ -730,6 +767,71 @@ const menuCmsCheck = spawnSync(
         assert.equal(fallback.menus, venueMenus);
       }
 
+      const reorderedAndUnknown = structuredClone(validDocuments);
+      const reorderedHawaii = reorderedAndUnknown.find(
+        ({ _id }) => _id === "menu-hawaii",
+      );
+      reorderedHawaii.categories = [
+        {
+          _key: "new-seasonal-category",
+          title: "Fuori carta",
+          note: "Solo dal CMS",
+          dishes: [
+            {
+              _key: "new-seasonal-dish",
+              name: "Piatto del giorno",
+              available: true,
+              price: "€ 18",
+            },
+          ],
+        },
+        reorderedHawaii.categories[0],
+      ];
+      const reorderedResult = await loadWith(reorderedAndUnknown);
+      assert.deepEqual(reorderedResult.menus[0].categories[0], {
+        title: "Fuori carta",
+        note: "Solo dal CMS",
+        dishes: [
+          {
+            name: "Piatto del giorno",
+            price: "€ 18",
+            allergens: undefined,
+            note: undefined,
+          },
+        ],
+      });
+      assert.equal(
+        reorderedResult.menus[0].categories[1].anchor,
+        "fixed-hawaii-primi",
+        "Known metadata must follow the stable category key, not the CMS index",
+      );
+      assert.deepEqual(
+        reorderedResult.menus[0].categories[1].action,
+        venueMenus[0].categories[1].action,
+      );
+
+      for (const duplicateMutation of [
+        (documents) => {
+          const hawaii = documents.find(({ _id }) => _id === "menu-hawaii");
+          hawaii.categories.push(structuredClone(hawaii.categories[0]));
+        },
+        (documents) => {
+          const hawaii = documents.find(({ _id }) => _id === "menu-hawaii");
+          hawaii.categories[0].dishes.push(
+            structuredClone(hawaii.categories[0].dishes[0]),
+          );
+        },
+      ]) {
+        const documents = structuredClone(validDocuments);
+        duplicateMutation(documents);
+        const fallback = await loadWith(documents);
+        assert.equal(
+          fallback.menus,
+          venueMenus,
+          "Duplicate Sanity keys must reject the complete CMS response",
+        );
+      }
+
       const invalidUnavailable = structuredClone(validDocuments);
       Object.assign(invalidUnavailable[0].categories[0].dishes[0], {
         available: false,
@@ -777,7 +879,7 @@ assert.match(menuCms, /^import "server-only";/);
 assert.match(menuCms, /from "zod"/);
 assert.match(
   menuCms,
-  /from "\.\.\/\.\.\/\.\.\/shared\/menu-contract"/,
+  /import \{ areUniqueAllergenCodes, isMenuPrice, menuCategoryKeys \} from "\.\.\/\.\.\/\.\.\/shared\/menu-contract"/,
   "The adapter must use the dependency-free shared price and allergen contract",
 );
 assert.doesNotMatch(menuCms, /NEXT_PUBLIC_/);
@@ -791,6 +893,18 @@ for (const variable of [
   assert.match(webEnvExample, new RegExp(`^${variable}=`, "m"));
 }
 assert.doesNotMatch(webEnvExample, /^NEXT_PUBLIC_SANITY_/m);
+assert.match(
+  webEnvExample,
+  /^SANITY_API_TOKEN=\s*$/m,
+  "The example must not contain a token-like placeholder",
+);
+assert.match(webEnvExample, /read-only/i);
+assert.match(webEnvExample, /server-only/i);
+assert.match(
+  nextConfig,
+  /turbopack:\s*\{\s*root:\s*path\.resolve\(__dirname,\s*"\.\."\),?\s*\}/,
+  "Turbopack must resolve the shared contract from the monorepo root",
+);
 assert.match(
   menuPage,
   /export default async function MenuPage\(\)[\s\S]*?await loadBuildMenuContent\(\)/,
