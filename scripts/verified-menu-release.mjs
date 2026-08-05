@@ -8,10 +8,11 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const documentIds = ["menu-hawaii", "menu-muulab"];
@@ -388,6 +389,29 @@ function seal(releaseDirectory, siteDirectory) {
   );
 }
 
+function marker(releaseDirectory, outputPath, suspended) {
+  const snapshotPath = join(releaseDirectory, snapshotFile);
+  if (!existsSync(snapshotPath)) fail("Snapshot menu non trovato.");
+  const snapshot = readJson(snapshotPath, "Snapshot menu");
+  const documents = validateDocuments(snapshot.result, snapshot.source);
+  const payload = {
+    schemaVersion: 1,
+    syncSuspended: suspended,
+    documentRevisions: Object.fromEntries(
+      documents.map((document) => [document._id, document._rev]),
+    ),
+  };
+  mkdirSync(dirname(outputPath), { recursive: true });
+  const temporaryPath = `${outputPath}.tmp-${process.pid}`;
+  rmSync(temporaryPath, { force: true });
+  try {
+    writeFileSync(temporaryPath, `${JSON.stringify(payload)}\n`, { mode: 0o644 });
+    renameSync(temporaryPath, outputPath);
+  } finally {
+    rmSync(temporaryPath, { force: true });
+  }
+}
+
 function assertSafeArtifactName(file, expected) {
   if (file !== expected || basename(file) !== file) {
     fail(`Nome artifact non valido: ${file}.`);
@@ -489,10 +513,16 @@ async function main() {
   if (command === "capture") await capture(releaseDirectory);
   else if (command === "seal") {
     seal(releaseDirectory, resolve(outputDirectoryArg || "web/out"));
+  } else if (command === "marker") {
+    marker(
+      releaseDirectory,
+      resolve(outputDirectoryArg || "web/out/menu-release.json"),
+      process.argv[5] === "suspended",
+    );
   } else if (command === "verify") {
     verify(releaseDirectory, resolve(outputDirectoryArg || "web/out"));
   } else {
-    fail("Comando supportato: capture, seal, verify.");
+    fail("Comando supportato: capture, marker, seal, verify.");
   }
 }
 

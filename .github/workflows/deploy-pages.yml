@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - claude/codex-handoff-assets-se8fjq
+  schedule:
+    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       cms_revision:
@@ -21,12 +23,31 @@ permissions:
   contents: read
 
 concurrency:
-  group: github-pages
-  cancel-in-progress: true
+  group: github-pages-${{ github.event_name == 'schedule' && 'scheduled' || 'interactive' }}
+  cancel-in-progress: false
 
 jobs:
+  cms-check:
+    if: ${{ github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.revisions.outputs.changed }}
+      cms_revision: ${{ steps.revisions.outputs.cms_revision }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: revisions
+        name: Compare published Sanity revisions
+        env:
+          SANITY_PROJECT_ID: ${{ vars.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ vars.SANITY_DATASET }}
+          SANITY_API_VERSION: ${{ vars.SANITY_API_VERSION }}
+          PAGES_MENU_RELEASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/menu-release.json
+        run: node scripts/check-menu-sync.mjs
+
   verify:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.rollback_run_id == '' }}
+    needs: cms-check
+    if: ${{ always() && (github.event_name != 'workflow_dispatch' || inputs.rollback_run_id == '') && (github.event_name != 'schedule' || (needs.cms-check.result == 'success' && needs.cms-check.outputs.changed == 'true')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -51,6 +72,7 @@ jobs:
           npm run test:web:journey
           npm run test:web:booking
           npm run test:web:static
+          npm run test:menu-sync
           ./web/node_modules/.bin/tsc --noEmit -p web/tsconfig.json
           npm --prefix web run lint -- --max-warnings=0
 
@@ -62,7 +84,7 @@ jobs:
 
       - name: Capture immutable menu snapshot
         env:
-          RELEASE_CMS_REVISION: ${{ inputs.cms_revision || '' }}
+          RELEASE_CMS_REVISION: ${{ inputs.cms_revision || needs.cms-check.outputs.cms_revision || '' }}
           SANITY_PROJECT_ID: ${{ vars.SANITY_PROJECT_ID }}
           SANITY_DATASET: ${{ vars.SANITY_DATASET }}
           SANITY_API_VERSION: ${{ vars.SANITY_API_VERSION }}
@@ -85,6 +107,9 @@ jobs:
               -e "s|'/media/|'/${{ github.event.repository.name }}/media/|g" \
               -e 's|(/media/|(/${{ github.event.repository.name }}/media/|g'
 
+      - name: Publish menu revision marker
+        run: node scripts/verified-menu-release.mjs marker .verified-menu-release web/out/menu-release.json
+
       - name: Stage and test exact Pages artifact
         env:
           PAGES_BASE_PATH: /${{ github.event.repository.name }}
@@ -99,7 +124,7 @@ jobs:
 
       - name: Seal verified release artifact
         env:
-          RELEASE_CMS_REVISION: ${{ inputs.cms_revision || '' }}
+          RELEASE_CMS_REVISION: ${{ inputs.cms_revision || needs.cms-check.outputs.cms_revision || '' }}
           RELEASE_WORKFLOW_PATH: .github/workflows/deploy-pages.yml
         run: node scripts/verified-menu-release.mjs seal .verified-menu-release web/out
 
@@ -187,13 +212,48 @@ jobs:
           RELEASE_EXPECTED_DOCUMENT_IDS: menu-hawaii,menu-muulab
         run: node scripts/verified-menu-release.mjs verify .verified-menu-release web/out
 
+      - name: Suspend automatic CMS synchronization
+        run: node scripts/verified-menu-release.mjs marker .verified-menu-release web/out/menu-release.json suspended
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web/out
 
-  deploy:
+  deploy-priority:
     needs: [verify, restore]
     if: ${{ always() && !cancelled() && (needs.verify.result == 'success' || needs.restore.result == 'success') }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    outputs:
+      allowed: ${{ steps.priority.outputs.allowed }}
+    steps:
+      - id: priority
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.eventName != 'schedule') {
+              core.setOutput('allowed', 'true');
+              return;
+            }
+            const { data } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy-pages.yml',
+              per_page: 100,
+            });
+            const active = new Set(['in_progress', 'queued', 'pending', 'waiting', 'requested']);
+            const blocker = data.workflow_runs.some((run) =>
+              run.id !== context.runId &&
+              String(run.path || '').split('@')[0] === '.github/workflows/deploy-pages.yml' &&
+              run.event !== 'schedule' &&
+              (active.has(run.status) || run.id > context.runId)
+            );
+            core.setOutput('allowed', blocker ? 'false' : 'true');
+
+  deploy:
+    needs: [verify, restore, deploy-priority]
+    if: ${{ always() && !cancelled() && needs.deploy-priority.result == 'success' && needs.deploy-priority.outputs.allowed == 'true' && (needs.verify.result == 'success' || needs.restore.result == 'success') }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages

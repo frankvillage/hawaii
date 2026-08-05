@@ -6,7 +6,7 @@ Versione operativa - 31 luglio 2026
 
 Questa guida spiega come aggiornare in sicurezza nomi, prezzi, note, disponibilità e allergeni dei menu Hawaii e MUULab Riviera.
 
-> **Stato di attivazione.** L'editor è disponibile su `https://hawaii-urban-village.sanity.studio` e contiene menu, bevande e carte vini di entrambi i locali. Il collegamento automatico Sanity-GitHub-Aruba deve ancora completare il collaudo finale: fino alla conferma, il responsabile tecnico esegue il rilascio sul sito.
+> **Stato di attivazione.** L'editor è disponibile su `https://hawaii-urban-village.sanity.studio` e contiene menu, bevande e carte vini di entrambi i locali. GitHub Pages controlla automaticamente i contenuti pubblicati una volta ogni ora e ricostruisce il sito soltanto quando rileva nuove revisioni.
 
 ## 1. Accesso
 
@@ -138,14 +138,14 @@ Prima di premere **Publish** controllare:
 - ordine delle voci;
 - nessuna modifica involontaria ad altri piatti.
 
-Dopo **Publish**, Sanity salva la revisione pubblicata. Quando l'automazione avrà completato il collaudo:
+Dopo **Publish**, Sanity salva la revisione pubblicata:
 
-1. il webhook avviera i controlli GitHub;
-2. il sito di verifica su GitHub Pages verrà ricostruito;
+1. il controllo GitHub successivo, eseguito una volta ogni ora, confronterà le revisioni;
+2. il sito di verifica su GitHub Pages verrà ricostruito solo se il menu è cambiato;
 3. una build non valida verrà bloccata senza sostituire il menu precedente;
 4. il dominio definitivo Aruba verrà aggiornato tramite il rilascio tecnico approvato.
 
-La pubblicazione in Sanity non equivale quindi a un aggiornamento istantaneo del dominio definitivo. Attendere la conferma del rilascio prima di comunicare online un nuovo menu o un nuovo prezzo.
+La pubblicazione su GitHub Pages può richiedere fino a circa un'ora più il tempo della build. Le bozze non pubblicate non vengono mostrate online.
 
 ## 7. Controllo dopo la pubblicazione
 
@@ -195,7 +195,7 @@ Questa sezione non riguarda l'uso quotidiano della proprietà.
 3. Pubblicare lo Studio su `https://hawaii-urban-village.sanity.studio` con HTTPS.
 4. Invitare utenti nominativi e applicare Google SSO con autenticazione a due fattori.
 5. Configurare in GitHub le variabili pubbliche di progetto, dataset e versione API; non è richiesto un token di lettura.
-6. Configurare il webhook Sanity con permessi minimi: Actions in scrittura e Contents in sola lettura.
+6. Verificare il controllo GitHub orario e il marcatore pubblico delle revisioni.
 7. Eseguire una modifica di prova e verificare snapshot, build, Pages e rollback.
 8. Definire il passaggio approvato da Pages ad Aruba; al momento non è automatico.
 9. Consegnare agli utenti URL, ruoli e contatto tecnico soltanto dopo il collaudo.

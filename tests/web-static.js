@@ -362,6 +362,29 @@ function assertVerifiedMenuReleaseBehavior() {
     };
     fs.writeFileSync(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`);
 
+    const markerPath = path.join(siteDir, "menu-release.json");
+    const marker = spawnSync(
+      process.execPath,
+      [verifiedMenuReleasePath, "marker", releaseDir, markerPath],
+      { cwd: root, encoding: "utf8" },
+    );
+    assert.equal(marker.status, 0, marker.stderr || marker.stdout);
+    assert.deepEqual(JSON.parse(fs.readFileSync(markerPath, "utf8")), {
+      schemaVersion: 1,
+      syncSuspended: false,
+      documentRevisions: {
+        "menu-hawaii": "hawaii-revision",
+        "menu-muulab": "muulab-revision",
+      },
+    });
+    const suspendedMarker = spawnSync(
+      process.execPath,
+      [verifiedMenuReleasePath, "marker", releaseDir, markerPath, "suspended"],
+      { cwd: root, encoding: "utf8" },
+    );
+    assert.equal(suspendedMarker.status, 0, suspendedMarker.stderr || suspendedMarker.stdout);
+    assert.equal(JSON.parse(fs.readFileSync(markerPath, "utf8")).syncSuspended, true);
+
     const manifest = {
       schemaVersion: 1,
       workflowPath: ".github/workflows/deploy-pages.yml",
@@ -2264,6 +2287,7 @@ assert.doesNotMatch(
 );
 const pushTrigger = sourceBetween(pagesWorkflow, "  push:", "  workflow_dispatch:");
 assert.match(pushTrigger, /branches:\s*\n\s*- main\s*\n\s*- claude\/codex-handoff-assets-se8fjq/);
+assert.match(pagesWorkflow, /schedule:\s*\n\s*- cron:\s*["']17 \* \* \* \*["']/);
 assert.doesNotMatch(pagesWorkflow, /repository_dispatch/);
 assert.match(
   pagesWorkflow,
@@ -2271,6 +2295,21 @@ assert.match(
   "Manual and Sanity publishing must expose the revision and optional rollback run",
 );
 assert.match(pagesWorkflow, /permissions:\s*\n\s*actions:\s*read/);
+assert.match(pagesWorkflow, /group:\s*github-pages-\$\{\{ github\.event_name == 'schedule'/);
+assert.match(pagesWorkflow, /cancel-in-progress:\s*false/);
+const cmsCheckJob = pagesWorkflow.match(/\n  cms-check:\n([\s\S]*?)\n  verify:/)?.[1] || "";
+const deployPriorityJob = pagesWorkflow.match(/\n  deploy-priority:\n([\s\S]*?)\n  deploy:/)?.[1] || "";
+assert.match(cmsCheckJob, /github\.event_name == 'schedule'/);
+assert.match(cmsCheckJob, /check-menu-sync\.mjs/);
+assert.match(cmsCheckJob, /SANITY_PROJECT_ID:\s*\$\{\{ vars\.SANITY_PROJECT_ID \}\}/);
+assert.match(cmsCheckJob, /PAGES_MENU_RELEASE_URL:/);
+assert.match(verifyJob, /needs:\s*cms-check/);
+assert.match(verifyJob, /needs\.cms-check\.outputs\.changed == 'true'/);
+assert.match(verifyJob, /needs\.cms-check\.outputs\.cms_revision/);
+assert.match(deployPriorityJob, /listWorkflowRuns/);
+assert.match(deployPriorityJob, /workflow_id:\s*['"]deploy-pages\.yml['"]/);
+assert.match(deployPriorityJob, /context\.eventName != 'schedule'/);
+assert.match(deployPriorityJob, /event !== 'schedule'/);
 assert.match(verifyJob, /if:.*rollback_run_id.*== ''/);
 assert.match(verifyJob, /npm run test:web:journey/);
 assert.match(verifyJob, /npm run test:web:static/);
@@ -2307,6 +2346,12 @@ assert.ok(
     verifyJob.indexOf("npm run build -- --webpack"),
   "The immutable snapshot must be captured before the static build",
 );
+assert.ok(
+  verifyJob.indexOf("npm run build -- --webpack") <
+    verifyJob.indexOf("verified-menu-release.mjs marker"),
+  "The public revision marker must be generated after Next creates web/out",
+);
+assert.match(verifyJob, /verified-menu-release\.mjs marker \.verified-menu-release web\/out\/menu-release\.json/);
 assert.match(
   cmsBuildStep,
   /MENU_CMS_SNAPSHOT_PATH:\s*\.\.\/\.verified-menu-release\/menu-snapshot\.json/,
@@ -2353,11 +2398,15 @@ assert.match(
 assert.match(restoreJob, /verified-menu-release\.mjs verify/);
 assert.match(
   restoreJob,
+  /verified-menu-release\.mjs marker \.verified-menu-release web\/out\/menu-release\.json suspended/,
+);
+assert.match(
+  restoreJob,
   /RELEASE_EXPECTED_SOURCE_RUN_ID:\s*\$\{\{ inputs\.rollback_run_id \}\}/,
 );
 assert.match(
   pagesWorkflow,
-  /needs:\s*\[verify, restore\]/,
+  /needs:\s*\[verify, restore, deploy-priority\]/,
   "Deployment must accept either a fresh verification or a verified rollback",
 );
 assert.doesNotMatch(
@@ -2368,6 +2417,7 @@ assert.doesNotMatch(
 assert.match(deployJob, /permissions:\s*[\s\S]*pages:\s*write[\s\S]*id-token:\s*write/);
 assert.match(deployJob, /actions\/configure-pages@v5/);
 assert.doesNotMatch(`${verifyJob}\n${restoreJob}`, /actions\/configure-pages@v5/);
+assert.match(deployJob, /needs\.deploy-priority\.outputs\.allowed == 'true'/);
 assert.match(verifiedMenuRelease, /\b_rev\b/);
 assert.match(verifiedMenuRelease, /\b_updatedAt\b/);
 assert.match(verifiedMenuRelease, /menu-hawaii/);
@@ -2387,17 +2437,19 @@ assert.doesNotMatch(
   "Publishing automation must not contain hard-coded credentials",
 );
 for (const requirement of [
-  /workflow_dispatch/,
-  /Actions:\s*write/i,
-  /Contents:\s*read/i,
+  /minute 17 of every\s+hour/i,
+  /does not need\s+a Sanity token, GitHub PAT or webhook credential/i,
   /Google SSO/i,
   /MFA/i,
-  /rotazione/i,
   /revoca/i,
-  /configurazione esterna/i,
 ]) {
   assert.match(adminContentBlueprint, requirement);
 }
+assert.doesNotMatch(
+  adminContentBlueprint,
+  /Authorization:\s*Bearer|fine-grained token|SANITY_API_TOKEN/,
+  "The operator guide must not require obsolete long-lived publishing credentials",
+);
 assertVerifiedMenuReleaseBehavior();
 assertLocalMenuSnapshotCapture();
 assert.match(productionRunner, /server\.listen\(0, "127\.0\.0\.1"/);
