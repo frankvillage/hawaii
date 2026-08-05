@@ -530,6 +530,121 @@ function assertLocalMenuSnapshotCapture() {
       "Empty allergen lists must remain omitted instead of becoming required arrays",
     );
 
+    const nullOptionalMockPath = path.join(fixtureRoot, "mock-null-optionals.mjs");
+    fs.writeFileSync(
+      nullOptionalMockPath,
+      `globalThis.fetch = async () => ({
+        ok: true,
+        json: async () => ({ result: ${JSON.stringify([
+          {
+            _id: "menu-hawaii",
+            _rev: "sanity-null-optionals",
+            _updatedAt: "2026-08-05T12:00:00.000Z",
+            venue: "hawaii",
+            categories: [
+              {
+                _key: "hawaii-contorni",
+                title: "Contorni",
+                note: null,
+                dishes: [
+                  {
+                    _key: "hawaii-contorno",
+                    name: "Insalata mista",
+                    note: null,
+                    price: null,
+                    allergens: null,
+                    available: true,
+                  },
+                ],
+              },
+            ],
+            wineSections: [
+              {
+                _key: "hawaii-wines",
+                title: "Vini",
+                wines: [
+                  {
+                    _key: "hawaii-wine",
+                    name: "Etichetta",
+                    price: null,
+                    available: true,
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            _id: "menu-muulab",
+            _rev: "muulab-null-optionals",
+            _updatedAt: "2026-08-05T12:00:01.000Z",
+            venue: "muulab",
+            categories: [
+              {
+                _key: "muulab-contorni",
+                title: "Contorni",
+                note: null,
+                dishes: [
+                  {
+                    _key: "muulab-contorno",
+                    name: "Verdure",
+                    note: null,
+                    price: null,
+                    allergens: null,
+                    available: true,
+                  },
+                ],
+              },
+            ],
+            wineSections: [
+              {
+                _key: "muulab-wines",
+                title: "Vini",
+                wines: [
+                  {
+                    _key: "muulab-wine",
+                    name: "Etichetta",
+                    price: null,
+                    available: true,
+                  },
+                ],
+              },
+            ],
+          },
+        ])} }),
+      });\n`,
+    );
+    const nullOptionalDir = path.join(fixtureRoot, "null-optionals");
+    const nullOptionalCapture = spawnSync(
+      process.execPath,
+      [verifiedMenuReleasePath, "capture", nullOptionalDir],
+      {
+        cwd: root,
+        encoding: "utf8",
+        env: {
+          ...baseEnv,
+          NODE_OPTIONS: `--import=${nullOptionalMockPath}`,
+          RELEASE_CMS_REVISION: "sanity-null-optionals",
+          SANITY_API_VERSION: "2026-07-31",
+          SANITY_DATASET: "production",
+          SANITY_PROJECT_ID: "project-id",
+        },
+      },
+    );
+    assert.equal(
+      nullOptionalCapture.status,
+      0,
+      nullOptionalCapture.stderr || nullOptionalCapture.stdout,
+    );
+    const nullOptionalSnapshot = JSON.parse(
+      fs.readFileSync(path.join(nullOptionalDir, "menu-snapshot.json"), "utf8"),
+    );
+    assert.equal(nullOptionalSnapshot.source, "sanity");
+    assert.doesNotMatch(
+      JSON.stringify(nullOptionalSnapshot),
+      /"(?:allergens|note|price)":null/,
+      "GROQ nulls for optional fields must be normalized as absent values",
+    );
+
     const fetchMockPath = path.join(fixtureRoot, "mock-fetch.mjs");
     fs.writeFileSync(
       fetchMockPath,

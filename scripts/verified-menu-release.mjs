@@ -176,7 +176,9 @@ function validateDocuments(documents, source) {
 }
 
 function copyOptional(source, key) {
-  return Object.prototype.hasOwnProperty.call(source, key)
+  return Object.prototype.hasOwnProperty.call(source, key) &&
+    source[key] !== null &&
+    source[key] !== undefined
     ? { [key]: source[key] }
     : {};
 }
