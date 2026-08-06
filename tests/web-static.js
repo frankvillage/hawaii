@@ -2016,13 +2016,26 @@ assert.match(
 const menuSingletonMapping =
   studioStructure.match(/const menuSingletons = \[([\s\S]*?)\] as const;/)?.[1] || "";
 assert.deepEqual(
-  [...menuSingletonMapping.matchAll(/documentId: "(menu-[^"]+)",[\s\S]*?title: "([^"]+)"/g)].map(
-    ([, documentId, title]) => [documentId, title],
-  ),
   [
-    ["menu-hawaii", "Hawaii Ristorante - Piano terra"],
-    ["menu-muulab", "MUULab Riviera - Terrazza"],
+    ...menuSingletonMapping.matchAll(
+      /documentId: "(menu-[^"]+)",[\s\S]*?initialValueTemplate: "(menu-[^"]+)",[\s\S]*?title: "([^"]+)"/g,
+    ),
+  ].map(([, documentId, initialValueTemplate, title]) => [
+    documentId,
+    initialValueTemplate,
+    title,
+  ]),
+  [
+    ["menu-hawaii", "menu-hawaii", "Hawaii Ristorante - Piano terra"],
+    ["menu-muulab", "menu-muulab", "MUULab Riviera - Terrazza"],
   ],
+  "The Studio structure must keep each singleton paired with its own recovery template",
+);
+assert.deepEqual(
+  [...menuSingletonMapping.matchAll(/documentId: "(menu-[^"]+)"/g)].map(
+    ([, documentId]) => documentId,
+  ),
+  ["menu-hawaii", "menu-muulab"],
   "The Studio structure must expose exactly the two fixed menu singletons",
 );
 assert.match(studioStructure, /\.title\("Gestione menu"\)/);
