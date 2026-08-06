@@ -13,10 +13,23 @@ export default defineConfig({
   plugins: [structureTool({ structure }), itITLocale()],
   schema: {
     types: schemaTypes,
-    templates: (templates) =>
-      templates.filter(({ schemaType }) => schemaType !== "menu"),
+    templates: () => [
+      {
+        id: "menu-hawaii",
+        title: "Ripristina Hawaii Ristorante - Piano terra",
+        schemaType: "menu",
+        value: { venue: "hawaii" },
+      },
+      {
+        id: "menu-muulab",
+        title: "Ripristina MUULab Riviera - Terrazza",
+        schemaType: "menu",
+        value: { venue: "muulab" },
+      },
+    ],
   },
   document: {
+    newDocumentOptions: () => [],
     actions: (actions, context) =>
       context.schemaType === "menu"
         ? actions.filter(

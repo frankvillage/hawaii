@@ -3,13 +3,13 @@ import type { StructureBuilder, StructureResolver } from "sanity/structure";
 const menuSingletons = [
   {
     documentId: "menu-hawaii",
+    initialValueTemplate: "menu-hawaii",
     title: "Hawaii Ristorante - Piano terra",
-    subtitle: "Pesce, pizza serale, bevande e carta vini",
   },
   {
     documentId: "menu-muulab",
+    initialValueTemplate: "menu-muulab",
     title: "MUULab Riviera - Terrazza",
-    subtitle: "Brace, cucina della terrazza, bevande e carta vini",
   },
 ] as const;
 
@@ -17,7 +17,7 @@ type MenuSingleton = (typeof menuSingletons)[number];
 
 function menuSingletonItem(
   S: StructureBuilder,
-  { documentId, subtitle, title }: MenuSingleton,
+  { documentId, initialValueTemplate, title }: MenuSingleton,
 ) {
   return S.listItem()
     .id(documentId)
@@ -26,7 +26,8 @@ function menuSingletonItem(
       S.document()
         .schemaType("menu")
         .documentId(documentId)
-        .title(`${title} | ${subtitle}`),
+        .initialValueTemplate(initialValueTemplate)
+        .title(`Modifica: ${title}`),
     );
 }
 

@@ -1993,8 +1993,13 @@ assert.match(
 );
 assert.match(
   sanityConfig,
-  /templates: \(templates\) =>[\s\S]*?schemaType !== "menu"/,
-  "The global create menu template must be removed",
+  /templates: \(\) => \[[\s\S]*?id: "menu-hawaii"[\s\S]*?schemaType: "menu"[\s\S]*?venue: "hawaii"[\s\S]*?id: "menu-muulab"[\s\S]*?schemaType: "menu"[\s\S]*?venue: "muulab"/,
+  "Each singleton must have a venue-safe recovery template",
+);
+assert.match(
+  sanityConfig,
+  /newDocumentOptions: \(\) => \[\]/,
+  "The global document creation menu must be disabled",
 );
 assert.match(
   sanityConfig,
@@ -2021,11 +2026,14 @@ assert.deepEqual(
   "The Studio structure must expose exactly the two fixed menu singletons",
 );
 assert.match(studioStructure, /\.title\("Gestione menu"\)/);
-assert.match(studioStructure, /Pesce, pizza serale, bevande e carta vini/);
-assert.match(studioStructure, /Brace, cucina della terrazza, bevande e carta vini/);
 assert.match(
   studioStructure,
   /\.schemaType\("menu"\)[\s\S]*?\.documentId\(documentId\)/,
+);
+assert.match(
+  studioStructure,
+  /\.initialValueTemplate\(initialValueTemplate\)/,
+  "Each singleton route must use its venue-safe recovery template",
 );
 assert.doesNotMatch(
   studioStructure,
