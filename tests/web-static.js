@@ -935,6 +935,14 @@ const sanityCliPath = path.join(root, "studio", "sanity.cli.ts");
 const sanityConfigPath = path.join(root, "studio", "sanity.config.ts");
 const studioEnvExamplePath = path.join(root, "studio", ".env.example");
 const studioStructurePath = path.join(root, "studio", "structure.ts");
+const studioPackagePath = path.join(root, "studio", "package.json");
+const studioTsconfigPath = path.join(root, "studio", "tsconfig.json");
+const studioIdentitySnapshotPath = path.join(
+  root,
+  "studio",
+  "scripts",
+  "snapshot-menu-identity.ts",
+);
 const propagatedBookingSources = [
   bookingConfig,
   siteContent,
@@ -1884,8 +1892,8 @@ assert.match(
 );
 assert.match(
   menuDocumentSchema,
-  /name: "venue"[\s\S]*?type: "string"[\s\S]*?list: menuVenueOptions[\s\S]*?Rule\.required\(\)\.custom\(validateVenueDocumentPair\)/,
-  "Venue selection must be fixed and paired with the document ID",
+  /name: "venue"[\s\S]*?type: "string"[\s\S]*?hidden: true[\s\S]*?readOnly: true[\s\S]*?list: menuVenueOptions[\s\S]*?Rule\.required\(\)\.custom\(validateVenueDocumentPair\)/,
+  "The technical venue must stay hidden, read-only and paired with the document ID",
 );
 assert.match(
   menuDocumentSchema,
@@ -1896,6 +1904,30 @@ assert.doesNotMatch(
   menuSchema,
   /name: "(?:_key|anchor|bookingLink|bookingUrl|html|image|media|pdfUrl)"/,
   "Code-owned anchors, links, keys, HTML and media must not be editable",
+);
+for (const label of [
+  "Piatto o voce del menu",
+  "Nome del piatto o della voce",
+  "Ingredienti o descrizione",
+  "Visibile sul sito",
+  "Sezione del menu",
+  "Piatti e voci",
+  "Menu: piatti e categorie",
+  "Carta vini e bevande",
+]) {
+  assert.match(menuSchema, new RegExp(`title: "${label}"`), `Missing Italian label: ${label}`);
+}
+assert.match(menuSchema, /Per le pizze, indica tutti gli ingredienti/);
+assert.match(menuSchema, /Disattiva per nascondere questa voce dal sito/);
+assert.doesNotMatch(
+  menuSchema,
+  /title: "(?:Dish|Name|Price|Note|Available|Allergens|Category|Title|Dishes|Venue|Categories)"/,
+  "Project-controlled Studio labels must not remain in English",
+);
+assert.doesNotMatch(
+  menuSchema,
+  /Select one|Unnamed|Unavailable|Choose each|Use a price|Select a venue/,
+  "Project-controlled validation and preview copy must be Italian",
 );
 
 const studioEnvExample = fs.readFileSync(studioEnvExamplePath, "utf8");
@@ -1942,6 +1974,7 @@ assert.doesNotMatch(
 
 const sanityConfig = fs.readFileSync(sanityConfigPath, "utf8");
 assert.match(sanityConfig, /import \{ structureTool \} from "sanity\/structure";/);
+assert.match(sanityConfig, /import \{ itITLocale \} from "@sanity\/locale-it-it";/);
 assert.match(sanityConfig, /import \{ structure \} from "\.\/structure";/);
 assert.match(
   sanityConfig,
@@ -1953,7 +1986,11 @@ assert.match(
   /dataset: process\.env\.SANITY_STUDIO_DATASET \|\| "your-dataset"/,
   "Studio runtime must read the same documented dataset as the CLI",
 );
-assert.match(sanityConfig, /plugins: \[structureTool\(\{ structure \}\)\]/);
+assert.match(
+  sanityConfig,
+  /plugins: \[structureTool\(\{ structure \}\), itITLocale\(\)\]/,
+  "The official Italian Studio locale must be enabled",
+);
 assert.match(
   sanityConfig,
   /templates: \(templates\) =>[\s\S]*?schemaType !== "menu"/,
@@ -1961,8 +1998,8 @@ assert.match(
 );
 assert.match(
   sanityConfig,
-  /schemaType === "menu"[\s\S]*?action !== "duplicate"/,
-  "Menu singleton documents must not expose duplicate creation",
+  /schemaType === "menu"[\s\S]*?!\["delete", "duplicate", "unpublish"\]\.includes\(action \?\? ""\)/,
+  "Menu singleton documents must not expose destructive or duplicate actions",
 );
 
 assert.ok(fs.existsSync(studioStructurePath), "The fixed Studio structure must exist");
@@ -1974,21 +2011,60 @@ assert.match(
 const menuSingletonMapping =
   studioStructure.match(/const menuSingletons = \[([\s\S]*?)\] as const;/)?.[1] || "";
 assert.deepEqual(
-  [...menuSingletonMapping.matchAll(/documentId: "(menu-[^"]+)", title: "([^"]+)"/g)].map(
+  [...menuSingletonMapping.matchAll(/documentId: "(menu-[^"]+)",[\s\S]*?title: "([^"]+)"/g)].map(
     ([, documentId, title]) => [documentId, title],
   ),
   [
-    ["menu-hawaii", "Menu Hawaii"],
-    ["menu-muulab", "Menu MUULab"],
+    ["menu-hawaii", "Hawaii Ristorante - Piano terra"],
+    ["menu-muulab", "MUULab Riviera - Terrazza"],
   ],
   "The Studio structure must expose exactly the two fixed menu singletons",
 );
-assert.match(studioStructure, /\.schemaType\("menu"\)\.documentId\(documentId\)/);
+assert.match(studioStructure, /\.title\("Gestione menu"\)/);
+assert.match(studioStructure, /Pesce, pizza serale, bevande e carta vini/);
+assert.match(studioStructure, /Brace, cucina della terrazza, bevande e carta vini/);
 assert.match(
   studioStructure,
-  /documentTypeListItems\(\)[\s\S]*?filter\([\s\S]*?getId\(\) !== "menu"/,
-  "The generic menu document list must be removed from the Studio structure",
+  /\.schemaType\("menu"\)[\s\S]*?\.documentId\(documentId\)/,
 );
+assert.doesNotMatch(
+  studioStructure,
+  /documentTypeListItems|divider\(/,
+  "The Studio root must contain only the two venue-specific menu entries",
+);
+
+const studioPackage = JSON.parse(fs.readFileSync(studioPackagePath, "utf8"));
+assert.ok(
+  studioPackage.dependencies["@sanity/locale-it-it"],
+  "The official Italian locale package must be installed",
+);
+assert.equal(
+  studioPackage.scripts.typecheck,
+  "tsc --noEmit -p tsconfig.json",
+  "The Studio must expose a deterministic typecheck command",
+);
+assert.equal(
+  studioPackage.overrides.undici,
+  "7.29.0",
+  "The Sanity build toolchain must pin the patched undici release",
+);
+assert.ok(fs.existsSync(studioTsconfigPath), "The Studio TypeScript config must exist");
+assert.ok(
+  fs.existsSync(studioIdentitySnapshotPath),
+  "The read-only menu identity snapshot script must exist",
+);
+const studioIdentitySnapshot = fs.readFileSync(studioIdentitySnapshotPath, "utf8");
+assert.match(studioIdentitySnapshot, /async function main\(\)/);
+assert.match(studioIdentitySnapshot, /main\(\)\.catch\(/);
+assert.match(studioIdentitySnapshot, /getCliClient\(\{ apiVersion: "2026-07-31" \}\)/);
+assert.match(studioIdentitySnapshot, /perspective: "raw"/);
+assert.match(studioIdentitySnapshot, /projectId !== "og7dym3o"/);
+assert.match(studioIdentitySnapshot, /dataset !== "production"/);
+assert.match(
+  studioIdentitySnapshot,
+  /\*\[_id in \["menu-hawaii", "menu-muulab", "drafts\.menu-hawaii", "drafts\.menu-muulab"\]\]\|order\(_id\)\{_id, _rev, venue\}/,
+);
+assert.match(studioIdentitySnapshot, /JSON\.stringify\(result, null, 2\)/);
 assert.doesNotMatch(
   [sanityCli, sanityConfig, studioEnvExample].join("\n"),
   /\bSANITY_(?:PROJECT_ID|DATASET)\b/,

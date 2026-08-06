@@ -1,3 +1,4 @@
+import { itITLocale } from "@sanity/locale-it-it";
 import { defineConfig } from "sanity";
 import { structureTool } from "sanity/structure";
 
@@ -9,7 +10,7 @@ export default defineConfig({
   title: "Hawaii Urban Village",
   projectId: process.env.SANITY_STUDIO_PROJECT_ID || "your-project-id",
   dataset: process.env.SANITY_STUDIO_DATASET || "your-dataset",
-  plugins: [structureTool({ structure })],
+  plugins: [structureTool({ structure }), itITLocale()],
   schema: {
     types: schemaTypes,
     templates: (templates) =>
@@ -18,7 +19,9 @@ export default defineConfig({
   document: {
     actions: (actions, context) =>
       context.schemaType === "menu"
-        ? actions.filter(({ action }) => action !== "duplicate")
+        ? actions.filter(
+            ({ action }) => !["delete", "duplicate", "unpublish"].includes(action ?? ""),
+          )
         : actions,
   },
 });

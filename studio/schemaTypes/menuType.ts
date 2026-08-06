@@ -11,8 +11,8 @@ const menuDocumentIds = {
 type MenuVenue = keyof typeof menuDocumentIds;
 
 const menuVenueOptions = [
-  { title: "Hawaii", value: "hawaii" },
-  { title: "MUULab", value: "muulab" },
+  { title: "Hawaii Ristorante - Piano terra", value: "hawaii" },
+  { title: "MUULab Riviera - Terrazza", value: "muulab" },
 ];
 
 const allergenOptions = allergenDefinitions.map(({ code, label }) => ({
@@ -25,7 +25,7 @@ function validateVenueDocumentPair(
   context: ValidationContext,
 ): true | string {
   if (venue !== "hawaii" && venue !== "muulab") {
-    return "Select one of the supported venues.";
+    return "Questo menu non è associato correttamente al locale. Contattare l'amministratore.";
   }
 
   const documentId = context.document?._id?.replace(/^drafts\./, "");
@@ -33,7 +33,7 @@ function validateVenueDocumentPair(
 
   return (
     documentId === expectedDocumentId ||
-    `The ${venue} menu must use the fixed document ID ${expectedDocumentId}.`
+    "Questo menu non è associato correttamente al documento previsto. Contattare l'amministratore."
   );
 }
 
@@ -41,7 +41,7 @@ function validateMenuPrice(price: unknown): true | string {
   return (
     price === undefined ||
     isMenuPrice(price) ||
-    "Use a price such as EUR 8, EUR 8,50, da EUR 8 or EUR 12 l'etto, replacing EUR with the euro symbol."
+    "Usa formati come € 8, € 8,50, da € 8 oppure € 12 l'etto."
   );
 }
 
@@ -49,45 +49,50 @@ function validateAllergens(allergens: unknown): true | string {
   return (
     allergens === undefined ||
     areUniqueAllergenCodes(allergens) ||
-    "Choose each official allergen code at most once."
+    "Seleziona ogni allergene una sola volta."
   );
 }
 
 const menuDish = defineArrayMember({
   name: "menuDish",
-  title: "Dish",
+  title: "Piatto o voce del menu",
   type: "object",
   fields: [
     defineField({
       name: "name",
-      title: "Name",
+      title: "Nome del piatto o della voce",
       type: "string",
+      description: "È il nome che sarà mostrato sul sito.",
       validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: "price",
-      title: "Price",
+      title: "Prezzo",
       type: "string",
-      description: "Examples: EUR 8, EUR 8,50, da EUR 8, EUR 12 l'etto. Use the euro symbol.",
+      description: "Esempi: € 8, € 8,50, da € 8, € 12 l'etto. Può restare vuoto.",
       validation: (Rule) => Rule.custom(validateMenuPrice),
     }),
     defineField({
       name: "note",
-      title: "Note",
+      title: "Ingredienti o descrizione",
       type: "text",
       rows: 2,
+      description:
+        "Per le pizze, indica tutti gli ingredienti. Per gli altri piatti puoi aggiungere una breve descrizione.",
     }),
     defineField({
       name: "available",
-      title: "Available",
+      title: "Visibile sul sito",
       type: "boolean",
+      description: "Disattiva per nascondere questa voce dal sito senza eliminarla.",
       initialValue: true,
       validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: "allergens",
-      title: "Allergens",
+      title: "Allergeni",
       type: "array",
+      description: "Seleziona solo gli allergeni presenti nella voce originale del menu.",
       of: [{ type: "number" }],
       options: {
         list: allergenOptions,
@@ -104,8 +109,10 @@ const menuDish = defineArrayMember({
     },
     prepare({ available, name, price }) {
       return {
-        title: name || "Unnamed dish",
-        subtitle: [available === false ? "Unavailable" : "", price].filter(Boolean).join(" - "),
+        title: name || "Voce senza nome",
+        subtitle: [available === false ? "Non visibile sul sito" : "", price]
+          .filter(Boolean)
+          .join(" - "),
       };
     },
   },
@@ -113,28 +120,27 @@ const menuDish = defineArrayMember({
 
 const menuCategory = defineArrayMember({
   name: "menuCategory",
-  title: "Category",
+  title: "Sezione del menu",
   type: "object",
   fields: [
     defineField({
       name: "title",
-      title: "Title",
+      title: "Titolo della sezione",
       type: "string",
       validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: "note",
-      title: "Note",
+      title: "Nota introduttiva (facoltativa)",
       type: "text",
       rows: 2,
     }),
     defineField({
       name: "dishes",
-      title: "Dishes",
+      title: "Piatti e voci",
       type: "array",
       of: [menuDish],
-      description:
-        "May be empty for code-owned wine-list sections that only expose a document link.",
+      description: "Aggiungi, ordina o modifica le voci visualizzate in questa sezione.",
       validation: (Rule) => Rule.required(),
     }),
   ],
@@ -146,8 +152,8 @@ const menuCategory = defineArrayMember({
     prepare({ dishes, title }) {
       const dishCount = Array.isArray(dishes) ? dishes.length : 0;
       return {
-        title: title || "Unnamed category",
-        subtitle: `${dishCount} ${dishCount === 1 ? "dish" : "dishes"}`,
+        title: title || "Sezione senza titolo",
+        subtitle: `${dishCount} ${dishCount === 1 ? "voce" : "voci"}`,
       };
     },
   },
@@ -160,8 +166,9 @@ const wineEntry = defineArrayMember({
   fields: [
     defineField({
       name: "name",
-      title: "Nome",
+      title: "Nome dell'etichetta o della bevanda",
       type: "string",
+      description: "Inserisci il nome completo che deve apparire nella carta.",
       validation: (Rule) => Rule.required(),
     }),
     defineField({
@@ -173,8 +180,9 @@ const wineEntry = defineArrayMember({
     }),
     defineField({
       name: "available",
-      title: "Disponibile",
+      title: "Visibile sul sito",
       type: "boolean",
+      description: "Disattiva per nascondere questa voce dal sito senza eliminarla.",
       initialValue: true,
       validation: (Rule) => Rule.required(),
     }),
@@ -188,7 +196,7 @@ const wineEntry = defineArrayMember({
     prepare({ available, name, price }) {
       return {
         title: name || "Etichetta senza nome",
-        subtitle: [available === false ? "Non disponibile" : "", price]
+        subtitle: [available === false ? "Non visibile sul sito" : "", price]
           .filter(Boolean)
           .join(" - "),
       };
@@ -212,6 +220,7 @@ const wineSection = defineArrayMember({
       title: "Vini e bevande",
       type: "array",
       of: [wineEntry],
+      description: "Aggiungi, ordina o modifica le etichette di questa sezione.",
       validation: (Rule) => Rule.required().min(1),
     }),
   ],
@@ -232,13 +241,15 @@ const wineSection = defineArrayMember({
 
 export const menuType = defineType({
   name: "menu",
-  title: "Menu",
+  title: "Menu del locale",
   type: "document",
   fields: [
     defineField({
       name: "venue",
-      title: "Venue",
+      title: "Locale associato",
       type: "string",
+      hidden: true,
+      readOnly: true,
       options: {
         list: menuVenueOptions,
         layout: "radio",
@@ -247,9 +258,11 @@ export const menuType = defineType({
     }),
     defineField({
       name: "categories",
-      title: "Categories",
+      title: "Menu: piatti e categorie",
       type: "array",
       of: [menuCategory],
+      description:
+        "Gestisci le sezioni nell'ordine in cui appariranno sul sito. Apri una sezione per modificare piatti, prezzi, ingredienti e allergeni.",
       validation: (Rule) => Rule.required().min(1),
     }),
     defineField({
@@ -269,8 +282,8 @@ export const menuType = defineType({
     prepare({ venue }) {
       const option = menuVenueOptions.find(({ value }) => value === (venue as MenuVenue));
       return {
-        title: option?.title || "Menu",
-        subtitle: venue ? menuDocumentIds[venue as MenuVenue] : "Select a venue",
+        title: option?.title || "Menu del locale",
+        subtitle: "Menu, bevande e carta vini",
       };
     },
   },
